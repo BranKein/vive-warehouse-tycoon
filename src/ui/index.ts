@@ -30,6 +30,18 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   let selection: Selection = { type: 'none' };
   let last: GameSnapshot | null = null;
   let disposed = false;
+  /**
+   * The building that stood on the selected plot when it was selected. A plot
+   * is selected right after its building is demolished, while the snapshot in
+   * hand may still show that building; it must not pull the selection back.
+   */
+  let plotWasOccupiedBy: string | null = null;
+
+  function setCurrent(next: Selection): void {
+    selection = next;
+    plotWasOccupiedBy =
+      next.type === 'plot' ? (last?.island.plots.find((plot) => plot.id === next.plotId)?.buildingId ?? null) : null;
+  }
 
   const toasts = createToasts(tr);
   const notify = (kind: ToastKind, render: () => string): void => toasts.push(kind, render);
@@ -51,7 +63,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     tr,
     select(next) {
       if (sameSelection(selection, next)) return;
-      selection = next;
+      setCurrent(next);
       follow(next);
       deps.onSelectionChange(next);
       render();
@@ -88,13 +100,14 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     if (selection.type === 'plot') {
       const plotId = selection.plotId;
       const buildingId = snapshot.island.plots.find((plot) => plot.id === plotId)?.buildingId;
-      if (buildingId) next = { type: 'building', buildingId };
+      if (buildingId && buildingId !== plotWasOccupiedBy) next = { type: 'building', buildingId };
+      else if (!buildingId) plotWasOccupiedBy = null;
     } else if (selection.type === 'building') {
       const buildingId = selection.buildingId;
       if (!snapshot.island.buildings.some((building) => building.id === buildingId)) next = { type: 'none' };
     }
     if (sameSelection(selection, next)) return;
-    selection = next;
+    setCurrent(next);
     follow(next);
     deps.onSelectionChange(next);
   }
@@ -124,7 +137,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     setSelection(next: Selection): void {
       // Comes from the app (a click in the 3D view), so it is not reported back.
       if (sameSelection(selection, next)) return;
-      selection = next;
+      setCurrent(next);
       follow(next);
       render();
     },
