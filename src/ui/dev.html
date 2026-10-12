@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warehouse Tycoon UI (dev)</title>
+    <style>
+      /* Stand-in for the 3D scene, so the floating panels are seen over something. */
+      html, body { height: 100%; margin: 0; }
+      body { background: linear-gradient(#bfe3f5 0%, #dff1e0 45%, #a8d59a 46%, #8cc487 100%); overflow: hidden; }
+      #dev-tools { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 20; display: flex; gap: 6px; font: 12px system-ui, sans-serif; }
+      #dev-tools button { padding: 4px 10px; border-radius: 999px; border: 1px solid #b9ab9b; background: #fff8ec; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div id="ui"></div>
+    <div id="dev-tools"></div>
+    <script type="module" src="./dev.ts"></script>
+  </body>
+</html>
