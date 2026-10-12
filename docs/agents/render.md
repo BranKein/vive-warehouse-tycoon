@@ -8,7 +8,7 @@ Three.js로 3D 화면을 만든다.
 - `tests/render/`
 - `src/render/dev.html`과 그 진입 파일 (가짜 데이터로 화면만 띄워보는 개발용 페이지)
 
-`src/sim`을 import하지 않는다. `src/contracts`의 `GameSnapshot`만 읽는다. 로직이 완성되기 전이므로 `src/contracts/fixtures.ts`의 가짜 데이터로 개발한다.
+`src/sim`을 import하지 않는다. `src/contracts`의 `GameSnapshot`만 읽는다. 로직이 완성되기 전이므로 `src/dev/fixtures.ts`의 가짜 데이터로 개발한다.
 
 ## 만들 것
 

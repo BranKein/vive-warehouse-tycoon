@@ -43,6 +43,12 @@ export interface RecipeDef {
   /** Any number of outputs, including none (e.g. waste disposal). */
   outputs: RecipeIO[];
   durationSec: number;
+  /**
+   * `all` (default): every input is required for a cycle.
+   * `any`: each input is consumed independently, whichever is available
+   * (e.g. a disposal plant that accepts several kinds of waste).
+   */
+  inputMode?: 'all' | 'any';
   /** Money spent per cycle at batch size 1 (e.g. waste disposal fees). */
   moneyCostPerCycle?: number;
 }

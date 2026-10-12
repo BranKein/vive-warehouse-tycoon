@@ -20,6 +20,7 @@
 ```
 src/
   contracts/   # 계층 사이의 약속: 데이터 정의 타입, 읽기 모델, 명령, 이벤트
+  dev/         # 화면·UI 개발용 가짜 읽기 모델
   core/        # BigNum, 숫자 표기, 난수, 틱 시계
   content/     # 품목·레시피·건물·운송·업그레이드·해금·밸런스·섬 배치 데이터
   sim/         # 게임 로직 (Game, Island, Building, Dispatcher, ...)
@@ -203,7 +204,7 @@ docs/agents/   # 서브에이전트 작업 지침
 | 4 | 브라우저에서 확인, 다듬기, README, 루트 저장소에 서브모듈 등록 | 메인 |
 
 - 1A, 1B, 1C는 0단계의 `contracts`가 끝난 뒤 동시에 진행한다. 서로 다른 디렉터리만 고치므로 같은 작업 폴더에서 진행한다.
-- 1B와 1C는 로직이 완성되기 전에도 진행할 수 있게, `contracts`의 읽기 모델을 채운 가짜 데이터(`src/contracts/fixtures.ts`)로 개발한다.
+- 1B와 1C는 로직이 완성되기 전에도 진행할 수 있게, `contracts`의 읽기 모델을 채운 가짜 데이터(`src/dev/fixtures.ts`)로 개발한다.
 - 각 서브에이전트의 지침은 `docs/agents/`에 있다.
 - `contracts`를 바꿔야 하면 서브에이전트가 직접 고치지 않고, 필요한 변경을 보고서에 적는다. 메인이 반영한다.
 
@@ -217,7 +218,7 @@ docs/agents/   # 서브에이전트 작업 지침
 
 ## 8. 진행 상황
 
-- [ ] 0 뼈대와 contracts (진행 중: 뼈대, `core`, `contracts` 타입 완료. 남은 것: `content` 초기 데이터와 섬 배치, `contracts/fixtures.ts`)
+- [x] 0 뼈대, core, contracts, content 초기 데이터, 개발용 가짜 데이터
 - [ ] 1A 로직
 - [ ] 1B 화면
 - [ ] 1C UI·번역·저장

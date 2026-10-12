@@ -10,7 +10,7 @@ HTML·CSS로 된 게임 UI와 번역, 저장소를 만든다. 프레임워크를
 - `tests/ui/`, `tests/i18n/`, `tests/save/`
 - `src/ui/dev.html`과 그 진입 파일 (가짜 데이터로 UI만 띄워보는 개발용 페이지)
 
-`src/sim`과 `src/render`를 import하지 않는다. `src/contracts`의 `GameSnapshot`을 읽고 `GameCommands`를 호출한다. 로직이 완성되기 전이므로 `src/contracts/fixtures.ts`의 가짜 데이터로 개발한다.
+`src/sim`과 `src/render`를 import하지 않는다. `src/contracts`의 `GameSnapshot`을 읽고 `GameCommands`를 호출한다. 로직이 완성되기 전이므로 `src/dev/fixtures.ts`의 가짜 데이터로 개발한다.
 
 ## 만들 것
 
@@ -39,7 +39,7 @@ HTML·CSS로 된 게임 UI와 번역, 저장소를 만든다. 프레임워크를
 
 - `t(key, params)`와 언어 전환, 전환 알림. 기본 언어는 영어, 고른 언어는 기억한다.
 - `en.ts`와 `ko.ts`. 키가 한쪽에만 있으면 타입 오류가 나게 한다.
-- 품목·건물·업그레이드·해금의 이름과 설명은 `contracts`의 ID로 키를 만든다 (예: `item.lumber.name`). ID 목록은 `src/contracts/fixtures.ts`와 `PLAN.md`의 품목 표를 본다.
+- 품목·건물·업그레이드·해금의 이름과 설명은 `contracts`의 ID로 키를 만든다 (예: `item.lumber.name`). ID 목록은 `src/dev/fixtures.ts`와 `PLAN.md`의 품목 표를 본다.
 
 ### 저장 (`src/save`, `PLAN.md` 3.12)
 
