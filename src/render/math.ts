@@ -410,3 +410,40 @@ export function pickNearest<T>(ray: Ray, proxies: ReadonlyArray<PickProxy<T>>): 
   }
   return best;
 }
+
+// ---------------------------------------------------------------------------
+// Layout helpers
+// ---------------------------------------------------------------------------
+
+/** Distance from a point to a line segment on the ground plane. */
+export function distanceToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const t = lengthSq === 0 ? 0 : clamp01(((px - ax) * dx + (pz - az) * dz) / lengthSq);
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+
+/** True when the point lies inside the rectangle grown by `margin` on every side. */
+export function insideRect(
+  x: number,
+  z: number,
+  rect: { minX: number; maxX: number; minZ: number; maxZ: number },
+  margin = 0,
+): boolean {
+  return x >= rect.minX - margin && x <= rect.maxX + margin && z >= rect.minZ - margin && z <= rect.maxZ + margin;
+}
+
+/** Scale of something popping into existence: 0 at the start, a small overshoot, then 1. */
+export function appearScale(elapsed: number, durationSec: number): number {
+  if (elapsed >= durationSec) return 1;
+  if (elapsed <= 0) return 0;
+  return easeOutBack(elapsed / durationSec);
+}
+
+/** Scale of something shrinking away: 1 at the start, 0 once the duration has passed. */
+export function vanishScale(elapsed: number, durationSec: number): number {
+  if (elapsed <= 0) return 1;
+  if (elapsed >= durationSec) return 0;
+  return 1 - smoothstep(elapsed / durationSec);
+}
