@@ -1,0 +1,541 @@
+/**
+ * The two ends of the chain: the inbound channel brings raw materials onto
+ * the island and sale channels take goods away and turn them into money.
+ * A new kind of sale channel is a class extending `SaleChannel` plus one
+ * `registerSaleChannel` call.
+ */
+import {
+  Stat,
+  type FacilityView,
+  type InboundChannelDef,
+  type IslandLayoutDef,
+  type ItemId,
+  type JsonValue,
+  type SaleChannelDef,
+  type UnlockId,
+  type UpgradeTrackDef,
+  type UpgradeTrackId,
+  type VehicleKind,
+  type VehicleView,
+} from '@/contracts';
+import { BigNum } from '@/core/BigNum';
+import { secondsToTicks, TICKS_PER_SECOND } from '@/core/time';
+import { Carrier, type CarrierContext } from './Carrier';
+import type { SaleTarget } from './Dispatcher';
+import { Inventory, type Slot } from './Inventory';
+import { isPositive, ratio, subClamp } from './math';
+import { StatResolver, type ModifierRegistry } from './modifiers';
+import type { CarrierHome, Consumer, Site } from './nodes';
+import { makePath, reversePath, type Path } from './RoadGraph';
+import { restoreLevels, serializeLevels, upgradeViews, type Upgradable } from './upgrades';
+import { Vehicle, weightFactor } from './Vehicle';
+
+/** What channels need from the island and the game around them. */
+export interface ChannelContext extends CarrierContext {
+  readonly layout: IslandLayoutDef;
+  readonly modifiers: ModifierRegistry;
+  /** Raw materials that can be brought in. */
+  readonly rawItems: readonly ItemId[];
+  /** Road path from the island gate to the dock of a site. */
+  gatePath(site: Site): Path;
+  consumersOf(item: ItemId): readonly Consumer[];
+  isUnlocked(unlock: UnlockId | null): boolean;
+  /** Game-wide price multiplier. */
+  priceMultiplier(): BigNum;
+  /** Money arrives; called when a sale vehicle leaves the island. */
+  earn(amount: BigNum, channelId: string, x: number, z: number): void;
+}
+
+const RETRY_TICKS = TICKS_PER_SECOND;
+const NO_SLOTS: readonly Slot[] = [];
+
+type VisitPhase = 'in' | 'handle' | 'out';
+
+/** A truck, ship or plane visiting a facility: comes in, is handled, leaves. */
+class Visitor extends Vehicle {
+  phase: VisitPhase = 'in';
+  wake = 0;
+
+  toJSON(): JsonValue {
+    return {
+      id: this.id,
+      phase: this.phase,
+      wake: this.wake,
+      legStart: this.legStart,
+      legEnd: this.legEnd,
+      capacity: this.capacity.toString(),
+      cargo: this.cargo.toJSON(),
+    };
+  }
+}
+
+function restoreVisitor(
+  saved: unknown,
+  kind: VehicleKind,
+  model: string,
+  inPath: Path,
+  outPath: Path,
+  known: (item: ItemId) => boolean,
+): Visitor | null {
+  if (!saved || typeof saved !== 'object') return null;
+  const data = saved as Record<string, unknown>;
+  const phase = data.phase;
+  if (typeof data.id !== 'string' || (phase !== 'in' && phase !== 'handle' && phase !== 'out')) return null;
+  const visitor = new Visitor(data.id, kind, model);
+  visitor.phase = phase;
+  visitor.wake = Number(data.wake) || 0;
+  visitor.legStart = Number(data.legStart) || 0;
+  visitor.legEnd = Number(data.legEnd) || 0;
+  visitor.cargo.restore(data.cargo, known);
+  if (typeof data.capacity === 'string') visitor.capacity = BigNum.from(data.capacity);
+  visitor.path = phase === 'out' ? outPath : inPath;
+  visitor.state = phase === 'handle' ? 'loading' : 'moving';
+  return visitor;
+}
+
+/** Shared by both channel directions: upgrade tracks, stats, a stock and a site. */
+abstract class ChannelBase implements Upgradable {
+  readonly levels = new Map<UpgradeTrackId, number>();
+  readonly tracks: UpgradeTrackDef[];
+  readonly stats: StatResolver;
+  readonly upgradeCostScale: number;
+  readonly stock = new Inventory();
+  /** Tick at which the next vehicle may set out. */
+  nextDispatch = 0;
+  protected seq = 0;
+
+  constructor(
+    readonly id: string,
+    readonly site: Site,
+    protected readonly ctx: ChannelContext,
+    base: { baseIntervalSec: number; baseLoad: number; upgradeTracks: UpgradeTrackId[] },
+  ) {
+    this.tracks = base.upgradeTracks.flatMap((trackId) => ctx.catalog.upgradeTracks[trackId] ?? []);
+    this.upgradeCostScale = ctx.balance.channels.upgradeCostScale[id] ?? 1;
+    this.stats = new StatResolver(
+      id,
+      { [Stat.interval]: base.baseIntervalSec, [Stat.load]: base.baseLoad },
+      this.tracks,
+      this.levels,
+      ctx.modifiers,
+    );
+  }
+
+  /** Recomputes everything derived from stats. Call after an upgrade. */
+  refresh(): void {
+    this.stats.invalidate();
+  }
+
+  protected get intervalTicks(): number {
+    return secondsToTicks(Math.max(0.05, this.stats.number(Stat.interval)));
+  }
+
+  protected get load(): BigNum {
+    return this.stats.value(Stat.load);
+  }
+
+  protected known = (item: ItemId): boolean => item in this.ctx.catalog.items;
+
+  protected parked(): { x: number; y: number; z: number; heading: number } {
+    const { dock, heading } = this.site;
+    return { x: dock.x, y: dock.y, z: dock.z, heading };
+  }
+
+  cancelDelivery(_item: ItemId, _planned: BigNum): void {}
+  pickup(_item: ItemId, _planned: BigNum): BigNum {
+    return BigNum.ZERO;
+  }
+  cancelPickup(_item: ItemId, _planned: BigNum): void {}
+}
+
+// --- inbound -----------------------------------------------------------------
+
+/**
+ * Raw material trucks. Each truck brings what the buildings are asking for,
+ * split in proportion to their requests, and the yard's own carriers hand it
+ * out. Nothing is brought that nobody wants.
+ */
+export class InboundChannel extends ChannelBase implements CarrierHome {
+  readonly carriers: Carrier[] = [];
+  readonly trucks: Visitor[] = [];
+  private readonly inPath: Path;
+  private readonly outPath: Path;
+
+  constructor(
+    readonly def: InboundChannelDef,
+    site: Site,
+    ctx: ChannelContext,
+  ) {
+    super(def.id, site, ctx, def);
+    this.inPath = ctx.gatePath(site);
+    this.outPath = reversePath(this.inPath);
+    this.refresh();
+  }
+
+  override refresh(): void {
+    super.refresh();
+    const { yard, carriers } = this.ctx.balance;
+    let intervalLevel = 0;
+    for (const track of this.tracks) {
+      if (track.stat === Stat.interval) intervalLevel += this.levels.get(track.id) ?? 0;
+    }
+    const wanted = Math.min(
+      yard.maxCarriers,
+      yard.baseCarriers + Math.floor(intervalLevel / Math.max(1, yard.intervalLevelsPerCarrier)),
+    );
+    while (this.carriers.length < wanted) {
+      this.carriers.push(new Carrier(`${this.id}.c${this.carriers.length + 1}`, this, carriers.model));
+    }
+  }
+
+  update(tick: number): void {
+    for (let i = this.trucks.length - 1; i >= 0; i -= 1) {
+      const truck = this.trucks[i]!;
+      if (tick >= truck.wake) this.advance(truck, i, tick);
+    }
+    if (tick >= this.nextDispatch) {
+      this.nextDispatch = tick + (this.dispatch(tick) ? this.intervalTicks : RETRY_TICKS);
+    }
+  }
+
+  /** Sends a truck loaded with what is being asked for. False when nothing is wanted. */
+  private dispatch(tick: number): boolean {
+    const needs: Array<{ slot: Slot; need: BigNum }> = [];
+    let total = BigNum.ZERO;
+    for (const item of this.ctx.rawItems) {
+      const consumers = this.ctx.consumersOf(item);
+      if (consumers.length === 0) continue;
+      let wanted = BigNum.ZERO;
+      for (const consumer of consumers) wanted = wanted.add(consumer.demand(item));
+      const slot = this.stock.slot(item);
+      const need = subClamp(wanted, slot.amount.add(slot.incoming));
+      if (!isPositive(need)) continue;
+      needs.push({ slot, need });
+      total = total.add(need);
+    }
+    if (needs.length === 0) return false;
+    const load = this.load;
+    const share = total.cmp(load) > 0 ? load.div(total) : BigNum.ONE;
+    this.seq += 1;
+    const truck = new Visitor(`${this.id}.v${this.seq}`, 'inboundTruck', this.def.vehicleModel);
+    truck.capacity = load;
+    for (const { slot, need } of needs) {
+      const amount = need.mul(share);
+      truck.cargo.add(slot.item, amount);
+      slot.incoming = slot.incoming.add(amount);
+    }
+    const { weight } = this.ctx.balance;
+    const factor = weightFactor(truck.cargo.averageWeight(this.ctx.catalog.items), weight.inboundSensitivity, this.ctx.balance);
+    truck.wake = truck.travel(this.inPath, this.def.vehicleSpeed * factor, tick);
+    this.trucks.push(truck);
+    return true;
+  }
+
+  private advance(truck: Visitor, index: number, tick: number): void {
+    if (truck.phase === 'in') {
+      truck.phase = 'handle';
+      truck.state = 'unloading';
+      truck.wake = tick + secondsToTicks(this.ctx.balance.channels.handlingSec);
+    } else if (truck.phase === 'handle') {
+      for (const [item, amount] of truck.cargo.items) {
+        const slot = this.stock.slot(item);
+        slot.incoming = subClamp(slot.incoming, amount);
+        slot.add(amount);
+      }
+      truck.cargo.clear();
+      truck.phase = 'out';
+      truck.wake = truck.travel(this.outPath, this.def.vehicleSpeed, tick);
+      this.ctx.markDirty();
+    } else {
+      this.trucks.splice(index, 1);
+    }
+  }
+
+  // CarrierHome
+  carrierCapacity(): BigNum {
+    return this.load.mul(this.ctx.balance.yard.loadFactor);
+  }
+  pushSlots(): readonly Slot[] {
+    return this.stock.list;
+  }
+  pullSlots(): readonly Slot[] {
+    return NO_SLOTS;
+  }
+  stockTaken(): void {}
+  returnCargo(item: ItemId, amount: BigNum): void {
+    this.stock.slot(item).add(amount);
+  }
+  deliver(item: ItemId, delivered: BigNum, _planned: BigNum): void {
+    this.stock.slot(item).add(delivered);
+  }
+
+  get handlingCount(): number {
+    let count = 0;
+    for (const truck of this.trucks) if (truck.phase === 'handle') count += 1;
+    return count;
+  }
+
+  vehicleViews(tick: number, out: VehicleView[]): void {
+    for (const truck of this.trucks) out.push(truck.view(tick, this.parked()));
+  }
+
+  facilityView(tick: number, money: BigNum, carrierHandling: number): FacilityView {
+    return {
+      id: this.def.facility,
+      kind: 'inboundYard',
+      channelId: this.id,
+      unlocked: true,
+      stock: this.stock.views(),
+      upgrades: upgradeViews(this, money),
+      nextArrivalSec: Math.max(0, this.nextDispatch - tick) / TICKS_PER_SECOND,
+      handlingCount: carrierHandling + this.handlingCount,
+    };
+  }
+
+  toJSON(): JsonValue {
+    return {
+      levels: serializeLevels(this.levels),
+      stock: this.stock.toJSON(),
+      nextDispatch: this.nextDispatch,
+      seq: this.seq,
+      trucks: this.trucks.map((truck) => truck.toJSON()),
+      carriers: this.carriers.map((carrier) => carrier.toJSON()),
+    };
+  }
+
+  restore(saved: unknown): void {
+    if (!saved || typeof saved !== 'object') return;
+    const data = saved as Record<string, unknown>;
+    restoreLevels(this.levels, this.tracks, data.levels);
+    this.refresh();
+    this.stock.restore(data.stock, this.known);
+    this.nextDispatch = Number(data.nextDispatch) || 0;
+    this.seq = Number(data.seq) || 0;
+    this.trucks.length = 0;
+    for (const raw of Array.isArray(data.trucks) ? data.trucks : []) {
+      const truck = restoreVisitor(raw, 'inboundTruck', this.def.vehicleModel, this.inPath, this.outPath, this.known);
+      if (!truck) continue;
+      if (truck.phase === 'handle') truck.state = 'unloading';
+      this.trucks.push(truck);
+    }
+    const carriers = Array.isArray(data.carriers) ? data.carriers : [];
+    this.carriers.forEach((carrier, index) => carrier.restore(carriers[index], this.ctx));
+  }
+}
+
+// --- sale --------------------------------------------------------------------
+
+/**
+ * Takes goods nobody on the island asked for. One vehicle at a time comes
+ * in, loads a share of everything waiting and leaves; the money arrives the
+ * moment it is off the island. Heavy cargo slows the trip, which delays the
+ * next visit.
+ */
+export abstract class SaleChannel extends ChannelBase implements SaleTarget {
+  abstract readonly vehicleKind: VehicleKind;
+  vehicle: Visitor | null = null;
+  private spawnTick = 0;
+  private paths: { in: Path; out: Path } | null = null;
+
+  constructor(
+    readonly def: SaleChannelDef,
+    site: Site,
+    ctx: ChannelContext,
+  ) {
+    super(def.id, site, ctx, def);
+  }
+
+  /** Path a vehicle takes onto the island; its last point is where it loads. */
+  protected abstract approach(): Path;
+
+  private get lanes(): { in: Path; out: Path } {
+    if (!this.paths) {
+      const path = this.approach();
+      this.paths = { in: path, out: reversePath(path) };
+    }
+    return this.paths;
+  }
+
+  get unlocked(): boolean {
+    return this.ctx.isUnlocked(this.def.unlock);
+  }
+
+  /** Vehicle loads waiting here, counting what carriers are already bringing. */
+  backlog(): number {
+    let queued = BigNum.ZERO;
+    for (const slot of this.stock.list) queued = queued.add(slot.amount).add(slot.incoming);
+    return ratio(queued, this.load);
+  }
+
+  get isBackedUp(): boolean {
+    return this.backlog() >= this.ctx.balance.channels.backlogLoads;
+  }
+
+  /** Money for a load worth `gross` at base prices. Channels with fees or losses override this. */
+  protected proceeds(gross: BigNum): BigNum {
+    return gross.mul(this.def.priceMultiplier).mul(this.ctx.priceMultiplier());
+  }
+
+  update(tick: number): void {
+    const vehicle = this.vehicle;
+    if (vehicle) {
+      if (tick >= vehicle.wake) this.advance(vehicle, tick);
+      return;
+    }
+    if (tick < this.nextDispatch || !this.unlocked) return;
+    if (!this.stock.hasAny) {
+      this.nextDispatch = tick + RETRY_TICKS;
+      return;
+    }
+    this.seq += 1;
+    const next = new Visitor(`${this.id}.v${this.seq}`, this.vehicleKind, this.def.vehicleModel);
+    next.capacity = this.load;
+    next.wake = next.travel(this.lanes.in, this.def.vehicleSpeed, tick);
+    this.vehicle = next;
+    this.spawnTick = tick;
+    this.nextDispatch = tick + this.intervalTicks;
+  }
+
+  private advance(vehicle: Visitor, tick: number): void {
+    if (vehicle.phase === 'in') {
+      vehicle.phase = 'handle';
+      vehicle.state = 'loading';
+      vehicle.wake = tick + secondsToTicks(this.ctx.balance.channels.handlingSec);
+    } else if (vehicle.phase === 'handle') {
+      let total = BigNum.ZERO;
+      for (const slot of this.stock.list) total = total.add(slot.amount);
+      const load = this.load;
+      vehicle.capacity = load;
+      // When there is more than fits, every item gets its share so nothing is starved of room.
+      const share = total.cmp(load) > 0 ? load.div(total) : null;
+      for (const slot of this.stock.list) {
+        if (!slot.hasStock) continue;
+        vehicle.cargo.add(slot.item, slot.take(share ? slot.amount.mul(share) : slot.amount));
+      }
+      const items = this.ctx.catalog.items;
+      const factor = weightFactor(vehicle.cargo.averageWeight(items), this.def.weightSensitivity, this.ctx.balance);
+      this.nextDispatch = this.spawnTick + Math.round(this.intervalTicks / factor);
+      vehicle.phase = 'out';
+      vehicle.wake = vehicle.travel(this.lanes.out, this.def.vehicleSpeed * factor, tick);
+      this.ctx.markDirty();
+    } else {
+      const items = this.ctx.catalog.items;
+      let gross = BigNum.ZERO;
+      for (const [item, amount] of vehicle.cargo.items) gross = gross.add(amount.mul(items[item]?.basePrice ?? 0));
+      this.vehicle = null;
+      if (isPositive(gross)) this.ctx.earn(this.proceeds(gross), this.id, this.site.x, this.site.z);
+    }
+  }
+
+  // SaleTarget
+  reserveDelivery(item: ItemId, amount: BigNum): void {
+    const slot = this.stock.slot(item);
+    slot.incoming = slot.incoming.add(amount);
+  }
+  deliver(item: ItemId, delivered: BigNum, planned: BigNum): void {
+    const slot = this.stock.slot(item);
+    slot.incoming = subClamp(slot.incoming, planned);
+    slot.add(delivered);
+  }
+  override cancelDelivery(item: ItemId, planned: BigNum): void {
+    const slot = this.stock.get(item);
+    if (slot) slot.incoming = subClamp(slot.incoming, planned);
+  }
+
+  get handlingCount(): number {
+    return this.vehicle?.phase === 'handle' ? 1 : 0;
+  }
+
+  vehicleViews(tick: number, out: VehicleView[]): void {
+    if (this.vehicle) out.push(this.vehicle.view(tick, this.parked()));
+  }
+
+  facilityView(tick: number, money: BigNum, carrierHandling: number): FacilityView {
+    const unlocked = this.unlocked;
+    return {
+      id: this.def.facility,
+      kind: this.ctx.layout.facilities.find((facility) => facility.id === this.def.facility)?.kind ?? 'truckYard',
+      channelId: this.id,
+      unlocked,
+      stock: this.stock.views(),
+      upgrades: upgradeViews(this, money),
+      nextArrivalSec: unlocked ? Math.max(0, this.nextDispatch - tick) / TICKS_PER_SECOND : null,
+      handlingCount: carrierHandling + this.handlingCount,
+    };
+  }
+
+  toJSON(): JsonValue {
+    return {
+      levels: serializeLevels(this.levels),
+      stock: this.stock.toJSON(),
+      nextDispatch: this.nextDispatch,
+      spawnTick: this.spawnTick,
+      seq: this.seq,
+      vehicle: this.vehicle ? this.vehicle.toJSON() : null,
+    };
+  }
+
+  restore(saved: unknown): void {
+    if (!saved || typeof saved !== 'object') return;
+    const data = saved as Record<string, unknown>;
+    restoreLevels(this.levels, this.tracks, data.levels);
+    this.refresh();
+    this.stock.restore(data.stock, this.known);
+    this.nextDispatch = Number(data.nextDispatch) || 0;
+    this.spawnTick = Number(data.spawnTick) || 0;
+    this.seq = Number(data.seq) || 0;
+    this.vehicle = restoreVisitor(data.vehicle, this.vehicleKind, this.def.vehicleModel, this.lanes.in, this.lanes.out, this.known);
+  }
+}
+
+/** Sale trucks use the road from the island gate. */
+export class TruckSaleChannel extends SaleChannel {
+  readonly vehicleKind: VehicleKind = 'saleTruck';
+  protected approach(): Path {
+    return this.ctx.gatePath(this.site);
+  }
+}
+
+/** Ships come up the river to the dock. */
+export class ShipSaleChannel extends SaleChannel {
+  readonly vehicleKind: VehicleKind = 'ship';
+  protected approach(): Path {
+    return makePath(this.ctx.layout.shipLane);
+  }
+}
+
+/** Planes land on the runway and taxi to the apron. */
+export class PlaneSaleChannel extends SaleChannel {
+  readonly vehicleKind: VehicleKind = 'plane';
+  protected approach(): Path {
+    return makePath(this.ctx.layout.flightLane);
+  }
+}
+
+/** Trade with another island: a better price, less a transport fee and goods lost on the way. */
+export class IslandExportChannel extends ShipSaleChannel {
+  protected override proceeds(gross: BigNum): BigNum {
+    const kept = (1 - (this.def.lossRate ?? 0)) * (1 - (this.def.feeRate ?? 0));
+    return super.proceeds(gross).mul(Math.max(0, kept));
+  }
+}
+
+export type SaleChannelFactory = (def: SaleChannelDef, site: Site, ctx: ChannelContext) => SaleChannel;
+
+const factories = new Map<string, SaleChannelFactory>();
+
+/** Makes a kind of sale channel available to channel definitions whose `kind` names it. */
+export function registerSaleChannel(kind: string, factory: SaleChannelFactory): void {
+  factories.set(kind, factory);
+}
+
+export function createSaleChannel(def: SaleChannelDef, site: Site, ctx: ChannelContext): SaleChannel {
+  const factory = factories.get(def.kind);
+  if (!factory) throw new Error(`No sale channel registered for kind "${def.kind}" (channel ${def.id})`);
+  return factory(def, site, ctx);
+}
+
+registerSaleChannel('truck', (def, site, ctx) => new TruckSaleChannel(def, site, ctx));
+registerSaleChannel('ship', (def, site, ctx) => new ShipSaleChannel(def, site, ctx));
+registerSaleChannel('plane', (def, site, ctx) => new PlaneSaleChannel(def, site, ctx));
+registerSaleChannel('islandExport', (def, site, ctx) => new IslandExportChannel(def, site, ctx));
