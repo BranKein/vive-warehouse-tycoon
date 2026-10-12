@@ -217,7 +217,7 @@ docs/agents/   # 서브에이전트 작업 지침
 
 ## 8. 진행 상황
 
-- [ ] 0 뼈대와 contracts
+- [ ] 0 뼈대와 contracts (진행 중: 뼈대, `core`, `contracts` 타입 완료. 남은 것: `content` 초기 데이터와 섬 배치, `contracts/fixtures.ts`)
 - [ ] 1A 로직
 - [ ] 1B 화면
 - [ ] 1C UI·번역·저장
