@@ -14,6 +14,7 @@ import { createSaveMenu } from './saveMenu';
 import { createSettingsMenu } from './settingsMenu';
 import { createSidePanel } from './sidePanel';
 import { createStatsModal } from './statsModal';
+import { createIslandPanel } from './islandPanel';
 import { createStatsPanel } from './statsPanel';
 import { formatAmount, unlockName } from './text';
 import { createToasts } from './toasts';
@@ -96,8 +97,10 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   const statsModal = createStatsModal(ctx, () => render());
   const statsPanel = createStatsPanel(ctx, () => statsModal.open(), () => render());
 
+  const islandPanel = createIslandPanel(ctx);
+
   root.classList.add('wt-ui');
-  root.append(topBar.el, menu.el, settings.el, statsPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
+  root.append(topBar.el, menu.el, settings.el, statsPanel.el, islandPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
 
   // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
@@ -145,6 +148,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     panel.update(frame);
     buildModal.update(frame);
     statsPanel.update(frame);
+    islandPanel.update();
     statsModal.update(frame);
     hoverCard.update(frame);
   }
@@ -205,6 +209,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       panel.el.remove();
       buildModal.el.remove();
       statsPanel.el.remove();
+      islandPanel.el.remove();
       statsModal.el.remove();
       hoverCard.el.remove();
       root.classList.remove('wt-ui');

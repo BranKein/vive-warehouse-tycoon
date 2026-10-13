@@ -12,7 +12,7 @@ interface StatusItem {
 }
 
 /**
- * The card on the right edge: how many buildings stand, what they are doing
+ * The card on the left edge: how many buildings stand, what they are doing
  * right now and how much of the last minutes each of them worked, least
  * first. A button opens the window with the rest of the figures.
  */
