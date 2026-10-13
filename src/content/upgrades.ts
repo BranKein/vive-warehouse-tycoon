@@ -14,7 +14,7 @@ export const UPGRADE_TRACKS: UpgradeTrackDef[] = [
   { id: 'building.wasteCut', scope: 'building', stat: Stat.wasteOutput, effect: { kind: 'multiply', perLevel: 0.9 }, baseCost: 50, costGrowth: 2, maxLevel: 7, unit: 'multiplier' },
   // Inbound raw materials
   { id: 'inbound.interval', scope: 'inbound', stat: Stat.interval, effect: { kind: 'multiply', perLevel: 0.92 }, baseCost: 100, costGrowth: 2.2, maxLevel: 12, unit: 'seconds' },
-  { id: 'inbound.load', scope: 'inbound', stat: Stat.load, effect: { kind: 'multiply', perLevel: 2 }, baseCost: 30, costGrowth: 2, maxLevel: null, unit: 'amount' },
+  { id: 'inbound.load', scope: 'inbound', stat: Stat.load, effect: { kind: 'multiply', perLevel: 4 }, baseCost: 60, costGrowth: 4, maxLevel: 20, unit: 'amount' },
   // Sale channels (base cost is multiplied per channel in balance)
   { id: 'sale.interval', scope: 'sale', stat: Stat.interval, effect: { kind: 'multiply', perLevel: 0.92 }, baseCost: 100, costGrowth: 2.2, maxLevel: 12, unit: 'seconds' },
   { id: 'sale.load', scope: 'sale', stat: Stat.load, effect: { kind: 'multiply', perLevel: 2 }, baseCost: 30, costGrowth: 1.6, maxLevel: null, unit: 'amount' },
