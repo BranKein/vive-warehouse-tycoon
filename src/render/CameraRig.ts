@@ -7,6 +7,7 @@ import {
   isClick,
   lerp,
   orbitDrag,
+  orbitPan,
   orbitPosition,
   orbitZoom,
   type OrbitLimits,
@@ -32,8 +33,8 @@ export function orbitGoal(user: OrbitState, idleYaw: number, blend: number, idle
 }
 
 /**
- * Orbit camera around the centre of the board. Right-button drag rotates and
- * tilts, the wheel zooms. Without input it drifts into a slow sightseeing
+ * Orbit camera around a point on the board. Right-button drag rotates and
+ * tilts, middle-button drag moves that point, the wheel zooms towards it. Without input it drifts into a slow sightseeing
  * orbit and returns to the player's view on the next input.
  */
 export class CameraRig {
@@ -43,8 +44,10 @@ export class CameraRig {
   private drawn: OrbitState;
   private idleYaw = 0;
   private sinceInput = 0;
+  private centre = { x: 0, z: 0 };
   private target = { x: 0, y: renderConfig.camera.targetHeight, z: 0 };
   private dragging = false;
+  private panning = false;
   private lastX = 0;
   private lastY = 0;
   private pressX = 0;
@@ -65,8 +68,11 @@ export class CameraRig {
     this.apply();
   }
 
+  /** Sets the board centre. The view keeps whatever offset the player has panned to. */
   setTarget(x: number, z: number): void {
-    this.target = { x, y: renderConfig.camera.targetHeight, z };
+    this.target.x += x - this.centre.x;
+    this.target.z += z - this.centre.z;
+    this.centre = { x, z };
   }
 
   setAspect(aspect: number): void {
@@ -77,7 +83,7 @@ export class CameraRig {
   update(dt: number): void {
     const c = renderConfig.camera;
     this.sinceInput += dt;
-    const blend = this.dragging ? 0 : idleBlend(this.sinceInput, c.idle.delaySec, c.idle.rampSec);
+    const blend = this.dragging || this.panning ? 0 : idleBlend(this.sinceInput, c.idle.delaySec, c.idle.rampSec);
     this.idleYaw += c.idle.yawSpeed * blend * dt;
     const goal = orbitGoal(this.user, this.idleYaw, blend, c.idle, this.limits);
     // Soft while sightseeing, snappy under manual control.
@@ -121,8 +127,9 @@ export class CameraRig {
     listen(el, 'contextmenu', (event) => event.preventDefault());
     listen(el, 'pointerdown', (event) => {
       this.wake();
-      if (event.button === 2) {
-        this.dragging = true;
+      if (event.button === 1 || event.button === 2) {
+        if (event.button === 1) this.panning = true;
+        else this.dragging = true;
         this.lastX = event.clientX;
         this.lastY = event.clientY;
         el.setPointerCapture?.(event.pointerId);
@@ -134,8 +141,17 @@ export class CameraRig {
       }
     });
     listen(el, 'pointermove', (event) => {
-      if (!this.dragging) return;
-      this.user = orbitDrag(this.user, event.clientX - this.lastX, event.clientY - this.lastY, c.rotateSpeed, this.limits);
+      if (!this.dragging && !this.panning) return;
+      const dx = event.clientX - this.lastX;
+      const dy = event.clientY - this.lastY;
+      if (this.dragging) this.user = orbitDrag(this.user, dx, dy, c.rotateSpeed, this.limits);
+      if (this.panning) {
+        const fov = (c.fovDeg * Math.PI) / 180;
+        const unitsPerPixel = (2 * this.drawn.distance * Math.tan(fov / 2)) / Math.max(el.clientHeight, 1);
+        const moved = orbitPan(this.target, this.drawn, dx, dy, unitsPerPixel, this.centre, c.panLimit);
+        this.target.x = moved.x;
+        this.target.z = moved.z;
+      }
       this.lastX = event.clientX;
       this.lastY = event.clientY;
       this.sinceInput = 0;
@@ -143,6 +159,9 @@ export class CameraRig {
     const release = (event: PointerEvent): void => {
       if (event.button === 2 && this.dragging) {
         this.dragging = false;
+        el.releasePointerCapture?.(event.pointerId);
+      } else if (event.button === 1 && this.panning) {
+        this.panning = false;
         el.releasePointerCapture?.(event.pointerId);
       } else if (event.button === 0 && this.pressed) {
         this.pressed = false;
@@ -155,8 +174,11 @@ export class CameraRig {
     listen(el, 'pointerup', release);
     listen(el, 'pointercancel', () => {
       this.dragging = false;
+      this.panning = false;
       this.pressed = false;
     });
+    // Stops the browser's own middle-click scrolling.
+    listen(el, 'auxclick', (event) => event.preventDefault());
     listen(
       el,
       'wheel',

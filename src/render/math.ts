@@ -307,6 +307,32 @@ export function orbitZoom(state: OrbitState, lines: number, zoomStep: number, li
   };
 }
 
+/**
+ * Moves the orbit target for a middle-button drag of (dx, dy) pixels, so the
+ * ground follows the pointer: dragging right slides the view left, dragging
+ * down slides it away. `unitsPerPixel` is the world size of one pixel at the
+ * target. The result stays within `limit` of (centreX, centreZ) on each axis.
+ */
+export function orbitPan(
+  target: { x: number; z: number },
+  state: OrbitState,
+  dx: number,
+  dy: number,
+  unitsPerPixel: number,
+  centre: { x: number; z: number },
+  limit: number,
+): { x: number; z: number } {
+  const sin = Math.sin(state.yaw);
+  const cos = Math.cos(state.yaw);
+  // The ground is seen at an angle, so a vertical pixel covers more of it.
+  const depth = (dy * unitsPerPixel) / Math.max(Math.sin(state.pitch), 0.2);
+  const side = dx * unitsPerPixel;
+  return {
+    x: clamp(target.x - cos * side - sin * depth, centre.x - limit, centre.x + limit),
+    z: clamp(target.z + sin * side - cos * depth, centre.z - limit, centre.z + limit),
+  };
+}
+
 /** Camera position for an orbit state around `target`. */
 export function orbitPosition(
   state: OrbitState,

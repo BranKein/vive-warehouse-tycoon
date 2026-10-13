@@ -8,6 +8,7 @@ import {
   interpolatePose,
   isClick,
   orbitDrag,
+  orbitPan,
   orbitZoom,
   pickNearest,
   pileHeight,
@@ -140,6 +141,21 @@ describe('camera', () => {
     expect(orbitZoom(start, 500, c.zoomStep, limits).distance).toBe(c.maxDistance);
     expect(orbitZoom(start, -500, c.zoomStep, limits).distance).toBe(c.minDistance);
     expect(clampPitch(99, limits)).toBe(c.maxPitch);
+  });
+
+  it('pans so the ground follows the pointer, within the limit', () => {
+    const centre = { x: 0, z: 0 };
+    const view = { yaw: 0, pitch: Math.PI / 2, distance: 100 };
+    // Looking straight down from the +z side: screen right is +x, screen down is +z.
+    expect(orbitPan(centre, view, 10, 0, 0.5, centre, 100)).toEqual({ x: -5, z: 0 });
+    const down = orbitPan(centre, view, 0, 10, 0.5, centre, 100);
+    expect(down.x).toBeCloseTo(0);
+    expect(down.z).toBeCloseTo(-5);
+    // A flatter view covers more ground per vertical pixel.
+    expect(orbitPan(centre, { ...view, pitch: Math.PI / 6 }, 0, 10, 0.5, centre, 100).z).toBeCloseTo(-10);
+    expect(orbitPan(centre, view, -1e6, 0, 0.5, centre, 100).x).toBe(100);
+    // Turned a quarter, the same drag moves along the other axis.
+    expect(orbitPan(centre, { ...view, yaw: Math.PI / 2 }, 10, 0, 0.5, centre, 100).z).toBeCloseTo(5);
   });
 
   it('rotates around the centre with a horizontal drag', () => {
