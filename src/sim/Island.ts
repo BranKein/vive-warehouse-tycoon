@@ -278,6 +278,11 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     return this.buildings.length >= Math.min(this.def.maxBuildings, this.layout.plots.length);
   }
 
+  /** How many more buildings fit: limited by both the building cap and the number of plots. */
+  get freeSlots(): number {
+    return Math.max(0, Math.min(this.def.maxBuildings, this.layout.plots.length) - this.buildings.length);
+  }
+
   emptyPlots(): PlotId[] {
     return this.layout.plots.filter((plot) => !this.byPlot.has(plot.id)).map((plot) => plot.id);
   }
@@ -395,6 +400,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       tick: this.tickCount,
       nextBuilding: this.nextBuildingSeq,
       estimated: this.estimatedIncome.toString(),
+      dirty: this.dirty,
       buildings: this.buildings.map((building) => building.toJSON()),
       inbound: this.inbound.toJSON(),
       sales: Object.fromEntries(this.sales.map((channel) => [channel.id, channel.toJSON()])),
@@ -427,6 +433,8 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     const sales = (data.sales && typeof data.sales === 'object' ? data.sales : {}) as Record<string, unknown>;
     for (const channel of this.sales) channel.restore(sales[channel.id]);
     this.reindex();
+    // Keep the dispatch flag as it was, so a loaded game continues exactly like the original.
+    if (data.dirty === false) this.dirty = false;
   }
 
   /**

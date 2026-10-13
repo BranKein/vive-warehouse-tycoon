@@ -76,6 +76,11 @@ export class Carrier extends Vehicle {
     this.stops = stops;
     this.stopIndex = 0;
     this.capacity = capacity;
+    // Goods taken out of the home stock while planning are on board from the start.
+    for (const stop of stops) {
+      if (!stop.preloaded) continue;
+      for (const entry of stop.items) this.cargo.add(entry.item, entry.amount);
+    }
     this.proceed(tick, ctx);
   }
 
@@ -104,10 +109,22 @@ export class Carrier extends Vehicle {
         else if (!stop.preloaded) node.cancelPickup(entry.item, entry.amount);
       }
     }
+    this.cargo.clear();
+    this.park();
+  }
+
+  /** Back to the resting state; nothing of the last round is kept, so a saved idle carrier is always the same. */
+  private park(): void {
     this.stops = [];
     this.stopIndex = 0;
-    this.cargo.clear();
     this.phase = 'idle';
+    this.state = 'waiting';
+    this.path = null;
+    this.legStart = 0;
+    this.legEnd = 0;
+    this.capacity = BigNum.ZERO;
+    this.at = this.home.site.index;
+    this.to = this.at;
     this.wake = Infinity;
   }
 
@@ -161,12 +178,7 @@ export class Carrier extends Vehicle {
   private finish(ctx: CarrierContext): void {
     for (const [item, amount] of this.cargo.items) this.home.returnCargo(item, amount);
     this.cargo.clear();
-    this.stops = [];
-    this.stopIndex = 0;
-    this.phase = 'idle';
-    this.state = 'waiting';
-    this.path = null;
-    this.wake = Infinity;
+    this.park();
     ctx.markDirty();
   }
 

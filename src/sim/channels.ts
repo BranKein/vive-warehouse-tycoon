@@ -295,7 +295,7 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
   toJSON(): JsonValue {
     return {
       levels: serializeLevels(this.levels),
-      stock: this.stock.toJSON(),
+      stock: this.stock.toJSON(true),
       nextDispatch: this.nextDispatch,
       seq: this.seq,
       trucks: this.trucks.map((truck) => truck.toJSON()),
@@ -467,7 +467,7 @@ export abstract class SaleChannel extends ChannelBase implements SaleTarget {
   toJSON(): JsonValue {
     return {
       levels: serializeLevels(this.levels),
-      stock: this.stock.toJSON(),
+      stock: this.stock.toJSON(true),
       nextDispatch: this.nextDispatch,
       spawnTick: this.spawnTick,
       seq: this.seq,

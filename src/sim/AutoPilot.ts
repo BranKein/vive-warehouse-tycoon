@@ -42,6 +42,7 @@ export class AutoPilot {
   private goalSince = 0;
   /** Goal id from a save, resolved on the first check. */
   private pendingId: string | null = null;
+  private resumedId: string | null = null;
 
   constructor(private readonly host: AutoPilotHost) {}
 
@@ -56,9 +57,12 @@ export class AutoPilot {
     const config = this.host.balance.autoPilot;
     if (tick % secondsToTicks(config.checkEverySec) !== 0) return;
     if (!this.goal) {
+      // A goal carried over from a save keeps the time it has already been waiting.
+      const resumed = this.pendingId !== null;
       this.goal = this.choose();
-      this.goalSince = tick;
       if (!this.goal) return;
+      if (!resumed || this.goal.id !== this.resumedId) this.goalSince = tick;
+      this.resumedId = null;
     }
     const cost = this.goal.cost();
     if (cost === null) {
@@ -76,7 +80,10 @@ export class AutoPilot {
     if (this.pendingId) {
       const saved = all.find((goal) => goal.id === this.pendingId);
       this.pendingId = null;
-      if (saved) return saved;
+      if (saved) {
+        this.resumedId = saved.id;
+        return saved;
+      }
     }
     const { rng, balance, money, incomePerSec } = this.host;
     const priced = all.flatMap((goal) => {
@@ -112,7 +119,7 @@ export class AutoPilot {
     }
 
     // Plot reservation: keep one empty plot for every building type not built yet.
-    const empty = island.isFull ? 0 : island.emptyPlots().length;
+    const empty = island.freeSlots;
     const spare = empty - island.unbuiltTypeCount();
     for (const typeId of island.def.buildingTypes) {
       const def = island.catalog.buildings[typeId];

@@ -80,10 +80,14 @@ export class Inventory {
     return this.list.map((slot) => slot.view());
   }
 
-  toJSON(): Record<ItemId, SlotJson> {
+  /**
+   * `keepEmpty` also writes slots that hold nothing. Inventories whose slots appear on demand
+   * (channel stock) need it so a loaded game has the same slots in the same order.
+   */
+  toJSON(keepEmpty = false): Record<ItemId, SlotJson> {
     const out: Record<ItemId, SlotJson> = {};
     for (const slot of this.list) {
-      if (slot.amount.isZero && slot.incoming.isZero && slot.reserved.isZero) continue;
+      if (!keepEmpty && slot.amount.isZero && slot.incoming.isZero && slot.reserved.isZero) continue;
       out[slot.item] = [slot.amount.toString(), slot.incoming.toString(), slot.reserved.toString()];
     }
     return out;
