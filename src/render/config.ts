@@ -93,6 +93,63 @@ export const renderConfig = {
     fenceSegment: 3.2,
   },
   maxPixelRatio: 2,
+  /** Exposure of the filmic tone mapping; the theme's light strengths assume it. */
+  exposure: 0.8,
+  /** Longest real-time step a single frame may advance the camera by. */
+  maxFrameSec: 0.1,
+  /**
+   * Sizes of the plain-box first version of the view (PLAN.md 3.13). Box
+   * sizes are [width, height, depth]; "front" is local +z.
+   */
+  boxes: {
+    /** Building and facility boxes sit this far behind the centre of their site, leaving a yard in front. */
+    siteOffsetZ: -2,
+    building: [10, 5, 7],
+    facility: [12, 2, 7],
+    vehicles: {
+      carrier: [1.5, 1.3, 2.6],
+      boxTruck: [2.3, 2.5, 5.6],
+      cargoShip: [7, 4, 20],
+      cargoPlane: [6, 3, 16],
+      fallback: [2, 2, 4],
+    },
+    specialCargo: [3, 3, 3],
+    /** Radius of the click target around special cargo. */
+    specialPickRadius: 3.2,
+    /** Stock and waste boxes: fixed footprint, height from the amount (log scale). */
+    pile: {
+      footprint: 1.3,
+      wasteFootprint: 1.9,
+      /** Height of a pile holding one unit or less. */
+      minHeight: 0.4,
+      heightPerDecade: 1.1,
+      maxHeight: 6,
+    },
+    /** Where piles stand on a site, in the site's local frame. */
+    yard: {
+      /** z of the row of input and output piles in front of the box. */
+      frontZ: 4.6,
+      /** Inputs start at -edgeX and run towards the centre, outputs start at +edgeX. */
+      edgeX: 7,
+      step: 1.7,
+      /** Waste piles stand beside the box and run towards the back. */
+      wasteX: 6.7,
+      wasteZ: -0.6,
+      wasteStep: 2.3,
+    },
+    ground: {
+      /** Half size of the grass plane around the board. */
+      extent: 1600,
+      boardThickness: 0.6,
+      /** Heights of the flat pads above the board; each layer sits a little higher to avoid flicker. */
+      padHeight: 0.06,
+      roadHeight: 0.1,
+      selectionHeight: 0.16,
+      /** Gap left around a plot pad so neighbouring plots read as separate. */
+      plotInset: 0.7,
+      facilityPad: [16, 14],
+    },
+  },
 } as const;
 
 export type RenderConfig = typeof renderConfig;

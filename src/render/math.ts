@@ -133,6 +133,24 @@ export function wasteBlobCount(ratio: number, maxBlobs: number, fullRatio: numbe
   return clamp(Math.ceil((ratio / fullRatio) * maxBlobs), 1, maxBlobs);
 }
 
+export interface PileHeightRule {
+  /** Height of a pile holding one unit or less. */
+  minHeight: number;
+  heightPerDecade: number;
+  maxHeight: number;
+}
+
+/**
+ * Height of the single box that stands for a quantity: zero for nothing,
+ * `minHeight` up to one unit, then `heightPerDecade` more for every tenfold
+ * increase, capped at `maxHeight`.
+ */
+export function pileHeight(amount: Magnitude, rule: PileHeightRule): number {
+  const log = log10Of(amount);
+  if (log === -Infinity || Number.isNaN(log)) return 0;
+  return clamp(rule.minHeight + Math.max(0, log) * rule.heightPerDecade, rule.minHeight, rule.maxHeight);
+}
+
 // ---------------------------------------------------------------------------
 // Motion
 // ---------------------------------------------------------------------------
@@ -311,6 +329,24 @@ export function idleBlend(secondsSinceInput: number, delaySec: number, rampSec: 
 // ---------------------------------------------------------------------------
 // Picking
 // ---------------------------------------------------------------------------
+
+/** True when a press and its release are close enough together to be a click rather than a drag. */
+export function isClick(pressX: number, pressY: number, releaseX: number, releaseY: number, maxTravelPx: number): boolean {
+  return Math.hypot(releaseX - pressX, releaseY - pressY) <= maxTravelPx;
+}
+
+/** Converts a pointer position to normalized device coordinates (-1..1, +y up) of an element's box. */
+export function pointerToNdc(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+): { x: number; y: number } {
+  if (!(rect.width > 0) || !(rect.height > 0)) return { x: 0, y: 0 };
+  return {
+    x: ((clientX - rect.left) / rect.width) * 2 - 1,
+    y: 1 - ((clientY - rect.top) / rect.height) * 2,
+  };
+}
 
 export interface Ray {
   ox: number;

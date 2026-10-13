@@ -4,6 +4,7 @@ import {
   clampPitch,
   damp,
   idleBlend,
+  isClick,
   lerp,
   orbitDrag,
   orbitPosition,
@@ -145,8 +146,9 @@ export class CameraRig {
         el.releasePointerCapture?.(event.pointerId);
       } else if (event.button === 0 && this.pressed) {
         this.pressed = false;
-        const travel = Math.hypot(event.clientX - this.pressX, event.clientY - this.pressY);
-        if (travel <= renderConfig.click.maxTravelPx) this.onClick(event.clientX, event.clientY);
+        if (isClick(this.pressX, this.pressY, event.clientX, event.clientY, renderConfig.click.maxTravelPx)) {
+          this.onClick(event.clientX, event.clientY);
+        }
       }
       this.sinceInput = 0;
     };

@@ -78,6 +78,11 @@ export interface Theme {
     fallback: BuildingPalette;
     byType: Record<string, BuildingPalette>;
   };
+  /** Colour of the placeholder box of each logistics facility, by facility kind. */
+  facilities: {
+    fallback: number;
+    byKind: Record<string, number>;
+  };
   glow: {
     /** Window colour by day and the light it gives off at night. */
     windowDay: number;
@@ -219,6 +224,15 @@ export const defaultTheme: Theme = {
       luxuryPackingCenter: { wall: 0xfdeaf5, roof: 0xe99ccf, accent: 0xffe08a },
       smartHomeFactory: { wall: 0xe3f3fb, roof: 0x7fc4de, accent: 0xb9a8e6 },
       handmadeWorkshop: { wall: 0xfff1dc, roof: 0xc98f72, accent: 0x9cc9a4 },
+    },
+  },
+  facilities: {
+    fallback: 0xd9d2de,
+    byKind: {
+      inboundYard: 0x9fdccb,
+      truckYard: 0xffb5a3,
+      dock: 0x8fc7e8,
+      airport: 0xb9a8e6,
     },
   },
   glow: {
@@ -382,4 +396,8 @@ export function itemColor(theme: Theme, itemId: string): number {
 
 export function buildingPalette(theme: Theme, typeId: string): BuildingPalette {
   return theme.buildings.byType[typeId] ?? theme.buildings.fallback;
+}
+
+export function facilityColor(theme: Theme, kind: string): number {
+  return theme.facilities.byKind[kind] ?? theme.facilities.fallback;
 }
