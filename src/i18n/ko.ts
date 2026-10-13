@@ -172,7 +172,7 @@ export const ko: Translations = {
   'look.clear': '맑게',
   'look.vivid': '선명하게',
   'look.sunny': '햇살',
-  'look.classic': '예전 그대로',
+  'look.classic': '클래식',
   'settings.github': 'GitHub',
   'settings.kofi': 'Ko-fi로 후원하기',
   'settings.kofiSoon': '준비 중',
