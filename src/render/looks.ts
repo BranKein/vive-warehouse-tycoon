@@ -31,6 +31,8 @@ export const LOOKS = {
   clear: { curve: 'neutral', exposure: 0.62, sun: 1, ambient: 1, saturation: 1.05, contrast: 1 },
   /** The clear curve with the colours pushed as in vivid; the light is left alone. */
   fresh: { curve: 'neutral', exposure: 0.62, sun: 1, ambient: 1, saturation: 1.24, contrast: 1.05 },
+  /** Between clear and fresh. */
+  soft: { curve: 'neutral', exposure: 0.62, sun: 1, ambient: 1, saturation: 1.13, contrast: 1.03 },
   /** The clear curve with the sunnier light. */
   crisp: { curve: 'neutral', exposure: 0.66, sun: 1.2, ambient: 0.75, saturation: 1.15, contrast: 1.04 },
 } satisfies Record<string, Look>;
