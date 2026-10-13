@@ -1,10 +1,10 @@
 import {
   BufferGeometry,
+  Color,
   Float32BufferAttribute,
   Group,
   InstancedMesh,
   Mesh,
-  type Color,
   type Material,
   type Matrix4,
   type Object3D,
@@ -117,7 +117,7 @@ export class InstancedModel {
   }
 }
 
-const WHITE = { r: 1, g: 1, b: 1, isColor: true } as unknown as Color;
+const WHITE = new Color(1, 1, 1);
 
 /** Merges all meshes of a model into one world-space geometry per material. */
 export function extractParts(prototype: Object3D): Part[] {

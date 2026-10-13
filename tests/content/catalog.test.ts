@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { catalog } from '@/content';
 
 describe('content catalog', () => {
-  it('has 18 building types, each with a recipe', () => {
+  it('has 21 building types, each with a recipe', () => {
     const buildings = Object.values(catalog.buildings);
-    expect(buildings).toHaveLength(18);
+    expect(buildings).toHaveLength(21);
     for (const building of buildings) {
       expect(catalog.recipes[building.recipe], building.id).toBeDefined();
       for (const track of building.upgradeTracks) expect(catalog.upgradeTracks[track], track).toBeDefined();
@@ -20,17 +20,18 @@ describe('content catalog', () => {
     }
   });
 
-  it('starts with every tier-1 building unlocked and everything else locked', () => {
+  it('starts with every tier-1 building but the late wire mill unlocked and everything else locked', () => {
     for (const building of Object.values(catalog.buildings)) {
-      expect(building.unlock === null, building.id).toBe(building.category === 'tier1');
+      const fromStart = building.category === 'tier1' && building.id !== 'wireMill';
+      expect(building.unlock === null, building.id).toBe(fromStart);
     }
   });
 
-  it('lays out 48 plots on a connected road graph', () => {
+  it('lays out 56 plots on a connected road graph', () => {
     const island = catalog.islands[catalog.startIsland]!;
     const { plots, roadNodes, roadEdges, facilities, roadGate } = island.layout;
-    expect(plots).toHaveLength(48);
-    expect(island.maxBuildings).toBe(48);
+    expect(plots).toHaveLength(56);
+    expect(island.maxBuildings).toBe(56);
     const ids = new Set(roadNodes.map((node) => node.id));
     for (const plot of plots) expect(ids.has(plot.roadNode), plot.id).toBe(true);
     for (const facility of facilities) expect(ids.has(facility.roadNode), facility.id).toBe(true);

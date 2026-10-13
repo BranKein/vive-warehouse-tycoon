@@ -28,27 +28,31 @@ const BUILD_COST_GROWTH: Record<BuildingCategory, number> = {
   handmade: 10,
 };
 
-// Counts and costs are derived in docs/balance-buildings.md: 48 plots hold
+// Counts and costs are derived in docs/balance-buildings.md: 56 plots hold
 // about two full chains, and every unlock costs 2.5 to 10 times the one before.
 const ROWS: Row[] = [
   { id: 'sawmill', category: 'tier1', buildCost: 40, unlockCost: 0, maxCount: 4, upgradeCostScale: 1 },
-  { id: 'steelMill', category: 'tier1', buildCost: 60, unlockCost: 0, maxCount: 4, upgradeCostScale: 1.5 },
+  { id: 'steelMill', category: 'tier1', buildCost: 60, unlockCost: 0, maxCount: 5, upgradeCostScale: 1.5 },
   { id: 'textileMill', category: 'tier1', buildCost: 60, unlockCost: 0, maxCount: 4, upgradeCostScale: 1.5 },
   { id: 'refinery', category: 'tier1', buildCost: 90, unlockCost: 0, maxCount: 4, upgradeCostScale: 2.25 },
   { id: 'glassworks', category: 'tier1', buildCost: 90, unlockCost: 0, maxCount: 4, upgradeCostScale: 2.25 },
   { id: 'flourMill', category: 'tier1', buildCost: 70, unlockCost: 0, maxCount: 4, upgradeCostScale: 1.75 },
   { id: 'wasteDisposal', category: 'disposal', buildCost: 150, unlockCost: 200, maxCount: 3, upgradeCostScale: 3.75 },
   { id: 'furnitureFactory', category: 'tier2', buildCost: 1000, unlockCost: 1500, maxCount: 2, upgradeCostScale: 50 },
-  { id: 'toolFactory', category: 'tier2', buildCost: 2500, unlockCost: 4000, maxCount: 2, upgradeCostScale: 150 },
+  { id: 'toolFactory', category: 'tier2', buildCost: 2500, unlockCost: 4000, maxCount: 3, upgradeCostScale: 150 },
   { id: 'bottleFactory', category: 'tier2', buildCost: 6000, unlockCost: 10000, maxCount: 2, upgradeCostScale: 375 },
   { id: 'snackFactory', category: 'tier2', buildCost: 15000, unlockCost: 25000, maxCount: 3, upgradeCostScale: 1000 },
   { id: 'partsFactory', category: 'tier2', buildCost: 40000, unlockCost: 60000, maxCount: 2, upgradeCostScale: 2500 },
+  // The copper line opens late: a new raw material, mill, factory and tier-3 product of its own.
+  { id: 'wireMill', category: 'tier1', buildCost: 100000, unlockCost: 150000, maxCount: 3, upgradeCostScale: 5000 },
   { id: 'sofaWorkshop', category: 'tier3', buildCost: 250000, unlockCost: 400000, maxCount: 2, upgradeCostScale: 5e4 },
-  { id: 'packagingPlant', category: 'tier3', buildCost: 1.2e6, unlockCost: 2e6, maxCount: 2, upgradeCostScale: 3.75e5 },
-  { id: 'applianceFactory', category: 'tier3', buildCost: 6e6, unlockCost: 1e7, maxCount: 2, upgradeCostScale: 3e6 },
-  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 6e7, unlockCost: 1e8, maxCount: 2, upgradeCostScale: 1.25e8 },
-  { id: 'smartHomeFactory', category: 'tier4', buildCost: 6e8, unlockCost: 1e9, maxCount: 2, upgradeCostScale: 2.5e9 },
-  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 1.2e10, unlockCost: 2e10, maxCount: 2, upgradeCostScale: 5e10 },
+  { id: 'motorFactory', category: 'tier2', buildCost: 1.5e6, unlockCost: 2.5e6, maxCount: 2, upgradeCostScale: 1e5 },
+  { id: 'packagingPlant', category: 'tier3', buildCost: 3.6e6, unlockCost: 6e6, maxCount: 2, upgradeCostScale: 1e6 },
+  { id: 'eBikeFactory', category: 'tier3', buildCost: 1.2e7, unlockCost: 2e7, maxCount: 2, upgradeCostScale: 5e6 },
+  { id: 'applianceFactory', category: 'tier3', buildCost: 3.6e7, unlockCost: 6e7, maxCount: 2, upgradeCostScale: 1.5e7 },
+  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 1.8e8, unlockCost: 3e8, maxCount: 2, upgradeCostScale: 3.5e8 },
+  { id: 'smartHomeFactory', category: 'tier4', buildCost: 1.2e9, unlockCost: 2e9, maxCount: 2, upgradeCostScale: 5e9 },
+  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 2.4e10, unlockCost: 4e10, maxCount: 2, upgradeCostScale: 1e11 },
 ];
 
 export const buildingUnlockId = (buildingType: string): string => `unlock.building.${buildingType}`;

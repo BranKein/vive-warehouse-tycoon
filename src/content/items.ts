@@ -17,6 +17,7 @@ export const ITEMS: ItemDef[] = [
   item('crudeOil', 'raw', 0, 4, 1.5),
   item('sand', 'raw', 0, 4, 0.8),
   item('grain', 'raw', 0, 2, 0.9),
+  item('copperOre', 'raw', 0, 5, 1.4),
   // Tier 1
   item('lumber', 'product', 1, 3, 4),
   item('steel', 'product', 1, 5, 6),
@@ -24,16 +25,19 @@ export const ITEMS: ItemDef[] = [
   item('plastic', 'product', 1, 2, 6),
   item('glass', 'product', 1, 3, 4),
   item('flour', 'product', 1, 2, 3.5),
+  item('wire', 'product', 1, 2, 7),
   // Tier 2
   item('chair', 'product', 2, 3, 30),
   item('tools', 'product', 2, 3, 35),
   item('bottle', 'product', 2, 2, 30),
   item('electronicPart', 'product', 2, 1, 45),
   item('snack', 'product', 2, 1, 20),
+  item('motor', 'product', 2, 4, 55),
   // Tier 3
   item('appliance', 'product', 3, 5, 400),
   item('sofa', 'product', 3, 5, 220),
   item('giftSet', 'product', 3, 2, 200),
+  item('eBike', 'product', 3, 5, 450),
   // Tier 4
   item('smartHomeSet', 'product', 4, 5, 5000),
   item('premiumGiftSet', 'product', 4, 2, 1200),

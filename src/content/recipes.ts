@@ -10,6 +10,7 @@ export const RECIPES: RecipeDef[] = [
   { id: 'refinery', inputs: [io('crudeOil', 2)], outputs: [io('plastic'), io('wasteOil', 0.5)], durationSec: 4 },
   { id: 'glassworks', inputs: [io('sand', 2)], outputs: [io('glass')], durationSec: 4 },
   { id: 'flourMill', inputs: [io('grain', 2)], outputs: [io('flour')], durationSec: 4 },
+  { id: 'wireMill', inputs: [io('copperOre', 2)], outputs: [io('wire')], durationSec: 4 },
   // Tier 2: two materials combined
   { id: 'furnitureFactory', inputs: [io('lumber', 2), io('fabric')], outputs: [io('chair')], durationSec: 8 },
   { id: 'toolFactory', inputs: [io('steel', 2), io('lumber')], outputs: [io('tools')], durationSec: 8 },
@@ -20,6 +21,7 @@ export const RECIPES: RecipeDef[] = [
     outputs: [io('electronicPart'), io('wasteOil', 0.25)],
     durationSec: 8,
   },
+  { id: 'motorFactory', inputs: [io('wire', 2), io('steel')], outputs: [io('motor')], durationSec: 8 },
   { id: 'snackFactory', inputs: [io('flour', 2), io('sawdust')], outputs: [io('snack')], durationSec: 8 },
   // Tier 3: further processing or three-way combination
   {
@@ -30,6 +32,7 @@ export const RECIPES: RecipeDef[] = [
   },
   { id: 'sofaWorkshop', inputs: [io('chair', 2), io('fabric', 2)], outputs: [io('sofa')], durationSec: 16 },
   { id: 'packagingPlant', inputs: [io('snack', 3), io('bottle', 2)], outputs: [io('giftSet')], durationSec: 16 },
+  { id: 'eBikeFactory', inputs: [io('motor', 2), io('tools'), io('plastic', 2)], outputs: [io('eBike')], durationSec: 16 },
   // Tier 4
   {
     id: 'smartHomeFactory',
