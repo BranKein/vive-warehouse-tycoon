@@ -60,7 +60,7 @@ function boxTruck(kit: Kit): Object3D {
   parts.push(kit.box(0.4, 0.1, 0.16, p.darkMetal, { y: 1.05, z: back - 0.04, r: 0.04 }));
   parts.push(kit.box(2.2, 0.22, 0.3, p.darkMetal, { y: 0.4, z: back - 0.02, r: 0.08 }));
   for (const x of [-0.95, 0.95]) {
-    parts.push(kit.box(0.22, 0.34, 0.1, v.truckCab, { x, y: 0.72, z: back - 0.02, r: 0.05 }));
+    parts.push(kit.box(0.22, 0.34, 0.1, light, { x, y: 0.72, z: back - 0.02, r: 0.05 }));
     parts.push(kit.box(0.5, 0.42, 0.06, p.tire, { x, y: 0.2, z: -2.25, r: 0.02 }));
   }
 
@@ -128,7 +128,7 @@ function carrier(kit: Kit): Object3D {
   parts.push(kit.box(1.82, 0.46, 0.12, v.carrierBed, { y: 0.84, z: back, r: 0.05 }));
   parts.push(kit.box(1.5, 0.16, 0.14, v.carrierCab, { y: 0.99, z: back - 0.03, r: 0.04 }));
   parts.push(kit.box(1.8, 0.16, 0.2, p.darkMetal, { y: 0.34, z: back + 0.02, r: 0.06 }));
-  for (const x of [-0.72, 0.72]) parts.push(kit.box(0.2, 0.14, 0.08, v.truckCab, { x, y: 0.62, z: back - 0.03, r: 0.04 }));
+  for (const x of [-0.72, 0.72]) parts.push(kit.box(0.2, 0.14, 0.08, light, { x, y: 0.62, z: back - 0.03, r: 0.04 }));
   // Headboard between the cab and the load.
   parts.push(kit.box(1.8, 0.75, 0.1, v.carrierCab, { y: 0.84, z: BED_Z + BED_LEN / 2 - 0.08, r: 0.05 }));
 
@@ -175,7 +175,12 @@ function forklift(kit: Kit): Object3D {
     for (const z of [0.42, -0.9]) parts.push(kit.box(0.09, 1.2, 0.09, p.darkMetal, { x, y: 0.98, z, r: 0.03 }));
   }
   parts.push(kit.box(1.2, 0.1, 1.5, v.forklift, { y: 2.14, z: -0.24, r: 0.05 }));
-  parts.push(kit.box(0.24, 0.12, 0.16, p.hazard, { y: 2.24, z: -0.7, r: 0.05 }));
+  // Warning beacon on the roof, work lights at the front, a tail light on the counterweight.
+  const light = kit.materials.headlight;
+  parts.push(kit.cyl(0.15, 0.17, 0.08, p.darkMetal, { y: 2.24, z: -0.6 }, 12));
+  parts.push(kit.dome(0.14, 0.2, 0.14, light, { y: 2.32, z: -0.6 }));
+  for (const x of [-0.42, 0.42]) parts.push(kit.box(0.2, 0.14, 0.12, light, { x, y: 2.0, z: 0.5, r: 0.04 }));
+  parts.push(kit.box(0.5, 0.12, 0.08, light, { y: 0.6, z: -1.27, r: 0.04 }));
   // Mast, carriage and forks.
   for (const x of [-0.36, 0.36]) {
     parts.push(kit.box(0.14, 2.3, 0.14, p.darkMetal, { x, y: 0.08, z: 0.66, r: 0.03 }));
@@ -280,7 +285,7 @@ function cargoPlane(kit: Kit): Object3D {
   parts.push(kit.box(2.0, 0.75, 1.3, p.glass, { y: BELLY + 1.95, z: 4.35, rx: 0.5, r: 0.3 }));
   for (const side of [-1, 1]) {
     for (const z of [1.3, 0.2, -0.9, -2.0]) {
-      parts.push(kit.cyl(0.24, 0.24, 0.16, p.glass, { x: side * (R - 0.1), y: BELLY + R + 0.2 - 0.08, z, rz: HALF_PI }, 12));
+      parts.push(kit.cyl(0.24, 0.24, 0.16, kit.materials.window, { x: side * (R - 0.1), y: BELLY + R + 0.2 - 0.08, z, rz: HALF_PI }, 12));
     }
     // Cargo door on each side.
     parts.push(kit.box(0.14, 1.3, 1.5, p.sign, { x: side * (R - 0.02), y: BELLY + 0.6, z: -4.2, r: 0.06 }));
@@ -292,7 +297,9 @@ function cargoPlane(kit: Kit): Object3D {
   for (const side of [-1, 1]) {
     const x = side * 4.0;
     parts.push(kit.box(1.3, 0.44, 3.06, v.planeAccent, { x: side * 7.2, y: WING_Y - 0.04, z: 0.5, r: 0.18 }));
-    parts.push(kit.blob(0.12, 0.12, 0.12, kit.materials.lamp, { x: side * 7.85, y: WING_Y + 0.06, z: 0.5 }));
+    parts.push(kit.blob(0.16, 0.16, 0.16, kit.materials.headlight, { x: side * 7.85, y: WING_Y + 0.02, z: 0.5 }));
+    // Landing light under the wing, beside the engine.
+    parts.push(kit.cyl(0.18, 0.18, 0.14, kit.materials.headlight, { x: side * 5.4, y: WING_Y - 0.06, z: 1.92, rx: HALF_PI }, 12));
     parts.push(kit.capsule(0.6, 2.9, v.planeAccent, { x, y: WING_Y - 1.0, z: 1.3 }));
     parts.push(kit.cone(0.3, 0.6, p.sign, { x, y: WING_Y - 0.4 - 0.3, z: 3.0, rx: HALF_PI }, 14));
     const prop = kit.group([
@@ -314,6 +321,10 @@ function cargoPlane(kit: Kit): Object3D {
     parts.push(kit.box(0.12, BELLY + 0.3 - radius, 0.12, p.darkMetal, { x: x * 0.8, y: radius, z }));
   }
   parts.push(kit.cyl(0.2, 0.2, 0.14, kit.materials.headlight, { y: BELLY + 0.55, z: 5.55, rx: 1.2 }, 12));
+  // Beacons on the back of the fuselage, under the belly and on top of the fin.
+  parts.push(kit.dome(0.16, 0.2, 0.16, kit.materials.headlight, { y: BELLY + 2 * R - 0.03, z: -1.6 }));
+  parts.push(kit.blob(0.16, 0.14, 0.16, kit.materials.headlight, { y: BELLY - 0.1, z: 1.0 }));
+  parts.push(kit.blob(0.15, 0.15, 0.15, kit.materials.headlight, { y: BELLY + 5.22, z: -6.1 }));
   return kit.group(parts);
 }
 

@@ -74,20 +74,13 @@
   "facility.truckYard": {
     "approved": "77-dcc3329f"
   },
-  "vehicle.boxTruck": {
-    "note": "백라이트도 노란색으로."
-  },
-  "vehicle.cargoPlane": {
-    "note": "불빛나는게 좀 더 있었으면 함"
-  },
+  "vehicle.boxTruck": {},
+  "vehicle.cargoPlane": {},
   "vehicle.cargoShip": {
     "approved": "86-c2e8f8b6"
   },
   "vehicle.carrier": {
-    "approved": "48-7b06b861",
-    "note": "백라이트도 노란색으로"
+    "approved": "48-7b06b861"
   },
-  "vehicle.forklift": {
-    "note": "불빛나는게 있었으면 함. 차 위에 비상등같은거?"
-  }
+  "vehicle.forklift": {}
 }
