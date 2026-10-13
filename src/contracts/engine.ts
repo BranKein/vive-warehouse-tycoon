@@ -43,6 +43,10 @@ export interface GameRenderer {
   setSelection(selection: Selection): void;
   /** Called when the player left-clicks something in the scene. */
   onPick(listener: (target: PickTarget) => void): void;
+  /** Called as the pointer moves over the scene; `null` when it leaves the scene or picks a building up. */
+  onHover(listener: (target: PickTarget | null, clientX: number, clientY: number) => void): void;
+  /** Called when a building that was picked up (double-click and hold) is dropped on a plot or another building. */
+  onDrop(listener: (buildingId: BuildingId, target: PickTarget) => void): void;
   handleEvents(events: GameEvent[]): void;
   dispose(): void;
 }
@@ -63,6 +67,8 @@ export interface UIDeps {
 export interface GameUI {
   update(snapshot: GameSnapshot): void;
   setSelection(selection: Selection): void;
+  /** What the pointer is over in the 3D view, and where on the page; `null` hides the hover card. */
+  setHover(target: PickTarget | null, clientX: number, clientY: number): void;
   handleEvents(events: GameEvent[]): void;
   /** Shown when the tab was hidden for a long time. */
   showAwayNotice(earned: BigNum, awaySeconds: number): void;

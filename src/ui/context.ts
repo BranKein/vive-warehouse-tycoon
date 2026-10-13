@@ -2,7 +2,7 @@ import type { CommandResult, ContentCatalog, GameCommands, GameSnapshot, SaveCon
 import type { Translator } from './text';
 
 export type ToastKind = 'info' | 'good' | 'error';
-export type TabId = 'build' | 'building' | 'unlocks' | 'upgrades';
+export type TabId = 'building' | 'unlocks' | 'upgrades';
 
 /** Shared by every component of the UI. */
 export interface UIContext {

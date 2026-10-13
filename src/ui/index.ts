@@ -1,13 +1,15 @@
 /**
- * The HTML overlay: top bar, side panel, save menu and notifications.
+ * The HTML overlay: top bar, bottom dock, build window, hover card, save menu and notifications.
  * It reads `GameSnapshot`, calls `GameCommands` and `SaveController`, and
  * knows nothing else about the simulation or the 3D view.
  */
 import type { BigNum } from '@/core/BigNum';
 import { formatDuration } from '@/core/format';
-import type { CommandResult, GameEvent, GameSnapshot, GameUI, Selection, UIDeps, UnlockView } from '@/contracts';
+import type { CommandResult, GameEvent, GameSnapshot, GameUI, PickTarget, Selection, UIDeps, UnlockView } from '@/contracts';
 import { i18n, keys } from '@/i18n';
+import { createBuildModal } from './buildModal';
 import type { Frame, ToastKind, UIContext } from './context';
+import { createHoverCard } from './hoverCard';
 import { createSaveMenu } from './saveMenu';
 import { createSettingsMenu } from './settingsMenu';
 import { createSidePanel } from './sidePanel';
@@ -47,10 +49,9 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   const toasts = createToasts(tr);
   const notify = (kind: ToastKind, render: () => string): void => toasts.push(kind, render);
 
-  /** Opens the tab that belongs to what was just selected. */
+  /** Opens the tab that belongs to what was just selected. An empty plot opens the build window by itself. */
   function follow(next: Selection): void {
-    if (next.type === 'plot') panel.show('build');
-    else if (next.type === 'building') panel.show('building');
+    if (next.type === 'building') panel.show('building');
     else if (next.type === 'facility') {
       panel.show('upgrades');
       panel.reveal(next.facilityId);
@@ -91,9 +92,11 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     },
   );
   const panel = createSidePanel(ctx, () => render());
+  const buildModal = createBuildModal(ctx);
+  const hoverCard = createHoverCard(ctx);
 
   root.classList.add('wt-ui');
-  root.append(topBar.el, menu.el, settings.el, panel.el, toasts.el);
+  root.append(topBar.el, menu.el, settings.el, panel.el, toasts.el, hoverCard.el, buildModal.el);
 
   // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
@@ -103,6 +106,10 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     if (settings.isOpen() && !settings.el.contains(target) && !topBar.settingsButton.contains(target)) settings.close();
   };
   document.addEventListener('pointerdown', onPointerDown);
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && buildModal.isOpen()) buildModal.dismiss();
+  };
+  document.addEventListener('keydown', onKeyDown);
 
   /**
    * Keeps the selection valid as the world changes: a selected plot that got
@@ -133,6 +140,8 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     topBar.update(last, menu.isOpen(), settings.isOpen());
     settings.update(last);
     panel.update(frame);
+    buildModal.update(frame);
+    hoverCard.update(frame);
   }
 
   const stopListening = i18n.onChange((language) => {
@@ -157,6 +166,10 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       follow(next);
       render();
     },
+    setHover(target: PickTarget | null, clientX: number, clientY: number): void {
+      hoverCard.set(target, clientX, clientY);
+      render();
+    },
     handleEvents(events: GameEvent[]): void {
       for (const event of events) {
         if (event.type === 'unlocked') {
@@ -179,11 +192,14 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       disposed = true;
       stopListening();
       document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
       menu.dispose();
       settings.dispose();
       toasts.dispose();
       topBar.el.remove();
       panel.el.remove();
+      buildModal.el.remove();
+      hoverCard.el.remove();
       root.classList.remove('wt-ui');
     },
   };

@@ -2,7 +2,7 @@ import type { FacilityView, UpgradeView } from '@/contracts';
 import { formatDuration, formatNumber } from '@/core/format';
 import type { Frame, UIContext } from './context';
 import { button, h, KeyedList, setClass, setDisabled, setHidden, setText, type Row } from './dom';
-import { channelName, formatAmount, formatList, missingRequirements, unlockName } from './text';
+import { channelName, formatAmount, formatList, itemName, missingRequirements, unlockName } from './text';
 import { createUpgradeRow } from './upgradeRow';
 
 interface FacilityItem {
@@ -20,6 +20,7 @@ export function createLogisticsTab(ctx: UIContext) {
     const name = h('span', 'wt-facility-name');
     const bonus = h('span', 'wt-badge');
     const next = h('div', 'wt-facility-next');
+    const stock = h('div', 'wt-facility-stock');
     const requires = h('div', 'wt-requires');
     const unlock = button('wt-btn wt-btn-buy', () => {
       const unlockId = catalog.saleChannels[channelId]?.unlock;
@@ -32,7 +33,7 @@ export function createLogisticsTab(ctx: UIContext) {
       () => createUpgradeRow(ctx, (trackId) => ctx.run(ctx.commands.upgradeChannel(channelId, trackId))),
     );
     const head = button('wt-facility-head', () => ctx.select({ type: 'facility', facilityId }), name, bonus);
-    const el = h('section', 'wt-facility', head, next, requires, unlock, upgradeBox);
+    const el = h('section', 'wt-facility', head, next, stock, requires, unlock, upgradeBox);
     return {
       el,
       update({ facility, frame }) {
@@ -56,6 +57,15 @@ export function createLogisticsTab(ctx: UIContext) {
           facility.nextArrivalSec === null
             ? ''
             : tr.t('logistics.nextArrival', { time: formatDuration(facility.nextArrivalSec) }),
+        );
+
+        const held = facility.stock.filter((entry) => entry.amount.toNumber() > 0);
+        setHidden(stock, !facility.unlocked);
+        setText(
+          stock,
+          held.length === 0
+            ? tr.t('hover.stockEmpty')
+            : `${tr.t('hover.stock')}: ${formatList(tr, held.map((entry) => `${itemName(tr, entry.item)} ${formatAmount(entry.amount)}`))}`,
         );
 
         const unlockId = sale?.unlock ?? null;

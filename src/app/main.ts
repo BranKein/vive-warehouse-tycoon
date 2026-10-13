@@ -124,6 +124,18 @@ async function start(): Promise<void> {
     ui.setSelection(target);
   });
 
+  renderer.onHover((target, clientX, clientY) => ui.setHover(target, clientX, clientY));
+  renderer.onDrop((buildingId, target) => {
+    // Dropping on a building means its plot: the two swap places.
+    const plotId =
+      target.type === 'plot'
+        ? target.plotId
+        : target.type === 'building'
+          ? engine.snapshot().island.buildings.find((building) => building.id === target.buildingId)?.plotId
+          : undefined;
+    if (plotId) commands.moveBuilding(buildingId, plotId);
+  });
+
   const resize = (): void => renderer.resize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', resize);
   resize();

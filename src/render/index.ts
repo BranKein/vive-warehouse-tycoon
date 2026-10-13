@@ -55,15 +55,90 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
   const listeners: Array<(target: PickTarget) => void> = [];
   const pickPoint = new Vector3();
-  const rig = new CameraRig(canvas, (clientX, clientY) => {
-    if (listeners.length === 0) return;
+  const pickAt = (clientX: number, clientY: number): PickTarget => {
     const ndc = pointerToNdc(clientX, clientY, canvas.getBoundingClientRect());
     const origin = rig.camera.position;
     pickPoint.set(ndc.x, ndc.y, 0.5).unproject(rig.camera).sub(origin).normalize();
     const ray: Ray = { ox: origin.x, oy: origin.y, oz: origin.z, dx: pickPoint.x, dy: pickPoint.y, dz: pickPoint.z };
-    const target: PickTarget = pickNearest(ray, view.pickProxies())?.target ?? { type: 'none' };
+    return pickNearest(ray, view.pickProxies())?.target ?? { type: 'none' };
+  };
+  const rig = new CameraRig(canvas, (clientX, clientY) => {
+    if (listeners.length === 0) return;
+    const target = pickAt(clientX, clientY);
     for (const listener of [...listeners]) listener(target);
   });
+
+  // Hovering and carrying. The pointer position is kept and picked again every
+  // frame, so what is under a still pointer stays right while the scene moves.
+  const hoverListeners: Array<(target: PickTarget | null, clientX: number, clientY: number) => void> = [];
+  const dropListeners: Array<(buildingId: string, target: PickTarget) => void> = [];
+  let pointer: { x: number; y: number } | null = null;
+  let pointerMoved = false;
+  let hoverKey = '';
+  let chosen: Selection = { type: 'none' };
+  /** Building picked up by a double-click that is still held down. */
+  let carrying: string | null = null;
+  let lastPress = { time: 0, buildingId: null as string | null };
+  const keyOf = (target: PickTarget | null): string => (target ? JSON.stringify(target) : '');
+  const emitHover = (target: PickTarget | null): void => {
+    hoverKey = keyOf(target);
+    for (const listener of [...hoverListeners]) listener(target, pointer?.x ?? 0, pointer?.y ?? 0);
+  };
+  const refreshPointer = (): void => {
+    if (!pointer) return;
+    const picked = pickAt(pointer.x, pointer.y);
+    if (carrying) {
+      // Show where the building would land.
+      const landing = picked.type === 'plot' || picked.type === 'building' ? picked : { type: 'building' as const, buildingId: carrying };
+      view.setSelection(landing);
+      return;
+    }
+    const target = picked.type === 'none' ? null : picked;
+    if (pointerMoved || keyOf(target) !== hoverKey) emitHover(target);
+    pointerMoved = false;
+  };
+  const stopCarrying = (): void => {
+    carrying = null;
+    canvas.style.cursor = '';
+    view.setSelection(chosen);
+  };
+  const onPointerMove = (event: PointerEvent): void => {
+    pointer = { x: event.clientX, y: event.clientY };
+    pointerMoved = true;
+  };
+  const onPointerLeave = (): void => {
+    if (carrying) return;
+    pointer = null;
+    emitHover(null);
+  };
+  const onPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    const target = pickAt(event.clientX, event.clientY);
+    const buildingId = target.type === 'building' ? target.buildingId : null;
+    const now = performance.now();
+    if (buildingId && buildingId === lastPress.buildingId && now - lastPress.time < renderConfig.click.doubleClickMs) {
+      carrying = buildingId;
+      canvas.style.cursor = 'grabbing';
+      canvas.setPointerCapture?.(event.pointerId);
+      emitHover(null);
+    }
+    lastPress = { time: now, buildingId };
+  };
+  const onPointerUp = (event: PointerEvent): void => {
+    if (event.button !== 0 || !carrying) return;
+    const buildingId = carrying;
+    const target = pickAt(event.clientX, event.clientY);
+    canvas.releasePointerCapture?.(event.pointerId);
+    stopCarrying();
+    const elsewhere = target.type === 'plot' || (target.type === 'building' && target.buildingId !== buildingId);
+    if (elsewhere) for (const listener of [...dropListeners]) listener(buildingId, target);
+  };
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerleave', onPointerLeave);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', stopCarrying);
 
   // A re-registered model takes effect on the next frame.
   let stale = false;
@@ -106,14 +181,22 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       rig.update(dt);
       environment.update(realTimeSec);
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha);
+      refreshPointer();
       renderer.render(scene, rig.camera);
     },
     resize,
     setSelection(selection: Selection): void {
-      view.setSelection(selection);
+      chosen = selection;
+      if (!carrying) view.setSelection(selection);
     },
     onPick(listener: (target: PickTarget) => void): void {
       listeners.push(listener);
+    },
+    onHover(listener): void {
+      hoverListeners.push(listener);
+    },
+    onDrop(listener): void {
+      dropListeners.push(listener);
     },
     handleEvents(_events: GameEvent[]): void {
       // Nothing reacts to events yet: build, demolish and sale effects belong to the deferred decoration stage.
@@ -123,6 +206,13 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       disposed = true;
       stopWatching();
       listeners.length = 0;
+      hoverListeners.length = 0;
+      dropListeners.length = 0;
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', stopCarrying);
       rig.dispose();
       view.dispose();
       environment.dispose();

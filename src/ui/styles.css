@@ -339,21 +339,17 @@
   background: var(--wt-grey-deep);
 }
 
-/* ---------- Side panel ---------- */
+/* ---------- Bottom dock ---------- */
 
 .wt-panel {
   position: absolute;
-  top: 84px;
+  left: 14px;
   right: 14px;
   bottom: 14px;
-  width: var(--wt-panel-width);
+  max-height: min(36vh, 320px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.wt-panel.is-collapsed {
-  bottom: auto;
 }
 
 .wt-panel-head {
@@ -365,7 +361,8 @@
 
 .wt-tabs {
   display: flex;
-  flex: 1;
+  flex: 0 1 340px;
+  margin-right: auto;
   gap: 2px;
   padding: 3px;
   border-radius: 999px;
@@ -431,45 +428,14 @@
 
 /* ---------- Build tab ---------- */
 
-.wt-plotmap {
-  position: relative;
-  width: 100%;
-  border-radius: var(--wt-radius-small);
-  background: var(--wt-mint);
-  border: 6px solid var(--wt-mint);
-}
 
-.wt-ui .wt-plot {
-  position: absolute;
-  border-radius: 6px;
-  background: var(--wt-cream);
-  border: 2px dashed var(--wt-grey-deep);
-  transition: transform 0.12s ease;
-}
 
-.wt-ui .wt-plot:hover {
-  transform: scale(1.12);
-  z-index: 1;
-}
 
-.wt-ui .wt-plot.is-occupied {
-  border: 2px solid var(--wt-cream);
-  background: var(--wt-peach-deep);
-  box-shadow: var(--wt-shadow-soft);
-}
 
-.wt-ui .wt-plot.is-occupied[data-category='tier1'] { background: var(--wt-peach-deep); }
 .wt-ui .wt-plot.is-occupied[data-category='tier2'] { background: var(--wt-sky-deep); }
-.wt-ui .wt-plot.is-occupied[data-category='tier3'] { background: var(--wt-mint-deep); }
 .wt-ui .wt-plot.is-occupied[data-category='tier4'] { background: var(--wt-butter-deep); }
-.wt-ui .wt-plot.is-occupied[data-category='handmade'] { background: var(--wt-lilac); }
 .wt-ui .wt-plot.is-occupied[data-category='disposal'] { background: var(--wt-grey-deep); }
 
-.wt-ui .wt-plot.is-selected {
-  outline: 3px solid var(--wt-ink);
-  outline-offset: 1px;
-  z-index: 2;
-}
 
 .wt-option,
 .wt-upgrade {
@@ -538,28 +504,8 @@
 
 /* ---------- Building tab ---------- */
 
-.wt-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 
-.wt-ui .wt-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--wt-cream);
-  border: 1px solid var(--wt-line);
-  font-size: 12px;
-  font-weight: 700;
-}
 
-.wt-ui .wt-chip.is-selected {
-  background: var(--wt-peach);
-  border-color: var(--wt-peach-deep);
-}
 
 .wt-dot {
   width: 9px;
@@ -929,4 +875,123 @@
 
 .wt-settings .wt-seg {
   align-self: flex-start;
+}
+
+/* ---------- Dock layout: rows of cards instead of one tall column ---------- */
+
+.wt-panel .wt-list,
+.wt-panel .wt-facilities {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  align-items: start;
+}
+
+.wt-panel .wt-facility .wt-list {
+  grid-template-columns: 1fr;
+}
+
+.wt-detail-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+
+.wt-detail-bar .wt-detail-foot {
+  margin-left: auto;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.wt-facility-stock {
+  font-size: 12px;
+  color: var(--wt-ink-soft);
+}
+
+/* The notifications sit above the dock. */
+.wt-toasts {
+  bottom: calc(min(36vh, 320px) + 26px);
+}
+
+/* ---------- Build window ---------- */
+
+.wt-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 90px 14px 14px;
+  pointer-events: auto;
+  background: rgba(91, 70, 54, 0.18);
+}
+
+.wt-build-modal {
+  width: min(520px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.wt-build-modal .wt-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wt-peach) transparent;
+}
+
+.wt-build-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Hover card ---------- */
+
+.wt-ui .wt-hover {
+  position: absolute;
+  width: 264px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  pointer-events: none;
+  border-radius: var(--wt-radius-small);
+}
+
+.wt-hover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wt-hover-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.wt-hover-line {
+  font-weight: 700;
+}
+
+.wt-hover-note,
+.wt-hover-hint {
+  font-size: 12px;
+  color: var(--wt-ink-soft);
+}
+
+.wt-hover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wt-hover-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }

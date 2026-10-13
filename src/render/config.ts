@@ -79,6 +79,8 @@ export const renderConfig = {
   click: {
     /** Pixels the pointer may travel between press and release and still count as a click. */
     maxTravelPx: 5,
+    /** A second press on the same building within this time picks it up. */
+    doubleClickMs: 400,
   },
   shadow: {
     mapSize: 2048,

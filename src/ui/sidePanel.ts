@@ -1,21 +1,19 @@
 import type { TabId, Frame, UIContext } from './context';
 import { button, h, setAttr, setClass, setHidden, setText } from './dom';
-import { createBuildTab } from './buildTab';
 import { createBuildingTab } from './buildingTab';
 import { createLogisticsTab } from './logisticsTab';
 import { createUnlocksTab } from './unlocksTab';
 
-const TAB_ORDER: readonly TabId[] = ['build', 'building', 'unlocks', 'upgrades'];
+const TAB_ORDER: readonly TabId[] = ['building', 'unlocks', 'upgrades'];
 
-/** The floating panel on the right edge: four tabs and a button that folds it away. */
+/** The dock along the bottom edge: three tabs and a button that folds it away. */
 export function createSidePanel(ctx: UIContext, onChange: () => void) {
   const { tr } = ctx;
-  let active: TabId = 'build';
+  let active: TabId = 'building';
   let collapsed = false;
 
   const logistics = createLogisticsTab(ctx);
   const tabs: Record<TabId, { el: HTMLElement; update(frame: Frame): void }> = {
-    build: createBuildTab(ctx),
     building: createBuildingTab(ctx),
     unlocks: createUnlocksTab(ctx),
     upgrades: logistics,
@@ -57,7 +55,7 @@ export function createSidePanel(ctx: UIContext, onChange: () => void) {
         setHidden(tabs[id].el, id !== active);
       }
       const collapseLabel = collapsed ? tr.t('panel.expand') : tr.t('panel.collapse');
-      setText(collapse, collapsed ? '‹' : '›');
+      setText(collapse, collapsed ? '▴' : '▾');
       setAttr(collapse, 'title', collapseLabel);
       setAttr(collapse, 'aria-label', collapseLabel);
       setAttr(collapse, 'aria-expanded', String(!collapsed));
