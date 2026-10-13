@@ -13,6 +13,8 @@ import { createHoverCard } from './hoverCard';
 import { createSaveMenu } from './saveMenu';
 import { createSettingsMenu } from './settingsMenu';
 import { createSidePanel } from './sidePanel';
+import { createStatsModal } from './statsModal';
+import { createStatsPanel } from './statsPanel';
 import { formatAmount, unlockName } from './text';
 import { createToasts } from './toasts';
 import { createTopBar } from './topBar';
@@ -91,9 +93,11 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   const panel = createSidePanel(ctx, () => render());
   const buildModal = createBuildModal(ctx, () => render());
   const hoverCard = createHoverCard(ctx);
+  const statsModal = createStatsModal(ctx, () => render());
+  const statsPanel = createStatsPanel(ctx, () => statsModal.open(), () => render());
 
   root.classList.add('wt-ui');
-  root.append(topBar.el, menu.el, settings.el, panel.el, toasts.el, hoverCard.el, buildModal.el);
+  root.append(topBar.el, menu.el, settings.el, statsPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
 
   // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
@@ -104,7 +108,9 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   };
   document.addEventListener('pointerdown', onPointerDown);
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && buildModal.isOpen()) buildModal.dismiss();
+    if (event.key !== 'Escape') return;
+    if (statsModal.isOpen()) statsModal.close();
+    else if (buildModal.isOpen()) buildModal.dismiss();
   };
   document.addEventListener('keydown', onKeyDown);
 
@@ -138,6 +144,8 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     settings.update(last);
     panel.update(frame);
     buildModal.update(frame);
+    statsPanel.update(frame);
+    statsModal.update(frame);
     hoverCard.update(frame);
   }
 
@@ -196,6 +204,8 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       topBar.el.remove();
       panel.el.remove();
       buildModal.el.remove();
+      statsPanel.el.remove();
+      statsModal.el.remove();
       hoverCard.el.remove();
       root.classList.remove('wt-ui');
     },

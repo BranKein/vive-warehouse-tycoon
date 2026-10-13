@@ -17,6 +17,7 @@ import {
   fillRatio,
   formatBuildingStatus,
   formatModifier,
+  formatPercent,
   formatRecipeSide,
   formatStock,
   formatWaste,
@@ -146,6 +147,8 @@ export function createHoverCard(ctx: UIContext) {
     setHidden(status, false);
     setAttr(statusDot, 'data-status', clogged ? 'clogged' : building.status);
     setText(statusText, formatBuildingStatus(tr, building));
+    setHidden(note, building.uptime === null);
+    if (building.uptime !== null) setText(note, tr.t('stats.uptimeValue', { percent: formatPercent(building.uptime) }));
     setHidden(progress, false);
     setFill(progressFill, building.progress);
     setClass(progress, 'is-paused', building.status !== 'working');

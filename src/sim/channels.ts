@@ -44,6 +44,8 @@ export interface ChannelContext extends CarrierContext {
   priceMultiplier(): BigNum;
   /** Money arrives; called when a sale vehicle leaves the island. */
   earn(amount: BigNum, channelId: string, x: number, z: number): void;
+  /** Part of an `earn` that came from one kind of item; for the statistics. */
+  sold(channelId: string, item: ItemId, amount: BigNum): void;
 }
 
 const RETRY_TICKS = TICKS_PER_SECOND;
@@ -427,7 +429,11 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
     } else {
       const items = this.ctx.catalog.items;
       let gross = BigNum.ZERO;
-      for (const [item, amount] of vehicle.cargo.items) gross = gross.add(amount.mul(items[item]?.basePrice ?? 0));
+      for (const [item, amount] of vehicle.cargo.items) {
+        const value = amount.mul(items[item]?.basePrice ?? 0);
+        gross = gross.add(value);
+        if (isPositive(value)) this.ctx.sold(this.id, item, this.proceeds(value));
+      }
       this.vehicle = null;
       if (isPositive(gross)) this.ctx.earn(this.proceeds(gross), this.id, this.site.x, this.site.z);
     }

@@ -70,6 +70,8 @@ export interface BuildingView {
   upgrades: UpgradeView[];
   /** Carriers currently being loaded or unloaded at this building's yard. Drives forklift animation. */
   handlingCount: number;
+  /** Share of the last few minutes spent working, 0..1; null until it has been measured. */
+  uptime: number | null;
   invested: BigNum;
   /** Money returned if the building is demolished now. */
   refund: BigNum;
@@ -140,6 +142,20 @@ export interface PlotView {
   buildingId: BuildingId | null;
 }
 
+/** Figures over the last few minutes of an island. */
+export interface IslandStatsView {
+  /** Seconds the figures cover; shorter than the full window right after a start or a load. */
+  windowSec: number;
+  /** Share of that time each building spent working, 0..1. */
+  uptime: Record<BuildingId, number>;
+  averageUptime: number | null;
+  /** Building-seconds spent waiting for each item, most first. */
+  shortages: Array<{ item: ItemId; seconds: number }>;
+  /** Money received per item and per sale channel, most first. */
+  salesByItem: Array<{ item: ItemId; amount: BigNum }>;
+  salesByChannel: Array<{ channelId: ChannelId; amount: BigNum }>;
+}
+
 export interface IslandSnapshot {
   id: IslandId;
   maxBuildings: number;
@@ -148,6 +164,7 @@ export interface IslandSnapshot {
   facilities: FacilityView[];
   vehicles: VehicleView[];
   buildOptions: BuildOptionView[];
+  stats: IslandStatsView;
   specialCargo: SpecialCargoView | null;
 }
 

@@ -2,7 +2,7 @@ import type { BuildingView, UpgradeView } from '@/contracts';
 import { keys } from '@/i18n';
 import type { Frame, UIContext } from './context';
 import { createConfirm, h, KeyedList, setAttr, setHidden, setText } from './dom';
-import { buildingName, formatAmount, formatBuildingStatus, wasteLevel } from './text';
+import { buildingName, formatAmount, formatBuildingStatus, formatPercent, wasteLevel } from './text';
 import { createUpgradeRow } from './upgradeRow';
 
 /**
@@ -18,6 +18,7 @@ export function createBuildingTab(ctx: UIContext) {
   const category = h('span', 'wt-badge');
   const statusDot = h('span', 'wt-dot');
   const statusText = h('span', 'wt-status-text');
+  const uptime = h('span', 'wt-badge');
 
   const upgradeBox = h('div', 'wt-list');
   const upgrades = new KeyedList<UpgradeView>(
@@ -41,7 +42,7 @@ export function createBuildingTab(ctx: UIContext) {
       'div',
       'wt-detail-bar',
       h('div', 'wt-detail-head', title, category),
-      h('div', 'wt-status', statusDot, statusText),
+      h('div', 'wt-status', statusDot, statusText, uptime),
       h('div', 'wt-detail-foot', invested, demolish.el),
     ),
     upgradeBox,
@@ -67,6 +68,8 @@ export function createBuildingTab(ctx: UIContext) {
       const clogged = wasteLevel(building.wasteRatio) === 'clogged';
       setAttr(statusDot, 'data-status', clogged ? 'clogged' : building.status);
       setText(statusText, formatBuildingStatus(tr, building));
+      setHidden(uptime, building.uptime === null);
+      if (building.uptime !== null) setText(uptime, tr.t('stats.uptimeValue', { percent: formatPercent(building.uptime) }));
 
       upgrades.sync(building.upgrades);
 

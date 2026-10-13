@@ -121,6 +121,7 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
       modifiers: entry.waste >= 1 ? [{ source: 'wasteClogged', stat: 'cycleSpeed', multiplier: 0.5 }] : [],
       upgrades: def.upgradeTracks.map((track, i) => upgradeView(catalog, track, i === 0 ? entry.level : 0, money)),
       handlingCount: index % 2,
+      uptime: 0.55 + (index % 5) * 0.1,
       invested,
       refund: invested.div(2),
     };
@@ -234,6 +235,23 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
           builtCount: builtCount(typeId),
         };
       }),
+      stats: {
+        windowSec: 300,
+        uptime: Object.fromEntries(buildings.map((building) => [building.id, building.uptime ?? 0])),
+        averageUptime: 0.75,
+        shortages: [
+          { item: 'steel', seconds: 140 },
+          { item: 'lumber', seconds: 60 },
+        ],
+        salesByItem: [
+          { item: 'chair', amount: bn(5200) },
+          { item: 'lumber', amount: bn(900) },
+        ],
+        salesByChannel: [
+          { channelId: 'sale.truck', amount: bn(4100) },
+          { channelId: 'sale.ship', amount: bn(2000) },
+        ],
+      },
       specialCargo:
         timeSec % 30 < 15 ? { id: 'special-1', x: -27, z: 3, expiresInSec: 15 - (timeSec % 30), reward: money.div(20) } : null,
     },

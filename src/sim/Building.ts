@@ -289,7 +289,7 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
 
   // --- read model and saving ------------------------------------------------
 
-  view(tick: number, money: BigNum, handlingCount: number): BuildingView {
+  view(tick: number, money: BigNum, handlingCount: number, uptime: number | null): BuildingView {
     const modifiers: ModifierView[] = this.ctx.modifiers
       .of(this.id)
       .map((m) => ({ source: m.source, stat: m.stat, multiplier: m.op === 'mul' ? m.value : 1 }));
@@ -308,6 +308,7 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
       modifiers,
       upgrades: upgradeViews(this, money),
       handlingCount,
+      uptime,
       invested: this.invested,
       refund: this.refund,
     };

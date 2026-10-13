@@ -294,6 +294,25 @@ describe('saving', () => {
     expect(unlocked.unlocked).toBe(true);
   });
 
+  it('measures uptime, shortages and sales over the last minutes', () => {
+    const game = createGame({ catalog, seed: 9 });
+    game.grant(1e5);
+    game.setAutoPilot(true);
+    game.tick(seconds(600));
+    const { stats, buildings } = game.snapshot().island;
+    expect(stats.windowSec).toBe(300);
+    expect(stats.averageUptime).toBeGreaterThan(0);
+    expect(stats.averageUptime).toBeLessThanOrEqual(1);
+    for (const building of buildings) {
+      if (building.uptime !== null) expect(building.uptime).toBe(stats.uptime[building.id]);
+    }
+    expect(stats.salesByItem.length).toBeGreaterThan(0);
+    const byItem = stats.salesByItem.reduce((sum, entry) => sum + entry.amount.toNumber(), 0);
+    const byChannel = stats.salesByChannel.reduce((sum, entry) => sum + entry.amount.toNumber(), 0);
+    expect(byItem).toBeCloseTo(byChannel, 3);
+    expect(stats.salesByItem[0]!.amount.gte(stats.salesByItem[stats.salesByItem.length - 1]!.amount)).toBe(true);
+  });
+
   it('auto mode builds near the truck yard first', () => {
     const game = createGame({ catalog, seed: 8 });
     game.grant(1e4);
@@ -365,7 +384,9 @@ describe('saving', () => {
     expect(b.autoPilot).toMatchObject({ enabled: true });
     expect(stored(b.unlocks)).toEqual(stored(a.unlocks));
     expect(stored(b.globalUpgrades)).toEqual(stored(a.globalUpgrades));
-    expect(stored(b.island.buildings)).toEqual(stored(a.island.buildings));
+    // The rolling statistics are not saved, so the uptime starts afresh after a load.
+    const withoutUptime = (snapshot: typeof a) => stored(snapshot.island.buildings.map((building) => ({ ...building, uptime: null })));
+    expect(withoutUptime(b)).toEqual(withoutUptime(a));
     expect(stored(b.island.facilities)).toEqual(stored(a.island.facilities));
     expect(stored(b.island.plots)).toEqual(stored(a.island.plots));
     expect(stored(b.island.buildOptions)).toEqual(stored(a.island.buildOptions));

@@ -24,6 +24,8 @@ import { parseAmount } from './Inventory';
 import { ModifierRegistry } from './modifiers';
 import type { CarrierHome, Consumer, LogisticsNode, PickupSource, Site } from './nodes';
 import { makePath, RoadGraph, type Path } from './RoadGraph';
+import { TICKS_PER_SECOND } from '@/core/time';
+import { IslandStats } from './Stats';
 import { buildCost } from './upgrades';
 
 /** What an island needs from the game that owns it. A sandbox host is used for income estimates. */
@@ -65,6 +67,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
   private readonly graph: RoadGraph;
   private readonly gateRoad: number;
   private readonly plotSites = new Map<PlotId, Site>();
+  private readonly stats = new IslandStats();
   private readonly byPlot = new Map<PlotId, Building>();
   private readonly nodes = new Map<string, LogisticsNode>();
   private readonly consumers = new Map<ItemId, Consumer[]>();
@@ -228,6 +231,10 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
 
   // --- simulation ----------------------------------------------------------------
 
+  sold(channelId: string, item: ItemId, amount: BigNum): void {
+    this.stats.sold(channelId, item, amount);
+  }
+
   tick(): void {
     const tick = (this.tickCount += 1);
     this.inbound.update(tick);
@@ -240,6 +247,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
         if (tick >= carrier.wake) carrier.advance(tick, this);
       }
     }
+    if (tick % TICKS_PER_SECOND === 0) this.stats.sample(this.buildings);
     if (this.dirty) {
       this.dirty = false;
       for (const home of this.homes) {
@@ -401,11 +409,14 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       this.inbound.facilityView(tick, money, handling[this.inbound.site.index]!),
       ...this.sales.map((channel) => channel.facilityView(tick, money, handling[channel.site.index]!)),
     ];
+    const uptime = this.stats.view.uptime;
     return {
       id: this.def.id,
       maxBuildings: this.def.maxBuildings,
       plots: this.layout.plots.map((plot) => ({ id: plot.id, buildingId: this.byPlot.get(plot.id)?.id ?? null })),
-      buildings: this.buildings.map((building) => building.view(tick, money, handling[building.site.index]!)),
+      buildings: this.buildings.map((building) =>
+        building.view(tick, money, handling[building.site.index]!, uptime[building.id] ?? null),
+      ),
       facilities,
       vehicles,
       buildOptions: this.def.buildingTypes.flatMap((typeId) => {
@@ -422,6 +433,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
           maxCount: def.maxCount,
         };
       }),
+      stats: this.stats.view,
       specialCargo,
     };
   }
