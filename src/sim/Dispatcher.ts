@@ -3,7 +3,7 @@
  * idle carrier, the dispatcher plans one round for it from what is in stock
  * and what other nodes are asking for.
  */
-import type { ItemDef, ItemId } from '@/contracts';
+import type { ItemDef, ItemId, JsonValue } from '@/contracts';
 import { BigNum } from '@/core/BigNum';
 import type { Balance } from '@/content/balance';
 import type { Stop, StopItem } from './Carrier';
@@ -49,7 +49,24 @@ function addItem(items: StopItem[], item: ItemId, amount: BigNum): void {
 }
 
 export class Dispatcher {
+  /** Round in which each consumer last got a delivery; only used to take turns. */
+  private readonly lastVisit = new Map<string, number>();
+  private round = 0;
+
   constructor(private readonly ctx: DispatchContext) {}
+
+  toJSON(): JsonValue {
+    return { round: this.round, lastVisit: Object.fromEntries(this.lastVisit) };
+  }
+
+  restore(saved: unknown): void {
+    if (!saved || typeof saved !== 'object') return;
+    const data = saved as Record<string, unknown>;
+    this.round = Number(data.round) || 0;
+    this.lastVisit.clear();
+    const visits = (data.lastVisit && typeof data.lastVisit === 'object' ? data.lastVisit : {}) as Record<string, unknown>;
+    for (const [id, round] of Object.entries(visits)) this.lastVisit.set(id, Number(round) || 0);
+  }
 
   /** Plans a round for an idle carrier of `home`, reserving everything it will move. Null = nothing to do. */
   plan(home: CarrierHome): Stop[] | null {
@@ -57,9 +74,10 @@ export class Dispatcher {
   }
 
   /**
-   * Delivery round: fill requests in priority order (can start at once ->
-   * more valuable product -> nearer), then take what nobody asked for to a
-   * sale channel with the room that is left.
+   * Delivery round: share the load between the requests, hand out the rest
+   * in priority order (can start at once -> more valuable product ->
+   * nearer), then take what nobody asked for to a sale channel with the
+   * room that is left.
    */
   private planDelivery(home: CarrierHome): Stop[] | null {
     const stock = home.pushSlots().filter((slot) => slot.hasStock);
@@ -109,12 +127,33 @@ export class Dispatcher {
       return amount;
     };
 
-    for (const request of requests) {
-      if (!isPositive(room)) break;
-      if (drops.size >= maxStops && !drops.has(request.consumer.id)) continue;
-      const given = assign(request.consumer, request.slot, request.demand, request.distance);
-      if (!given.isZero) request.consumer.reserveDelivery(request.slot.item, given);
+    // One round visits at most `maxStops` consumers. When more are asking,
+    // the ones that have waited longest go first, so nobody is skipped forever.
+    const asking = [...new Set(requests.map((request) => request.consumer.id))];
+    if (asking.length > maxStops) {
+      asking.sort((x, y) => (this.lastVisit.get(x) ?? 0) - (this.lastVisit.get(y) ?? 0));
     }
+    const visiting = new Set(asking.slice(0, maxStops));
+    const served = requests.filter((request) => visiting.has(request.consumer.id));
+    const give = (request: Request, wanted: BigNum): void => {
+      const given = assign(request.consumer, request.slot, wanted, request.distance);
+      if (given.isZero) return;
+      request.consumer.reserveDelivery(request.slot.item, given);
+      request.demand = subClamp(request.demand, given);
+    };
+    // Everyone first gets an equal share of the carrier. Without it the top
+    // request takes the whole load trip after trip and the rest never work.
+    // What is left then goes out in priority order.
+    if (served.length > 1) {
+      const share = room.div(served.length);
+      for (const request of served) give(request, minOf(request.demand, share));
+    }
+    for (const request of served) {
+      if (!isPositive(room)) break;
+      give(request, request.demand);
+    }
+    this.round += 1;
+    for (const id of drops.keys()) this.lastVisit.set(id, this.round);
 
     if (isPositive(room)) {
       // Most valuable leftovers first; they earn the most per carrier trip.

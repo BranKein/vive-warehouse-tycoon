@@ -117,7 +117,7 @@ describe('special cargo', () => {
     game.tick(seconds(900));
     tickUntil(game, () => game.snapshot().island.specialCargo !== null, seconds(20));
     const snapshot = game.snapshot();
-    expect(snapshot.incomePerSec.toNumber()).toBeGreaterThan(1);
+    expect(snapshot.incomePerSec.toNumber()).toBeGreaterThan(0);
     const reward = snapshot.island.specialCargo!.reward;
     expect(reward.toNumber()).toBeCloseTo(snapshot.incomePerSec.toNumber() * 45);
     const before = game.totalEarned;

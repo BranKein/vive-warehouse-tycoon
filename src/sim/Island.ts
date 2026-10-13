@@ -401,6 +401,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       nextBuilding: this.nextBuildingSeq,
       estimated: this.estimatedIncome.toString(),
       dirty: this.dirty,
+      dispatch: this.dispatcher.toJSON(),
       buildings: this.buildings.map((building) => building.toJSON()),
       inbound: this.inbound.toJSON(),
       sales: Object.fromEntries(this.sales.map((channel) => [channel.id, channel.toJSON()])),
@@ -435,6 +436,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     this.reindex();
     // Keep the dispatch flag as it was, so a loaded game continues exactly like the original.
     if (data.dirty === false) this.dirty = false;
+    this.dispatcher.restore(data.dispatch);
   }
 
   /**

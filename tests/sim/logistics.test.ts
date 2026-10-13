@@ -71,28 +71,56 @@ const unloads = (stops: ReturnType<Dispatcher['plan']>): Array<[string, number]>
   (stops ?? []).filter((stop) => stop.action === 'unload').map((stop) => [stop.node, stop.items[0]!.amount.toNumber()]);
 
 describe('demand-based dispatch', () => {
-  it('serves a building that can start at once before a more valuable or nearer one', () => {
+  it('shares one load between the requests, so a low-priority building is not starved', () => {
     const home = new FakeHome(10).stock('lumber', 10);
-    const waiting = new FakeConsumer('waiting', site(1), 10, false, 500);
-    const ready = new FakeConsumer('ready', site(2), 10, true, 5);
-    const stops = dispatcher(home, [waiting, ready], { s1: 1, s2: 99 }).plan(home);
-    expect(unloads(stops)).toEqual([['ready', 10]]);
-    expect(ready.reserved.get('lumber')).toBe(10);
-    expect(waiting.reserved.size).toBe(0);
+    const rich = new FakeConsumer('rich', site(1), 10, true, 500);
+    const cheap = new FakeConsumer('cheap', site(2), 10, true, 5);
+    const stops = dispatcher(home, [rich, cheap], { s1: 1, s2: 2 }).plan(home);
+    expect(unloads(stops)).toEqual([
+      ['rich', 5],
+      ['cheap', 5],
+    ]);
+    expect(cheap.reserved.get('lumber')).toBe(5);
     // The goods left the home stock when the trip was planned.
     expect(home.slots[0]!.amount.isZero).toBe(true);
     expect(stops![0]).toMatchObject({ node: 'home', action: 'load', preloaded: true });
   });
 
-  it('prefers the more valuable product, then the nearer building', () => {
-    const home = new FakeHome(10).stock('lumber', 30);
+  /** `small` leaves part of its share unused; the test checks who gets that rest. */
+  const restGoesTo = (a: FakeConsumer, b: FakeConsumer, distances: Record<string, number>): string => {
+    const home = new FakeHome(9).stock('lumber', 30);
+    const small = new FakeConsumer('small', site(9), 1, true, 0);
+    const drops = new Map(unloads(dispatcher(home, [a, b, small], distances).plan(home)));
+    expect(drops.get('small')).toBe(1);
+    return drops.get(a.id)! > drops.get(b.id)! ? a.id : b.id;
+  };
+
+  it('gives the rest to a building that can start at once before a more valuable or nearer one', () => {
+    const waiting = new FakeConsumer('waiting', site(1), 10, false, 500);
+    const ready = new FakeConsumer('ready', site(2), 10, true, 5);
+    expect(restGoesTo(waiting, ready, { s1: 1, s2: 99 })).toBe('ready');
+  });
+
+  it('then prefers the more valuable product, then the nearer building', () => {
     const cheapNear = new FakeConsumer('cheapNear', site(1), 10, true, 5);
     const rich = new FakeConsumer('rich', site(2), 10, true, 50);
-    expect(unloads(dispatcher(home, [cheapNear, rich], { s1: 1, s2: 99 }).plan(home))).toEqual([['rich', 10]]);
+    expect(restGoesTo(cheapNear, rich, { s1: 1, s2: 99 })).toBe('rich');
 
     const far = new FakeConsumer('far', site(3), 10, true, 5);
     const near = new FakeConsumer('near', site(4), 10, true, 5);
-    expect(unloads(dispatcher(home, [far, near], { s3: 80, s4: 10 }).plan(home))).toEqual([['near', 10]]);
+    expect(restGoesTo(far, near, { s3: 80, s4: 10 })).toBe('near');
+  });
+
+  it('takes turns when more buildings ask than one round can visit', () => {
+    const home = new FakeHome(8).stock('lumber', 1000);
+    const consumers = Array.from(
+      { length: BALANCE.carriers.maxStops + 2 },
+      (_, index) => new FakeConsumer(`c${index}`, site(index + 1), 1000, true, 100 - index),
+    );
+    const planner = dispatcher(home, consumers, {});
+    planner.plan(home);
+    planner.plan(home);
+    for (const consumer of consumers) expect(consumer.reserved.get('lumber') ?? 0, consumer.id).toBeGreaterThan(0);
   });
 
   it('splits one load over several requests and sells what nobody asked for', () => {
