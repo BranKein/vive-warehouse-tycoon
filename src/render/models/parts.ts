@@ -109,7 +109,7 @@ export function rollerDoor(kit: Kit, o: { cx: number; wall: number; y: number; w
   const parts: Object3D[] = [
     kit.box(width + 0.4, height + 0.2, 0.12, p.sign, { x: o.cx, y: o.y, z: o.wall + 0.01, r: 0.06 }),
     kit.box(width, height, 0.16, o.paint ?? p.door, { x: o.cx, y: o.y, z: o.wall + 0.05, r: 0.07 }),
-    kit.box(0.34, 0.22, 0.16, kit.materials.lamp, { x: o.cx, y: o.y + height + 0.3, z: o.wall + 0.12, r: 0.07 }),
+    kit.box(0.34, 0.22, 0.2, kit.materials.lamp, { x: o.cx, y: o.y + height + 0.22, z: o.wall + 0.08, r: 0.07 }),
   ];
   const slats = Math.max(2, Math.floor(height / 0.5));
   for (let i = 1; i <= slats; i += 1) {
