@@ -6,7 +6,7 @@ describe('fixture snapshot', () => {
   it('builds a consistent snapshot at any time', () => {
     for (const time of [0, 7.3, 120]) {
       const snapshot = createFixtureSnapshot(catalog, time);
-      expect(snapshot.island.plots).toHaveLength(56);
+      expect(snapshot.island.plots).toHaveLength(59);
       expect(snapshot.island.vehicles.length).toBeGreaterThan(0);
       for (const vehicle of snapshot.island.vehicles) {
         expect(Number.isFinite(vehicle.x + vehicle.y + vehicle.z + vehicle.heading)).toBe(true);

@@ -28,7 +28,11 @@ async function start(): Promise<void> {
     }
   };
 
-  let engine: GameEngine = restore(await store.getAuto().catch(() => null)) ?? createGame({ catalog });
+  const autoSaved = await store.getAuto().catch(() => null);
+  const restored = restore(autoSaved);
+  // The next auto save would overwrite a save that could not be read; keep it among the manual saves instead.
+  if (autoSaved && !restored) await store.addManual(autoSaved).catch((error: unknown) => console.error(error));
+  let engine: GameEngine = restored ?? createGame({ catalog });
   let selection: Selection = { type: 'none' };
 
   const renderer = createRenderer(canvas, { catalog });

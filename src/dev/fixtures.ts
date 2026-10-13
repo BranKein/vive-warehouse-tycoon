@@ -145,9 +145,9 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
     };
   });
 
-  const roadB = [node('B0'), node('B7')];
+  const roadB = [node('B0'), node('B8')];
   const gateRun = [node('gate'), node('yardRoad')];
-  const eastRun = [node('B7'), node('C7'), node('dockRoad')];
+  const eastRun = [node('B8'), node('C8'), node('dockRoad')];
   const mover = (
     id: string,
     kind: VehicleView['kind'],
