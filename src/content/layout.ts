@@ -1,25 +1,29 @@
 import type { FacilityDef, IslandLayoutDef, PlotDef, RoadNodeDef, RoadNodeId } from '@/contracts';
 
 /**
- * First island: 30 plots in 6 columns x 5 rows on a rectangular board.
+ * First island: 48 plots in 8 columns x 6 rows on a rectangular board.
  * +x is east, +z is south. Three east-west roads serve the plot rows and are
  * joined by a north-south road at each end. Trucks enter from the west gate,
  * the river (dock) runs along the south edge and the runway along the north.
  *
  *        runway ─────────────────────────────── apron
- *   row 0  ▢ ▢ ▢ ▢ ▢ ▢
- *   ═══════ road A ═══════
- *   row 1  ▢ ▢ ▢ ▢ ▢ ▢
- *   row 2  ▢ ▢ ▢ ▢ ▢ ▢
- * gate ═ yards ═ road B ═══
- *   row 3  ▢ ▢ ▢ ▢ ▢ ▢
- *   row 4  ▢ ▢ ▢ ▢ ▢ ▢
- *   ═══════ road C ═══════
+ *   row 0  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
+ *   ═════════ road A ═════════
+ *   row 1  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
+ *   row 2  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
+ * gate ═ yards ═ road B ═══════
+ *   row 3  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
+ *   row 4  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
+ *   ═════════ road C ═════════
+ *   row 5  ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢
  *        river ───────────────────────────────── dock
  */
-const COLUMNS_X = [-45, -27, -9, 9, 27, 45];
-const WEST_X = -60;
-const EAST_X = 60;
+const COLUMNS_X = [-63, -45, -27, -9, 9, 27, 45, 63];
+const WEST_X = -78;
+const EAST_X = 78;
+/** The gate and the two road yards sit on a spur west of the plots. */
+const YARD_X = WEST_X - 16;
+const GATE_X = YARD_X - 19;
 const ROADS = [
   { id: 'A', z: -31 },
   { id: 'B', z: 3 },
@@ -34,6 +38,7 @@ const ROWS = [
   { z: -7, facing: SOUTH, road: 'B' },
   { z: 13, facing: NORTH, road: 'B' },
   { z: 27, facing: SOUTH, road: 'C' },
+  { z: 47, facing: NORTH, road: 'C' },
 ] as const;
 
 const ROAD_XS = [WEST_X, ...COLUMNS_X, EAST_X];
@@ -52,10 +57,10 @@ function buildRoads(): { nodes: RoadNodeDef[]; edges: Array<[RoadNodeId, RoadNod
   edges.push(['A0', 'B0'], ['B0', 'C0'], [`A${last}`, `B${last}`], [`B${last}`, `C${last}`]);
 
   // West spur: island gate and the two road yards.
-  nodes.push({ id: 'gate', x: -95, z: 3 }, { id: 'yardRoad', x: -76, z: 3 });
+  nodes.push({ id: 'gate', x: GATE_X, z: 3 }, { id: 'yardRoad', x: YARD_X, z: 3 });
   edges.push(['gate', 'yardRoad'], ['yardRoad', 'B0']);
   // East spurs to the dock (south) and the airport apron (north).
-  nodes.push({ id: 'dockRoad', x: EAST_X, z: 48 }, { id: 'airRoad', x: EAST_X, z: -44 });
+  nodes.push({ id: 'dockRoad', x: EAST_X, z: 50 }, { id: 'airRoad', x: EAST_X, z: -44 });
   edges.push([`C${last}`, 'dockRoad'], [`A${last}`, 'airRoad']);
   return { nodes, edges };
 }
@@ -77,16 +82,16 @@ function buildPlots(): PlotDef[] {
 }
 
 const FACILITIES: FacilityDef[] = [
-  { id: 'inboundYard', kind: 'inboundYard', x: -76, z: -9, facing: SOUTH, roadNode: 'yardRoad' },
-  { id: 'truckYard', kind: 'truckYard', x: -76, z: 15, facing: NORTH, roadNode: 'yardRoad' },
-  { id: 'dock', kind: 'dock', x: EAST_X, z: 56, facing: SOUTH, roadNode: 'dockRoad' },
+  { id: 'inboundYard', kind: 'inboundYard', x: YARD_X, z: -9, facing: SOUTH, roadNode: 'yardRoad' },
+  { id: 'truckYard', kind: 'truckYard', x: YARD_X, z: 15, facing: NORTH, roadNode: 'yardRoad' },
+  { id: 'dock', kind: 'dock', x: EAST_X, z: 58, facing: SOUTH, roadNode: 'dockRoad' },
   { id: 'airport', kind: 'airport', x: EAST_X, z: -52, facing: NORTH, roadNode: 'airRoad' },
 ];
 
 const roads = buildRoads();
 
 export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
-  bounds: { minX: -95, maxX: 95, minZ: -75, maxZ: 75 },
+  bounds: { minX: GATE_X, maxX: EAST_X + 35, minZ: -75, maxZ: 78 },
   plotSize: { width: 16, depth: 14 },
   roadWidth: 6,
   plots: buildPlots(),
@@ -95,16 +100,16 @@ export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   facilities: FACILITIES,
   roadGate: 'gate',
   shipLane: [
-    { x: 130, y: 0, z: 67 },
-    { x: 80, y: 0, z: 67 },
-    { x: 62, y: 0, z: 63 },
+    { x: EAST_X + 70, y: 0, z: 70 },
+    { x: EAST_X + 20, y: 0, z: 70 },
+    { x: EAST_X + 2, y: 0, z: 66 },
   ],
   flightLane: [
-    { x: 180, y: 46, z: -66 },
-    { x: 92, y: 8, z: -66 },
-    { x: 40, y: 0, z: -66 },
-    { x: 60, y: 0, z: -59 },
+    { x: EAST_X + 120, y: 46, z: -66 },
+    { x: EAST_X + 32, y: 8, z: -66 },
+    { x: EAST_X - 20, y: 0, z: -66 },
+    { x: EAST_X, y: 0, z: -59 },
   ],
-  river: { minX: -95, maxX: 95, minZ: 58, maxZ: 75 },
-  runway: { minX: -10, maxX: 88, minZ: -70, maxZ: -62 },
+  river: { minX: GATE_X, maxX: EAST_X + 35, minZ: 62, maxZ: 78 },
+  runway: { minX: EAST_X - 70, maxX: EAST_X + 28, minZ: -70, maxZ: -62 },
 };

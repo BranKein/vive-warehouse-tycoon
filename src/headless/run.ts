@@ -42,6 +42,10 @@ export interface HeadlessReport {
   buildingsBuilt: number;
   upgradesBought: number;
   wallMs: number;
+  /** Building-seconds spent in each status, summed over all buildings. */
+  statusSeconds: Record<'working' | 'starved' | 'outputFull' | 'idle', number>;
+  /** Building-seconds spent waiting, by missing ingredient. */
+  starvedFor: Record<string, number>;
   game: Game;
 }
 
@@ -66,6 +70,8 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
     buildingsBuilt: 0,
     upgradesBought: 0,
     wallMs: 0,
+    statusSeconds: { working: 0, starved: 0, outputFull: 0, idle: 0 },
+    starvedFor: {},
     game,
   };
   let lastVisibleSec = 0;
@@ -107,6 +113,12 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
         ) {
           report.firstTier2UnlockSec = second;
         }
+      }
+    }
+    for (const building of game.island.buildings) {
+      report.statusSeconds[building.status] += 1;
+      if (building.status === 'starved') {
+        for (const item of building.missing) report.starvedFor[item] = (report.starvedFor[item] ?? 0) + 1;
       }
     }
     if (second % 3600 === 0) addRow(second);
@@ -177,6 +189,18 @@ export function formatReport(report: HeadlessReport): string {
     `Longest gap between visible changes (new building or unlock): ${time(report.longestGapSec)}` +
       ` (from ${time(report.longestGapStartSec)})`,
   );
+  const total = Object.values(report.statusSeconds).reduce((sum, value) => sum + value, 0) || 1;
+  const share = (value: number): string => `${Math.round((value / total) * 100)}%`;
+  const { working, starved, outputFull, idle } = report.statusSeconds;
+  lines.push(
+    `Building time: working ${share(working)}, waiting for ingredients ${share(starved)},` +
+      ` output full ${share(outputFull)}, idle ${share(idle)}`,
+  );
+  const short = Object.entries(report.starvedFor)
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, 5)
+    .map(([item, value]) => `${item} ${share(value)}`);
+  if (short.length > 0) lines.push(`Most often missing: ${short.join(', ')}`);
   lines.push(`Buildings built: ${report.buildingsBuilt}, upgrades bought: ${report.upgradesBought}`);
   lines.push(`Simulated ${report.game.tickCount} ticks in ${(report.wallMs / 1000).toFixed(1)} s`);
   return lines.join('\n');

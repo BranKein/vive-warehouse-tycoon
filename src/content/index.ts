@@ -13,7 +13,7 @@ const byId = <T extends { id: string }>(list: readonly T[]): Record<string, T> =
 const ISLAND_ONE: IslandDef = {
   id: 'island.one',
   layout: ISLAND_ONE_LAYOUT,
-  maxBuildings: 30,
+  maxBuildings: 48,
   buildingTypes: BUILDINGS.map((building) => building.id),
   inbound: 'inbound.truck',
   saleChannels: SALE_CHANNELS.map((channel) => channel.id),

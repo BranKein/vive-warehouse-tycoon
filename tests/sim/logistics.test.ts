@@ -50,6 +50,8 @@ class FakeSaleHome extends FakeHome implements SaleHome {
 class FakeSource implements PickupSource {
   readonly stock = new Map<ItemId, number>();
   pickupUrgency = 0;
+  full = 0;
+  fullness = (): number => this.full;
   constructor(
     readonly id: string,
     readonly site: Site,
@@ -158,6 +160,22 @@ describe('demand-based dispatch', () => {
     expect(catalog.items.lumber!.basePrice).toBeGreaterThan(catalog.items.sawdust!.basePrice);
     expect(sale.reserved.get('lumber')).toBe(4);
     expect(stops!.at(-1)).toMatchObject({ node: 'sale', action: 'unload' });
+  });
+
+  it('waits for a worthwhile load unless an output is about to clog, then visits several buildings', () => {
+    const sale = new FakeSaleHome(10);
+    const a = new FakeSource('a', site(1)).has('lumber', 2);
+    const b = new FakeSource('b', site(2)).has('lumber', 2);
+    expect(dispatcher([a, b], { sale }).plan(sale)).toBeNull();
+    expect(a.stock.get('lumber')).toBe(2);
+    b.full = 1;
+    expect(loads(dispatcher([a, b], { sale }).plan(sale))).toEqual([
+      ['a', 'lumber', 2],
+      ['b', 'lumber', 2],
+    ]);
+    const c = new FakeSource('c', site(3)).has('lumber', 5);
+    const d = new FakeSource('d', site(4)).has('lumber', 5);
+    expect(loads(dispatcher([c, d], { sale }).plan(sale)).map((drop) => drop[0])).toEqual(['c', 'd']);
   });
 
   it('never sells waste or raw material, and leaves goods alone that go to another channel', () => {

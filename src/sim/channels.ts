@@ -239,6 +239,9 @@ export class InboundChannel extends ChannelBase implements PickupSource {
   }
 
   // PickupSource
+  fullness(_item: ItemId): number {
+    return 0;
+  }
   availableForPickup(item: ItemId): BigNum {
     return this.stock.get(item)?.available() ?? BigNum.ZERO;
   }

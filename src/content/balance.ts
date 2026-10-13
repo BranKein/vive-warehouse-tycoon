@@ -41,7 +41,16 @@ export interface Balance {
     maxStops: number;
   };
   /** Carriers of a sale channel before any upgrade. They fetch from every building, so they start bigger than a building's. */
-  saleCarriers: { baseCount: number; baseLoad: number };
+  saleCarriers: {
+    baseCount: number;
+    baseLoad: number;
+    /** Buildings one round may visit; more than a building's carrier, so it comes back full. */
+    maxStops: number;
+    /** A round only sets out when it can fill this share of the carrier... */
+    minFill: number;
+    /** ...or when some output it would collect is at least this full. */
+    urgentFullness: number;
+  };
   channels: {
     /** A sale channel counts as backed up once this many vehicle loads are waiting ahead of an item. */
     backlogLoads: number;
@@ -77,11 +86,11 @@ export interface Balance {
 }
 
 export const BALANCE: Balance = {
-  storage: { inputBufferSec: 40, minInputCycles: 2, outputBufferSec: 60, minOutputCycles: 2 },
+  storage: { inputBufferSec: 40, minInputCycles: 2, outputBufferSec: 150, minOutputCycles: 2 },
   waste: { limitSec: 120, minLimitCycles: 4, slowdown: 0.5, source: 'wasteClogged' },
   weight: { slowPerWeight: 0.15, minFactor: 0.3, carrierSensitivity: 0.5, inboundSensitivity: 0.5 },
-  carriers: { model: 'vehicle.carrier', speed: 10, baseCount: 1, baseLoad: 6, handlingSec: 1, maxStops: 4 },
-  saleCarriers: { baseCount: 1, baseLoad: 12 },
+  carriers: { model: 'vehicle.carrier', speed: 12, baseCount: 1, baseLoad: 6, handlingSec: 1, maxStops: 4 },
+  saleCarriers: { baseCount: 2, baseLoad: 20, maxStops: 8, minFill: 0.6, urgentFullness: 0.5 },
   channels: {
     backlogLoads: 2,
     handlingSec: 2,

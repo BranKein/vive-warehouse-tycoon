@@ -139,27 +139,41 @@ export class Dispatcher {
 
   /**
    * A sale channel fetches what no building is waiting for: stock beyond
-   * the unmet demand for that item, dearest goods first. It only takes items
-   * for which it is the channel of choice right now.
+   * the unmet demand for that item. It only takes items for which it is the
+   * channel of choice right now. One round goes from building to building
+   * until the carrier is full, starting where an output is about to clog,
+   * then dearest goods first. It waits rather than drive off nearly empty.
    */
   private planSale(home: SaleHome): Stop[] | null {
     if (!home.unlocked) return null;
     const { ctx } = this;
     const from = home.site.index;
-    const round = new Round(home, ctx.balance.carriers.maxStops);
+    const { maxStops, minFill, urgentFullness } = ctx.balance.saleCarriers;
+    const round = new Round(home, maxStops);
 
-    const offers: Array<{ source: PickupSource; item: ItemDef; surplus: BigNum; distance: number }> = [];
+    const offers: Array<{ source: PickupSource; item: ItemDef; surplus: BigNum; distance: number; urgent: boolean }> = [];
+    let waiting = BigNum.ZERO;
+    let urgent = false;
     for (const item of Object.values(ctx.items)) {
       if (!item.sellable || ctx.chooseSale(item) !== home) continue;
       let unmet = BigNum.ZERO;
       for (const consumer of ctx.consumersOf(item.id)) unmet = unmet.add(consumer.demand(item.id));
+      // The stock held back for the buildings is counted once across all sources, not at each of them.
       for (const source of ctx.sourcesOf(item.id)) {
-        const surplus = subClamp(source.availableForPickup(item.id), unmet);
+        const available = source.availableForPickup(item.id);
+        const surplus = subClamp(available, unmet);
+        unmet = subClamp(unmet, available);
         if (!isPositive(surplus)) continue;
-        offers.push({ source, item, surplus, distance: ctx.distance(from, source.site.index) });
+        const clogging = source.fullness(item.id) >= urgentFullness;
+        offers.push({ source, item, surplus, distance: ctx.distance(from, source.site.index), urgent: clogging });
+        waiting = waiting.add(surplus);
+        urgent ||= clogging;
       }
     }
-    offers.sort((a, b) => b.item.basePrice - a.item.basePrice || a.distance - b.distance);
+    if (!urgent && waiting.lt(round.room.mul(minFill))) return null;
+    offers.sort(
+      (a, b) => Number(b.urgent) - Number(a.urgent) || b.item.basePrice - a.item.basePrice || a.distance - b.distance,
+    );
 
     for (const offer of offers) {
       if (!isPositive(round.room)) break;

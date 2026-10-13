@@ -214,10 +214,14 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     return this.sources.get(item) ?? NO_SOURCES;
   }
 
-  /** Best paying open channel that is not backed up; null leaves the goods where they are. */
+  /**
+   * Best paying open channel that can take more right now: not backed up and
+   * with a carrier free to fetch. When its carriers are all out, the next
+   * channel steps in. Null leaves the goods where they are.
+   */
   chooseSale(_item: ItemDef): SaleHome | null {
     for (const channel of this.salesByPrice) {
-      if (channel.unlocked && !channel.isBackedUp) return channel;
+      if (channel.unlocked && !channel.isBackedUp && channel.carriers.some((carrier) => carrier.isIdle)) return channel;
     }
     return null;
   }

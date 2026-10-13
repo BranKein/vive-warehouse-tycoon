@@ -381,7 +381,8 @@ describe('long run', () => {
       }
       if (step % 20 === 0) {
         const snapshot = game.snapshot();
-        expect(snapshot.island.vehicles.length).toBeLessThanOrEqual(150);
+        // 48 buildings with up to 3 carriers each, plus the sale channels' carriers and the visiting vehicles.
+        expect(snapshot.island.vehicles.length).toBeLessThanOrEqual(180);
         for (const vehicle of snapshot.island.vehicles) {
           expect(Number.isFinite(vehicle.x + vehicle.y + vehicle.z + vehicle.heading), vehicle.id).toBe(true);
           expect(vehicle.loadRatio).toBeGreaterThanOrEqual(0);

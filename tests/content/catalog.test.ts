@@ -26,11 +26,11 @@ describe('content catalog', () => {
     }
   });
 
-  it('lays out 30 plots on a connected road graph', () => {
+  it('lays out 48 plots on a connected road graph', () => {
     const island = catalog.islands[catalog.startIsland]!;
     const { plots, roadNodes, roadEdges, facilities, roadGate } = island.layout;
-    expect(plots).toHaveLength(30);
-    expect(island.maxBuildings).toBe(30);
+    expect(plots).toHaveLength(48);
+    expect(island.maxBuildings).toBe(48);
     const ids = new Set(roadNodes.map((node) => node.id));
     for (const plot of plots) expect(ids.has(plot.roadNode), plot.id).toBe(true);
     for (const facility of facilities) expect(ids.has(facility.roadNode), facility.id).toBe(true);

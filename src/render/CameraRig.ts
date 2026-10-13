@@ -124,6 +124,10 @@ export class CameraRig {
       target.addEventListener(type, handler as EventListener, options);
       this.unbind.push(() => target.removeEventListener(type, handler as EventListener, options));
     };
+    // Any mouse movement, also over the panels, counts as the player being there:
+    // the sightseeing view only starts once the mouse has been still.
+    listen(window, 'pointermove', () => this.wake());
+    listen(window, 'pointerdown', () => this.wake());
     listen(el, 'contextmenu', (event) => event.preventDefault());
     listen(el, 'pointerdown', (event) => {
       this.wake();

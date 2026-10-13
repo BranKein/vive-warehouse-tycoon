@@ -51,6 +51,8 @@ export interface PickupSource extends LogisticsNode {
   reservePickup(item: ItemId, amount: BigNum): void;
   /** Higher means more urgent to collect from. */
   readonly pickupUrgency: number;
+  /** How full the place holding the item is, 0..1. A full output stops production. */
+  fullness(item: ItemId): number;
 }
 
 /** A node that owns carriers. */

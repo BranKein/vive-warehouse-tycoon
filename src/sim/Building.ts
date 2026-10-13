@@ -230,6 +230,11 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
     if (slot) slot.reserved = slot.reserved.add(amount);
   }
 
+  fullness(item: ItemId): number {
+    const slot = this.pickupSlot(item);
+    return slot?.capacity ? Math.min(1, ratio(slot.amount, slot.capacity)) : 0;
+  }
+
   get pickupUrgency(): number {
     return this.wasteRatio;
   }
