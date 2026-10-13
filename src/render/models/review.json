@@ -74,6 +74,9 @@
   "facility.truckYard": {
     "approved": "77-dcc3329f"
   },
+  "prop.cloud": {
+    "approved": "5-c13e57be"
+  },
   "prop.coin": {
     "approved": "2-8831d36b"
   },
@@ -100,6 +103,12 @@
   },
   "prop.pallet": {
     "approved": "8-76e9484d"
+  },
+  "prop.runwayEndLight": {
+    "approved": "2-7df75f76"
+  },
+  "prop.runwayLight": {
+    "approved": "2-fec5ca89"
   },
   "prop.spark": {
     "approved": "2-d7aed0a1"

@@ -46,6 +46,8 @@ export class Environment {
   private props: InstancedModel[] = [];
   /** The board, its rim and the water: slabs with rounded corners, so each has a mesh of its own. */
   private slabs: Mesh[] = [];
+  /** The beach and the sea: flat bands beside the grass. */
+  private shore: Mesh[] = [];
   private layout: IslandLayoutDef | null = null;
   private centre = new Vector3();
   private lightDistance = 300;
@@ -57,7 +59,8 @@ export class Environment {
     private readonly materials: MaterialLibrary,
   ) {
     const g = renderConfig.boxes.ground;
-    this.ground = new Mesh(new PlaneGeometry(g.extent * 2, g.extent * 2), materials.solid(theme.ground.grass));
+    this.ground = new Mesh(new PlaneGeometry(1, 1), materials.solid(theme.ground.grass));
+    this.ground.scale.set(g.extent * 2, g.extent * 2, 1);
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.y = -g.boardThickness;
     this.ground.receiveShadow = true;
@@ -97,13 +100,15 @@ export class Environment {
       slab.geometry.dispose();
     }
     this.slabs = [];
+    // The beach and the water share the ground's geometry, which stays.
+    for (const mesh of this.shore) this.group.remove(mesh);
+    this.shore = [];
     const layout = this.layout;
     if (!layout) return;
     const g = renderConfig.boxes.ground;
     const colors = this.theme.ground;
     const b = layout.bounds;
     this.centre.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
-    this.ground.position.set(this.centre.x, -g.boardThickness, this.centre.z);
 
     const flats = new InstancedModel(this.registry.create(BLOCK_MODEL), 128, { castShadow: false });
     const matrix = new Matrix4();
@@ -133,29 +138,46 @@ export class Environment {
     };
     const grown = (area: Area, by: number): Area => ({ minX: area.minX - by, maxX: area.maxX + by, minZ: area.minZ - by, maxZ: area.maxZ + by });
     const all = (radius: number): CornerRadii => ({ nw: radius, ne: radius, se: radius, sw: radius });
-    slab(grown(b, rimWidth / 2), -g.boardThickness, g.boardThickness - rimDrop, colors.boardRim, all(R + rimWidth / 2));
-    slab(b, -g.boardThickness, g.boardThickness, colors.board, all(R));
     const runway = layout.runway;
     const river = clip(layout.river, b);
+    const low = -g.boardThickness;
+    // The board ends at the shore: its southern edge is a quay, and the water lies beyond it at ground level.
+    const quay = { ...b, maxZ: river.minZ };
+    slab(grown(quay, rimWidth / 2), low, g.boardThickness - rimDrop, colors.boardRim, all(R + rimWidth / 2));
+    slab(quay, low, g.boardThickness, colors.board, all(R));
+    // Grass, beach, shallow and deep water lie side by side in one plane, out to the haze. Nothing is stacked:
+    // surfaces this large flicker where one lies just above another.
+    const reach = g.extent;
+    const beachZ = river.minZ - g.beachWidth;
     const deepZ = river.minZ + (river.maxZ - river.minZ) * 0.45;
+    const band = (mesh: Mesh, minZ: number, maxZ: number): void => {
+      mesh.position.set(this.centre.x, low, (minZ + maxZ) / 2);
+      mesh.scale.set(reach * 2, maxZ - minZ, 1);
+    };
+    band(this.ground, this.centre.z - reach, beachZ);
+    for (const [minZ, maxZ, color] of [
+      [beachZ, river.minZ, colors.sand],
+      [river.minZ, deepZ, colors.water],
+      [deepZ, this.centre.z + reach, colors.waterDeep],
+    ] as const) {
+      const mesh = new Mesh(this.ground.geometry, this.materials.solid(color));
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.receiveShadow = true;
+      band(mesh, minZ, maxZ);
+      this.shore.push(mesh);
+      this.group.add(mesh);
+    }
 
     flats.begin();
-    // The south of the board is a shore: the water that starts on the board runs on as the sea, out to the haze
-    // and past both ends of the board. It lies over the board's southern edge and rim, which end under it.
-    const low = -g.boardThickness;
-    const far = renderConfig.scenery.outskirts.seaReach;
-    const edge = rimWidth / 2;
-    const [beachWidth, stepWidth, stepDrop] = g.beach;
-    const sea = (minZ: number, top: number, color: number): void =>
-      add((b.minX + b.maxX) / 2, low, (minZ + b.maxZ + far) / 2, (b.maxX - b.minX) + far * 2, top - low, b.maxZ + far - minZ, 0, color);
-    sea(river.minZ, g.waterHeight, colors.water);
-    // Well above the shallow water: the two are seen from far away, where a thin gap flickers.
-    sea(deepZ, g.waterHeight + g.deepWaterLift, colors.waterDeep);
-    rect({ ...river, minZ: river.minZ - 2.2, maxZ: river.minZ }, g.runwayHeight + 0.008, colors.sand);
-    // Beyond the board the beach carries the shoreline on, and steps down to the grass.
-    for (const [minX, maxX] of [[b.minX - far, b.minX - edge], [b.maxX + edge, b.maxX + far]] as const) {
-      add((minX + maxX) / 2, low, river.minZ - beachWidth / 2, maxX - minX, g.runwayHeight + 0.008 - low, beachWidth, 0, colors.sand);
-      add((minX + maxX) / 2, low, river.minZ - beachWidth - stepWidth / 2, maxX - minX, g.boardThickness - stepDrop, stepWidth, 0, colors.sand);
+    // A pad that reaches out over the water stands on a pier.
+    for (const facility of layout.facilities) {
+      const sideways = Math.abs(Math.sin(facility.facing)) > 0.5;
+      const halfX = (sideways ? g.facilityPad[1] : g.facilityPad[0]) / 2;
+      const halfZ = (sideways ? g.facilityPad[0] : g.facilityPad[1]) / 2;
+      const minZ = Math.max(facility.z - halfZ, river.minZ - 1);
+      const maxZ = facility.z + halfZ;
+      if (maxZ <= river.minZ) continue;
+      add(facility.x, low, (minZ + maxZ) / 2, halfX * 2 - 0.6, g.boardThickness - 0.02, maxZ - minZ - 0.3, 0, colors.boardRim);
     }
     rect(runway, g.runwayHeight, colors.runway);
     const runwayZ = (runway.minZ + runway.maxZ) / 2;
@@ -245,7 +267,7 @@ export class Environment {
     // The countryside: nothing there casts or takes shadows, the shadow map only covers the board.
     const corridors: Area[] = [
       // The sea and its beach.
-      { minX: -far, maxX: far, minZ: river.minZ - beachWidth - stepWidth - 4, maxZ: far },
+      { minX: -reach, maxX: reach, minZ: beachZ - 4, maxZ: this.centre.z + reach * 2 },
       // Planes come in low from the west of the runway.
       { minX: b.minX - 260, maxX: b.minX, minZ: layout.runway.minZ - 14, maxZ: layout.runway.maxZ + 14 },
     ];

@@ -73,6 +73,20 @@ export class MaterialLibrary {
     return material;
   }
 
+  private readonly veils = new Map<string, MeshBasicMaterial>();
+
+  /** Unlit see-through shade, one per colour and opacity: darkness that deepens behind several of them. */
+  veil(color: number, opacity: number): MeshBasicMaterial {
+    const key = `${color}:${opacity}`;
+    let material = this.veils.get(key);
+    if (!material) {
+      material = new MeshBasicMaterial({ color: new Color(color), transparent: true, opacity, depthWrite: false });
+      this.veils.set(key, material);
+      this.extras.push(material);
+    }
+    return material;
+  }
+
   /** Unlit, optionally see-through material for effects. Not cached: the caller owns its opacity. */
   effect(color: number, opacity = 1, additive = false): MeshBasicMaterial {
     const material = new MeshBasicMaterial({
@@ -102,6 +116,7 @@ export class MaterialLibrary {
     for (const material of this.solids.values()) material.dispose();
     for (const material of this.extras) material.dispose();
     this.solids.clear();
+    this.veils.clear();
     this.extras.length = 0;
   }
 }

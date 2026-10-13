@@ -63,7 +63,7 @@ export const renderConfig = {
     /** A jump longer than this between two ticks is a teleport, not a move. */
     snapDistance: 30,
     /** Radians per second the drawn heading may turn; rounds off corners. */
-    turnRate: 7,
+    turnRate: 5,
     /** Carriers grow in when they first show and shrink away when they leave. */
     appearSec: 0.35,
     disappearSec: 0.3,
@@ -79,6 +79,12 @@ export const renderConfig = {
      * so it stands on the pad and off the road.
      */
     parkInset: { carrier: 2.4, truck: 1.8 },
+    /**
+     * Setting off, a vehicle first backs out the way it came in, this far (to the road), facing the way
+     * it stood; then it turns and drives on. It is done backing by the time the game has moved it `sync`
+     * along its path, so the drawing never falls far behind the game.
+     */
+    backOut: { carrier: 5.4, truck: 7.8, sync: 4 },
     /** A parked vehicle belongs to the site whose centre is within this distance. */
     parkReach: 12,
     /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */
@@ -177,8 +183,6 @@ export const renderConfig = {
       clouds: 12,
       margin: 8,
       reach: 260,
-      /** How far the sea reaches beyond the board, south and to both sides. */
-      seaReach: 1500,
     },
     fenceSegment: 3.2,
   },
@@ -239,13 +243,11 @@ export const renderConfig = {
       boardThickness: 0.6,
       /** Heights of the flat pads above the board; each layer sits a little higher to avoid flicker. */
       /** Water and tarmac lie lowest, so a pad that reaches over them never shares their plane. */
-      waterHeight: 0.025,
-      deepWaterLift: 0.05,
       runwayHeight: 0.04,
       /** Runway lights: distance between two along an edge, how far in from the edge they stand, and how far they keep from where planes taxi off. */
       runwayLights: { step: 7, inset: 0.45, endStep: 1.4, clearance: 3 },
-      /** Beyond the board the beach is this wide, then a step this wide and this much lower leads down to the grass. */
-      beach: [7, 3, 0.3],
+      /** Width of the beach between the grass and the sea. */
+      beachWidth: 5,
       padHeight: 0.06,
       curbHeight: 0.08,
       /** How far the pale curb shows on each side of a road. */

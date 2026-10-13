@@ -19,7 +19,7 @@ import { renderConfig } from './config';
 import { FadingModels } from './FadingModels';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
-import { bounceStretch, log10Of, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
+import { bounceStretch, log10Of, smoothstep, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
 import { carrierModel } from './models/vehicles';
@@ -57,6 +57,12 @@ interface VehicleTrack {
   truck: boolean;
   /** While parked: the way into the site it stands at, which is the way it drove in. */
   parkHeading: number | null;
+  /** While it backs out of a site: the heading it keeps, which is the way it drove in. */
+  backing: number | null;
+  /** Where it stood when it set off, and how far the game has moved it since. */
+  backX: number;
+  backZ: number;
+  backDist: number;
   /** Height of the surface it stands on (road, runway) above the board. */
   lift: number;
   /** Kinds of goods on board, for the crates on a carrier's bed. */
@@ -74,10 +80,12 @@ function vehicleBox(model: string): readonly [number, number, number] {
   return sizes[model.split('.')[1] ?? ''] ?? sizes.fallback!;
 }
 
-/** Wheels stand on the road or the runway, which lie a little above the board. */
+/** Height of what a vehicle stands on, relative to the board: the road, the runway or the sea. */
 function surfaceLift(kind: string): number {
   const ground = renderConfig.boxes.ground;
   if (ROAD_KINDS.has(kind)) return ground.roadHeight;
+  // Ships float on the sea, which lies at ground level, below the board.
+  if (kind === 'ship') return -ground.boardThickness;
   return kind === 'plane' ? ground.runwayHeight : 0;
 }
 
@@ -385,13 +393,31 @@ export class ViewSync {
       const parked = road && vehicle.state !== 'moving';
       let track = this.tracks.get(vehicle.id);
       const parkHeading = parked ? (track?.parkHeading ?? this.headingIntoSite(pose.x, pose.z)) : null;
+      // Setting off, it backs straight out to the road, facing the way it stood, before it turns and drives on.
+      let backing: number | null = null;
+      let backShift: { x: number; z: number } | null = null;
+      if (track && road && !parked) {
+        backing = track.parkHeading ?? track.backing;
+        if (backing !== null) {
+          if (track.parkHeading !== null) {
+            track.backX = track.x + track.shiftX;
+            track.backZ = track.z + track.shiftZ;
+            track.backDist = 0;
+          }
+          track.backDist += Math.hypot(pose.x - track.x, pose.z - track.z);
+          const done = track.backDist / rule.backOut.sync;
+          if (done >= 1) backing = null;
+          else {
+            const reach = (track.truck ? rule.backOut.truck : rule.backOut.carrier) * smoothstep(done);
+            backShift = { x: track.backX - Math.sin(backing) * reach - pose.x, z: track.backZ - Math.cos(backing) * reach - pose.z };
+          }
+        }
+      }
       const shift =
         parkHeading !== null
           ? parkedShift(parkHeading, rule.laneOffset, TRUCK_KINDS.has(vehicle.kind) ? rule.parkInset.truck : rule.parkInset.carrier)
-          : road
-            ? laneShift(pose.heading, rule.laneOffset)
-            : ZERO_SHIFT;
-      const heading = parkHeading ?? pose.heading;
+          : (backShift ?? (road ? laneShift(pose.heading, rule.laneOffset) : ZERO_SHIFT));
+      const heading = parkHeading ?? backing ?? pose.heading;
       if (!track) {
         track = {
           model: this.vehicleModel(vehicle),
@@ -409,6 +435,10 @@ export class ViewSync {
           slow: SLOW_KINDS.has(vehicle.kind),
           truck: TRUCK_KINDS.has(vehicle.kind),
           parkHeading,
+          backing: null,
+          backX: pose.x,
+          backZ: pose.z,
+          backDist: 0,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
           seen: true,
@@ -425,9 +455,12 @@ export class ViewSync {
         track.z = pose.z;
         // Road vehicles swing round instead of flipping when they set off the way they came.
         track.heading = road && steady ? turnToward(track.heading, heading, rule.turnRate * dt) : heading;
-        track.shiftX += (shift.x - track.shiftX) * ease;
-        track.shiftZ += (shift.z - track.shiftZ) * ease;
+        // Backing out is drawn where it is, not eased towards.
+        const follow = backShift ? 1 : ease;
+        track.shiftX += (shift.x - track.shiftX) * follow;
+        track.shiftZ += (shift.z - track.shiftZ) * follow;
         track.parkHeading = parkHeading;
+        track.backing = backing;
         track.age += dt;
         track.gone = -1;
         track.seen = true;

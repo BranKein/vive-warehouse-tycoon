@@ -39,37 +39,46 @@ function cloud(kit: Kit): Object3D {
  * How far the tunnel reaches from the gate it stands on: `front` onto the
  * board (its mouth), `back` away from it, and to each side.
  */
-export const TUNNEL_SIZE = { front: 7.6, back: 13, halfWidth: 8 } as const;
+export const TUNNEL_SIZE = { front: 9.9, back: 7.5, halfWidth: 8 } as const;
 
 /**
  * The tunnel trucks come and go through. Origin on the gate, at the edge of
- * the board; the mouth faces +z, onto the board. A grassy mound with a stone
- * portal; a dark wall a little way in hides whatever is inside, so a truck
- * that stands on the gate cannot be seen and drives out of the dark.
- * The mound reaches below y = 0 because the ground beyond the board lies lower.
+ * the board; the mouth faces +z, onto the board. A short grassy mound with a
+ * deep stone portal in front of it. The portal is open: its walls, its
+ * ceiling and the road show, darker the further in, and a dark wall where
+ * the mound begins hides a truck that stands on the gate, so trucks drive
+ * out of the dark. The mound reaches below y = 0 because the ground beyond
+ * the board lies lower.
  */
 function tunnel(kit: Kit): Object3D {
   const p = kit.theme.props;
   const grass = kit.theme.ground.grassDark;
   const HALF_PI = Math.PI / 2;
   const DROP = 0.7;
-  const MOUTH_Z = 6;
+  /** Where the mound ends and the portal begins, and how deep the portal is. */
+  const WALL_Z = 5.5;
+  const DEPTH = 4;
+  const MID_Z = WALL_Z + DEPTH / 2;
+  const FRONT_Z = WALL_Z + DEPTH;
   const parts: Object3D[] = [];
   // Mound: a barrel vault over the road, closed by a dome at the back.
-  parts.push(kit.barrel(MOUTH_Z + 6, 5.6 + DROP, 14.4, grass, { y: -DROP, z: (MOUTH_Z - 6) / 2, ry: HALF_PI }));
-  parts.push(kit.dome(7.2, 5.6 + DROP, 7, grass, { y: -DROP, z: -6 }));
-  // The dark inside.
-  parts.push(kit.box(8.2, 4.5, 0.5, p.shade, { z: MOUTH_Z - 0.1, r: 0.05 }));
-  // Portal: two piers, a lintel with a cap, a keystone.
-  for (const x of [-4.7, 4.7]) {
-    parts.push(kit.box(1.5, 4.5, 1.7, p.concrete, { x, z: MOUTH_Z + 0.7, r: 0.25 }));
-    parts.push(kit.box(1.8, 0.5, 2, p.rock, { x, z: MOUTH_Z + 0.7, r: 0.15 }));
+  parts.push(kit.barrel(WALL_Z + 2, 5.6 + DROP, 14.4, grass, { y: -DROP, z: (WALL_Z - 2) / 2, ry: HALF_PI }));
+  parts.push(kit.dome(7.2, 5.6 + DROP, 5, grass, { y: -DROP, z: -2 }));
+  // The dark end of what can be seen, and two veils in front of it that dim the way in.
+  parts.push(kit.box(8.2, 4.5, 0.5, p.shade, { z: WALL_Z + 0.15, r: 0.05 }));
+  for (const [z, opacity] of [[WALL_Z + 1.3, 0.5], [WALL_Z + 2.4, 0.32]] as const) {
+    parts.push(kit.box(8.2, 4.5, 0.04, kit.materials.veil(p.shade, opacity), { z, r: 0 }));
   }
-  parts.push(kit.box(11.2, 1.3, 1.7, p.concrete, { y: 4.4, z: MOUTH_Z + 0.7, r: 0.3 }));
-  parts.push(kit.box(11.7, 0.4, 2, p.rock, { y: 5.6, z: MOUTH_Z + 0.7, r: 0.15 }));
-  parts.push(kit.box(1.3, 1.5, 1.9, p.rock, { y: 4.3, z: MOUTH_Z + 0.75, r: 0.2 }));
+  // Portal: two piers and a lintel as deep as the way in, a cap and a keystone at the front.
+  for (const x of [-4.7, 4.7]) {
+    parts.push(kit.box(1.5, 4.5, DEPTH, p.concrete, { x, z: MID_Z, r: 0.25 }));
+    parts.push(kit.box(1.8, 0.5, DEPTH + 0.3, p.rock, { x, z: MID_Z, r: 0.15 }));
+  }
+  parts.push(kit.box(11.2, 1.3, DEPTH, p.concrete, { y: 4.4, z: MID_Z, r: 0.3 }));
+  parts.push(kit.box(11.7, 0.4, DEPTH + 0.3, p.rock, { y: 5.6, z: MID_Z, r: 0.15 }));
+  parts.push(kit.box(1.3, 1.5, 0.6, p.rock, { y: 4.3, z: FRONT_Z - 0.2, r: 0.2 }));
   // Hazard stripe along the top of the opening, and bushes on the mound.
-  parts.push(kit.box(7.6, 0.28, 0.2, p.hazard, { y: 4.06, z: MOUTH_Z + 1.5, r: 0.08 }));
+  parts.push(kit.box(7.6, 0.28, 0.2, p.hazard, { y: 4.06, z: FRONT_Z - 0.05, r: 0.08 }));
   const leaves = kit.theme.props.foliage;
   parts.push(kit.blob(1.5, 1.1, 1.4, leaves[0]!, { x: -4.2, y: 3.6, z: 1.5 }));
   parts.push(kit.blob(1.1, 0.85, 1.1, leaves[2]!, { x: -2.9, y: 4.5, z: -1.2 }));
