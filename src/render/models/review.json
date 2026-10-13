@@ -36,7 +36,7 @@
     "approved": "103-2c238385"
   },
   "building.sawmill": {
-    "approved": "134-a499debe"
+    "approved": "134-c4de6bfe"
   },
   "building.smartHomeFactory": {
     "approved": "103-26fd915c"
@@ -77,8 +77,17 @@
   "vehicle.boxTruck": {
     "note": "백라이트도 노란색으로."
   },
+  "vehicle.cargoPlane": {
+    "note": "불빛나는게 좀 더 있었으면 함"
+  },
+  "vehicle.cargoShip": {
+    "approved": "86-c2e8f8b6"
+  },
   "vehicle.carrier": {
     "approved": "48-7b06b861",
     "note": "백라이트도 노란색으로"
+  },
+  "vehicle.forklift": {
+    "note": "불빛나는게 있었으면 함. 차 위에 비상등같은거?"
   }
 }

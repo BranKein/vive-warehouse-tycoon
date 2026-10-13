@@ -67,7 +67,9 @@ export class Kit {
   box(width: number, height: number, depth: number, paint: Paint, place: Place = {}): Mesh {
     const radius = Math.min(place.r ?? 0.12, width / 2, height / 2, depth / 2);
     const key = `box:${width}:${height}:${depth}:${radius}`;
-    const geometry = this.cached(key, () => new RoundedBoxGeometry(width, height, depth, 2, radius));
+    // A small bevel needs no curve: one segment keeps the triangle count of the many little pieces down.
+    const segments = radius >= 0.2 ? 2 : 1;
+    const geometry = this.cached(key, () => new RoundedBoxGeometry(width, height, depth, segments, radius));
     return this.place(new Mesh(geometry, this.material(paint)), height, place);
   }
 

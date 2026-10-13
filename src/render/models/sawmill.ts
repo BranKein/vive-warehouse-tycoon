@@ -70,7 +70,7 @@ function sawmill(kit: Kit): Object3D {
   parts.push(kit.box(W + 0.1, 0.34, 0.3, palette.accent, { x: CX, y: eave - 0.3, z: front + 0.02, r: 0.08 }));
   parts.push(kit.box(0.3, 0.34, D + 0.1, palette.accent, { x: right + 0.02, y: eave - 0.3, z: CZ, r: 0.08 }));
 
-  parts.push(gableRoof(kit, { cx: CX, cz: CZ, width: W, depth: D, eave, rise: RISE, wall: palette.wall, roof: palette.roof, cap: palette.accent }));
+  parts.push(gableRoof(kit, { cx: CX, cz: CZ, width: W, depth: D, eave, rise: RISE, wall: palette.wall, roof: palette.roof, cap: palette.accent, overhang: 0.42 }));
   parts.push(barnDoor(kit, { cx: CX, wall: front, y: FLOOR, paint: trim }));
 
   // The saw blade on the gable says what the building does.
