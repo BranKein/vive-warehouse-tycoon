@@ -166,6 +166,8 @@ export const renderConfig = {
       dash: [2, 0.28, 5],
       /** The rim is a ledge this much wider than the board and this much lower. */
       rim: [2.4, 0.22],
+      /** Radius of the board's corners, seen from above. */
+      cornerRadius: 7,
       selectionHeight: 0.16,
       /** Gap left around a plot pad so neighbouring plots read as separate. */
       plotInset: 0.7,

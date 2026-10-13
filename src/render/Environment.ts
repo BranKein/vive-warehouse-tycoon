@@ -1,6 +1,7 @@
 import {
   Color,
   DirectionalLight,
+  ExtrudeGeometry,
   Fog,
   Group,
   HemisphereLight,
@@ -8,6 +9,7 @@ import {
   Mesh,
   PlaneGeometry,
   Quaternion,
+  Shape,
   SRGBColorSpace,
   Vector3,
   type Scene,
@@ -40,6 +42,8 @@ export class Environment {
   private flats: InstancedModel | null = null;
   /** Trees and street lamps standing on the board. */
   private props: InstancedModel[] = [];
+  /** The board, its rim and the water: slabs with rounded corners, so each has a mesh of its own. */
+  private slabs: Mesh[] = [];
   private layout: IslandLayoutDef | null = null;
   private centre = new Vector3();
   private lightDistance = 300;
@@ -48,7 +52,7 @@ export class Environment {
     private readonly scene: Scene,
     private readonly registry: ModelRegistry,
     private readonly theme: Theme,
-    materials: MaterialLibrary,
+    private readonly materials: MaterialLibrary,
   ) {
     const g = renderConfig.boxes.ground;
     this.ground = new Mesh(new PlaneGeometry(g.extent * 2, g.extent * 2), materials.solid(theme.ground.grass));
@@ -86,6 +90,11 @@ export class Environment {
       prop.dispose();
     }
     this.props = [];
+    for (const slab of this.slabs) {
+      this.group.remove(slab);
+      slab.geometry.dispose();
+    }
+    this.slabs = [];
     const layout = this.layout;
     if (!layout) return;
     const g = renderConfig.boxes.ground;
@@ -106,18 +115,37 @@ export class Environment {
       scale.set(w, h, d);
       flats.add(matrix.compose(position, rotation, scale), tint.setHex(color));
     };
-    const rect = (r: { minX: number; maxX: number; minZ: number; maxZ: number }, h: number, color: number): void =>
-      add((r.minX + r.maxX) / 2, 0, (r.minZ + r.maxZ) / 2, r.maxX - r.minX, h, r.maxZ - r.minZ, 0, color);
+    const rect = (r: Area, h: number, color: number): void => {
+      if (r.maxX > r.minX && r.maxZ > r.minZ) add((r.minX + r.maxX) / 2, 0, (r.minZ + r.maxZ) / 2, r.maxX - r.minX, h, r.maxZ - r.minZ, 0, color);
+    };
+
+    // The board on a wider, lower rim; the river follows the board's rounded corners where it meets them.
+    const [rimWidth, rimDrop] = g.rim;
+    const R = g.cornerRadius;
+    const slab = (area: Area, bottom: number, height: number, color: number, radii: CornerRadii): void => {
+      const mesh = new Mesh(slabGeometry(area, height, radii), this.materials.solid(color));
+      mesh.position.y = bottom;
+      mesh.receiveShadow = true;
+      this.slabs.push(mesh);
+      this.group.add(mesh);
+    };
+    const grown = (area: Area, by: number): Area => ({ minX: area.minX - by, maxX: area.maxX + by, minZ: area.minZ - by, maxZ: area.maxZ + by });
+    const all = (radius: number): CornerRadii => ({ nw: radius, ne: radius, se: radius, sw: radius });
+    slab(grown(b, rimWidth / 2), -g.boardThickness, g.boardThickness - rimDrop, colors.boardRim, all(R + rimWidth / 2));
+    slab(b, -g.boardThickness, g.boardThickness, colors.board, all(R));
+    // A corner of the water is rounded only where it is a corner of the board too.
+    const river = clip(layout.river, b);
+    const waterCorners = (area: Area): CornerRadii => ({
+      nw: area.minX <= b.minX && area.minZ <= b.minZ ? R : 0,
+      ne: area.maxX >= b.maxX && area.minZ <= b.minZ ? R : 0,
+      se: area.maxX >= b.maxX && area.maxZ >= b.maxZ ? R : 0,
+      sw: area.minX <= b.minX && area.maxZ >= b.maxZ ? R : 0,
+    });
+    const deep = { ...river, minZ: river.minZ + (river.maxZ - river.minZ) * 0.45 };
+    slab(river, 0, g.waterHeight, colors.water, waterCorners(river));
+    slab(deep, 0, g.waterHeight + 0.008, colors.waterDeep, waterCorners(deep));
 
     flats.begin();
-    // The board on a wider, lower rim.
-    const [rimWidth, rimDrop] = g.rim;
-    add(this.centre.x, -g.boardThickness, this.centre.z, b.maxX - b.minX + rimWidth, g.boardThickness - rimDrop, b.maxZ - b.minZ + rimWidth, 0, colors.boardRim);
-    add(this.centre.x, -g.boardThickness, this.centre.z, b.maxX - b.minX, g.boardThickness, b.maxZ - b.minZ, 0, colors.board);
-    // Layers from the lowest up; no two of them share a height, so nothing flickers where they overlap.
-    const river = layout.river;
-    rect(river, g.waterHeight, colors.water);
-    rect({ ...river, minZ: river.minZ + (river.maxZ - river.minZ) * 0.45 }, g.waterHeight + 0.008, colors.waterDeep);
     rect({ ...river, minZ: river.minZ - 2.2, maxZ: river.minZ }, g.runwayHeight + 0.008, colors.sand);
     const runway = layout.runway;
     rect(runway, g.runwayHeight, colors.runway);
@@ -147,9 +175,11 @@ export class Environment {
       }
     }
     // A square on every node closes the corners and caps the dead ends.
+    // Cut off at the edge of the board: the gate road ends there instead of sticking out.
+    const square = (x: number, z: number, size: number): Area => clip({ minX: x - size / 2, maxX: x + size / 2, minZ: z - size / 2, maxZ: z + size / 2 }, b);
     for (const node of layout.roadNodes) {
-      add(node.x, 0, node.z, curb, g.curbHeight, curb, 0, colors.roadEdge);
-      add(node.x, 0, node.z, layout.roadWidth, g.roadHeight, layout.roadWidth, 0, colors.road);
+      rect(square(node.x, node.z, curb), g.curbHeight, colors.roadEdge);
+      rect(square(node.x, node.z, layout.roadWidth), g.roadHeight, colors.road);
     }
     flats.end();
     this.flats = flats;
@@ -227,12 +257,55 @@ export class Environment {
     this.flats = null;
     for (const prop of this.props) prop.dispose();
     this.props = [];
+    for (const slab of this.slabs) slab.geometry.dispose();
+    this.slabs = [];
     this.ground.geometry.dispose();
     this.sun.shadow.map?.dispose();
     this.scene.remove(this.group);
     this.scene.fog = null;
     this.scene.background = null;
   }
+}
+
+interface Area {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+/** Corner radii of a slab seen from above: north is -z, west is -x. */
+interface CornerRadii {
+  nw: number;
+  ne: number;
+  se: number;
+  sw: number;
+}
+
+const clip = (area: Area, to: Area): Area => ({
+  minX: Math.max(area.minX, to.minX),
+  maxX: Math.min(area.maxX, to.maxX),
+  minZ: Math.max(area.minZ, to.minZ),
+  maxZ: Math.min(area.maxZ, to.maxZ),
+});
+
+/** Flat slab over `area` with its underside at y = 0, `height` thick, each corner rounded by its own radius. */
+function slabGeometry(area: Area, height: number, radii: CornerRadii): ExtrudeGeometry {
+  // Drawn in the shape's own plane with y = -z, then laid flat.
+  const shape = new Shape();
+  const { minX, maxX, minZ, maxZ } = area;
+  shape.moveTo(minX + radii.nw, -minZ);
+  shape.lineTo(maxX - radii.ne, -minZ);
+  shape.quadraticCurveTo(maxX, -minZ, maxX, -(minZ + radii.ne));
+  shape.lineTo(maxX, -(maxZ - radii.se));
+  shape.quadraticCurveTo(maxX, -maxZ, maxX - radii.se, -maxZ);
+  shape.lineTo(minX + radii.sw, -maxZ);
+  shape.quadraticCurveTo(minX, -maxZ, minX, -(maxZ - radii.sw));
+  shape.lineTo(minX, -(minZ + radii.nw));
+  shape.quadraticCurveTo(minX, -minZ, minX + radii.nw, -minZ);
+  const geometry = new ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: 10 });
+  geometry.rotateX(-Math.PI / 2);
+  return geometry;
 }
 
 const setRgb = (color: Color, rgb: Rgb): Color => color.setRGB(rgb[0], rgb[1], rgb[2], SRGBColorSpace);
