@@ -1,1 +1,26 @@
-{}
+{
+  "building.applianceFactory": {
+    "approved": "98-14785947"
+  },
+  "building.bottleFactory": {
+    "approved": "96-44849708"
+  },
+  "building.eBikeFactory": {
+    "approved": "112-1b5c4b02"
+  },
+  "building.flourMill": {
+    "note": "풍차의 아랫부분이 건물과 겹침"
+  },
+  "building.furnitureFactory": {
+    "approved": "113-b29e6595"
+  },
+  "building.glassworks": {
+    "approved": "92-66510cc"
+  },
+  "building.handmadeWorkshop": {
+    "approved": "119-8601d0f9"
+  },
+  "vehicle.carrier": {
+    "note": "헤드라이트 노란색?"
+  }
+}

@@ -56,9 +56,10 @@ function flourMill(kit: Kit): Object3D {
 
   // Sails on a shaft out of the cap.
   const hubY = bodyY + BODY - 0.1;
-  const hubZ = TZ + 1.95;
-  parts.push(pipe(kit, 0.14, 1.1, 'z', TX, hubY, hubZ - 0.5, p.darkMetal));
-  const wheel = sails(kit, 3.15, p.sign, p.wood);
+  // Far enough out that the lowest sail clears the gallery ring and the foot of the tower.
+  const hubZ = TZ + 2.4;
+  parts.push(pipe(kit, 0.14, 1.6, 'z', TX, hubY, hubZ - 0.75, p.darkMetal));
+  const wheel = sails(kit, 2.9, p.sign, p.wood);
   wheel.position.set(TX, hubY, hubZ);
   wheel.rotation.z = 0.4;
   parts.push(wheel);
