@@ -284,6 +284,16 @@ describe('saving', () => {
     expect(largestStep).toBeLessThan(0.03);
   });
 
+  it('auto mode takes an unlock it can pay for before a cheaper upgrade', () => {
+    const game = createGame({ catalog, seed: 2 });
+    game.grant(250);
+    game.setAutoPilot(true);
+    game.tick(seconds(1));
+    // 250 covers the 200 waste disposal unlock; many upgrades and buildings are cheaper than that.
+    const unlocked = game.snapshot().unlocks.find((unlock) => unlock.id === 'unlock.building.wasteDisposal')!;
+    expect(unlocked.unlocked).toBe(true);
+  });
+
   it('auto mode builds near the truck yard first', () => {
     const game = createGame({ catalog, seed: 8 });
     game.grant(1e4);

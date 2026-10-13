@@ -55,7 +55,10 @@ export function createUnlocksTab(ctx: UIContext) {
   return {
     el,
     update(frame: Frame): void {
-      list.sync(frame.snapshot.unlocks.map((unlock) => ({ unlock, frame })));
+      // What is still to be unlocked comes first; the finished ones sink to the bottom.
+      const open = frame.snapshot.unlocks.filter((unlock) => !unlock.unlocked);
+      const done = frame.snapshot.unlocks.filter((unlock) => unlock.unlocked);
+      list.sync([...open, ...done].map((unlock) => ({ unlock, frame })));
     },
   };
 }

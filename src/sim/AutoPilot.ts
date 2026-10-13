@@ -12,6 +12,8 @@ interface Goal {
   /** Current price; null when the goal can no longer be bought. */
   cost(): BigNum | null;
   buy(): CommandResult;
+  /** Unlocks are taken ahead of cheaper goals once the money covers them. */
+  unlock?: boolean;
 }
 
 /** What auto mode needs to see of the game. */
@@ -27,8 +29,8 @@ export interface AutoPilotHost {
 }
 
 /**
- * Plays the game on its own: always saves up for the cheapest thing that can
- * be bought and buys it. Only acts on the watched island.
+ * Plays the game on its own: saves up for the cheapest thing that can be
+ * bought and buys it, but takes an unlock first whenever the money covers one. Only acts on the watched island.
  */
 /** Auto mode builds on one of this many empty plots nearest the truck yard. */
 const NEAREST_PLOTS = 3;
@@ -48,21 +50,28 @@ export class AutoPilot {
     if (!this.enabled) return;
     if (tick % secondsToTicks(this.host.balance.autoPilot.checkEverySec) !== 0) return;
     // Prices and options change as things are bought, so the goal is picked afresh every time.
-    this.goal = this.cheapest();
+    this.goal = this.pick();
     const cost = this.goal?.cost();
     if (!this.goal || !cost || !this.host.money.gte(cost)) return;
     this.goal.buy();
-    this.goal = this.cheapest();
+    this.goal = this.pick();
   }
 
-  /** The cheapest goal; among equally cheap ones the first listed wins. */
-  private cheapest(): Goal | null {
+  /**
+   * An unlock that the money already covers comes first, even when an upgrade
+   * is cheaper; otherwise the cheapest goal. Among equally cheap ones the first listed wins.
+   */
+  private pick(): Goal | null {
+    const money = this.host.money;
     let best: { goal: Goal; cost: BigNum } | null = null;
+    let unlock: { goal: Goal; cost: BigNum } | null = null;
     for (const goal of this.candidates()) {
       const cost = goal.cost();
-      if (cost && (!best || cost.lt(best.cost))) best = { goal, cost };
+      if (!cost) continue;
+      if (!best || cost.lt(best.cost)) best = { goal, cost };
+      if (goal.unlock && money.gte(cost) && (!unlock || cost.lt(unlock.cost))) unlock = { goal, cost };
     }
-    return best?.goal ?? null;
+    return (unlock ?? best)?.goal ?? null;
   }
 
   /** Everything that can be bought right now, ignoring price. */
@@ -75,6 +84,7 @@ export class AutoPilot {
         view: { key: 'auto.target.unlock', params: { unlock: unlock.id } },
         cost: () => unlock.cost,
         buy: () => commands.unlock(unlock.id),
+        unlock: true,
       });
     }
 
