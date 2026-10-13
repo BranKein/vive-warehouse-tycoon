@@ -23,7 +23,7 @@ import { bounceStretch, log10Of, smoothstep, pileCrateCount, pileHeight, pileSlo
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
 import { carrierModel } from './models/vehicles';
-import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, type Leaving, pilesToShow, turnToward, vehicleFade, vehiclePoses } from './sync';
+import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, type Leaving, pilesToShow, vehicleFade, vehiclePoses } from './sync';
 import { itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -468,8 +468,7 @@ export class ViewSync {
         track.x = pose.x;
         track.y = pose.y;
         track.z = pose.z;
-        // Road vehicles swing round instead of flipping when they set off the way they came.
-        track.heading = road && steady && leaveHeading === null ? turnToward(track.heading, heading, rule.turnRate * dt) : heading;
+        track.heading = heading;
         // Backing out is drawn where it is, not eased towards.
         const follow = leaveShift ? 1 : ease;
         track.shiftX += (shift.x - track.shiftX) * follow;

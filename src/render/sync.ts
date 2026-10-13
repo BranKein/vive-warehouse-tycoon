@@ -105,12 +105,6 @@ export function vehicleFade(age: number, gone: number, appearSec: number, disapp
   return grown * (1 - smoothstep(disappearSec > 0 ? clamp01(gone / disappearSec) : 1));
 }
 
-/** `from` turned towards `to` the short way round, by at most `maxStep` radians. */
-export function turnToward(from: number, to: number, maxStep: number): number {
-  const turn = Math.atan2(Math.sin(to - from), Math.cos(to - from));
-  return Math.abs(turn) <= maxStep ? to : from + Math.sign(turn) * maxStep;
-}
-
 /**
  * Where a parked road vehicle is drawn, as a shift from the loading point the
  * game puts it at: it stays on the lane it drove in on and pulls `inset`

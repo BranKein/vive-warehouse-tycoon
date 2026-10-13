@@ -4,7 +4,7 @@ import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
-import { buildingKey, diffKeys, backOutPose, laneShift, pilesToShow, vehiclePoses, vehicleFade, turnToward, parkedShift, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, backOutPose, laneShift, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -171,13 +171,6 @@ describe('vehicles on the road', () => {
     expect(vehicleFade(5, 0.5, 1, 1)).toBeCloseTo(0.5);
     expect(vehicleFade(5, 1, 1, 1)).toBe(0);
     expect(vehicleFade(Infinity, -1, 1, 1)).toBe(1);
-  });
-
-  it('turns the short way round, no faster than allowed', () => {
-    expect(turnToward(0, 1, 0.25)).toBeCloseTo(0.25);
-    expect(turnToward(0, 0.1, 0.25)).toBeCloseTo(0.1);
-    // From just short of half a turn one way to just short of it the other: across the back, not all the way round.
-    expect(turnToward(3, -3, 0.1)).toBeCloseTo(3.1);
   });
 
   it('backs out straight, then round a curve, at one unit of the way per unit of distance', () => {

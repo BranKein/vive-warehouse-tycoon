@@ -63,7 +63,7 @@ export const renderConfig = {
     /** A jump longer than this between two ticks is a teleport, not a move. */
     snapDistance: 30,
     /** Radians per second the drawn heading may turn; rounds off corners. */
-    turnRate: 5,
+    turnRate: 7,
     /** Carriers grow in when they first show and shrink away when they leave. */
     appearSec: 0.35,
     disappearSec: 0.3,
