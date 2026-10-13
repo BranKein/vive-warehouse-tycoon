@@ -875,6 +875,41 @@
   gap: 8px;
 }
 
+.wt-looks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.wt-ui .wt-look {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 4px 6px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  font-weight: 700;
+  color: var(--wt-ink-soft);
+}
+
+.wt-ui .wt-look:hover {
+  color: var(--wt-ink);
+}
+
+.wt-ui .wt-look.is-active {
+  border-color: var(--wt-ink-soft);
+  background: var(--wt-cream);
+  color: var(--wt-ink);
+}
+
+.wt-look-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .wt-settings .wt-seg {
   align-self: flex-start;
 }

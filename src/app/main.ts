@@ -113,6 +113,7 @@ async function start(): Promise<void> {
     catalog,
     commands,
     saves,
+    looks: renderer.looks,
     onSelectionChange: setSelection,
   });
 

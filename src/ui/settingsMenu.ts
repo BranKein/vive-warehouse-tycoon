@@ -42,6 +42,25 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
     return { speed: value, el };
   });
 
+  // Looks: a small picture of the game in each, so the choice can be seen before it is made.
+  const lookTitle = h('div', 'wt-section-title');
+  const lookGroup = h('div', 'wt-looks');
+  lookGroup.setAttribute('role', 'group');
+  const lookButtons = (ctx.looks?.names ?? []).map((name) => {
+    const picture = h('img', 'wt-look-img') as HTMLImageElement;
+    picture.src = `${import.meta.env.BASE_URL}looks/${name}.jpg`;
+    picture.alt = '';
+    picture.loading = 'lazy';
+    const label = h('span', 'wt-look-name');
+    const el = button('wt-look', () => {
+      ctx.looks?.set(name);
+      render();
+    });
+    el.append(picture, label);
+    lookGroup.append(el);
+    return { name, el, label };
+  });
+
   const github = button('wt-btn', () => openLink(LINKS.github));
   const kofi = button('wt-btn', () => openLink(LINKS.kofi));
   setDisabled(kofi, !LINKS.kofi);
@@ -56,6 +75,7 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
     h('div', 'wt-settings-row', soundButton, soundHint),
     speedTitle,
     speedGroup,
+    ...(lookButtons.length > 0 ? [lookTitle, lookGroup] : []),
     h('div', 'wt-menu-foot wt-settings-links', github, kofi),
   );
   el.setAttribute('role', 'dialog');
@@ -84,6 +104,14 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
       setText(speedButton, value === 0 ? tr.t('speed.pause') : tr.t('speed.times', { n: value }));
       setClass(speedButton, 'is-active', value === speed);
       setAttr(speedButton, 'aria-pressed', String(value === speed));
+    }
+
+    setText(lookTitle, tr.t('settings.look'));
+    const look = ctx.looks?.current();
+    for (const { name, el: lookButton, label } of lookButtons) {
+      setText(label, tr.tx(`look.${name}`));
+      setClass(lookButton, 'is-active', name === look);
+      setAttr(lookButton, 'aria-pressed', String(name === look));
     }
 
     setText(github, tr.t('settings.github'));

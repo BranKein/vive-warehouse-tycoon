@@ -10,7 +10,6 @@
  * notes are saved through the dev server into models/review.json.
  */
 import {
-  ACESFilmicToneMapping,
   Box3,
   Color,
   DirectionalLight,
@@ -29,6 +28,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { renderConfig } from './config';
 import { celestialState, rgbToHex, sampleDayNight } from './dayNight';
+import { applyLook, DEFAULT_LOOK, LOOKS } from './looks';
 import { MaterialLibrary } from './materials';
 import { ModelRegistry } from './ModelRegistry';
 import { auditModel, modelFingerprint, type AuditIssue } from './models/audit';
@@ -65,8 +65,7 @@ const padInput = document.querySelector<HTMLInputElement>('#pad')!;
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFShadowMap;
-renderer.toneMapping = ACESFilmicToneMapping;
-renderer.toneMappingExposure = renderConfig.exposure;
+applyLook(renderer, LOOKS[DEFAULT_LOOK]);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const materials = new MaterialLibrary(theme);

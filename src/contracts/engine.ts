@@ -34,6 +34,13 @@ export type Selection =
 export type PickTarget = Selection | { type: 'specialCargo'; id: string };
 
 /** The 3D view. Implemented in `src/render`. */
+/** The looks (colour grades) the picture can be drawn in, and the one in use. Remembered by the renderer. */
+export interface LookControl {
+  readonly names: readonly string[];
+  current(): string;
+  set(name: string): void;
+}
+
 export interface GameRenderer {
   /**
    * Draws one frame. `prev` and `curr` are the snapshots of the last two
@@ -54,6 +61,7 @@ export interface GameRenderer {
    */
   onVehicleAnchor(listener: (anchor: ScreenPoint | null) => void): void;
   handleEvents(events: GameEvent[]): void;
+  readonly looks: LookControl;
   dispose(): void;
 }
 
@@ -73,6 +81,8 @@ export interface UIDeps {
   saves: SaveController;
   /** Called when the player changes the selection from the UI side. */
   onSelectionChange(selection: Selection): void;
+  /** Lets the settings offer the looks; left out where there is no 3D view. */
+  looks?: LookControl;
 }
 
 /** The HTML overlay. Implemented in `src/ui`. */

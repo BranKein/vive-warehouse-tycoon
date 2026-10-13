@@ -53,12 +53,17 @@ export class Environment {
   private centre = new Vector3();
   private lightDistance = 300;
 
+  /** The light scales of `look` apply from the next frame. */
+  setLook(look: Look): void {
+    this.look = look;
+  }
+
   constructor(
     private readonly scene: Scene,
     private readonly registry: ModelRegistry,
     private readonly theme: Theme,
     private readonly materials: MaterialLibrary,
-    private readonly look: Look = LOOKS[DEFAULT_LOOK],
+    private look: Look = LOOKS[DEFAULT_LOOK],
   ) {
     const g = renderConfig.boxes.ground;
     this.ground = new Mesh(new PlaneGeometry(1, 1), materials.solid(theme.ground.grass));

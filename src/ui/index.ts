@@ -64,6 +64,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     catalog: deps.catalog,
     commands: deps.commands,
     saves: deps.saves,
+    ...(deps.looks ? { looks: deps.looks } : {}),
     tr,
     select(next) {
       if (sameSelection(selection, next)) return;

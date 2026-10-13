@@ -1,4 +1,4 @@
-import type { CommandResult, ContentCatalog, GameCommands, GameSnapshot, SaveController, Selection, UnlockView } from '@/contracts';
+import type { CommandResult, ContentCatalog, GameCommands, GameSnapshot, LookControl, SaveController, Selection, UnlockView } from '@/contracts';
 import type { Translator } from './text';
 
 export type ToastKind = 'info' | 'good' | 'error';
@@ -9,6 +9,7 @@ export interface UIContext {
   readonly catalog: ContentCatalog;
   readonly commands: GameCommands;
   readonly saves: SaveController;
+  readonly looks?: LookControl;
   readonly tr: Translator;
   /** Changes the selection from the UI side and tells the rest of the app. */
   select(selection: Selection): void;

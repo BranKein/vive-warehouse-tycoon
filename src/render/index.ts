@@ -7,7 +7,7 @@ import { Effects } from './Effects';
 import { siteToWorld } from './layout';
 import { renderConfig } from './config';
 import { Environment } from './Environment';
-import { applyLook, DEFAULT_LOOK, isLook, LOOKS } from './looks';
+import { applyLook, DEFAULT_LOOK, isLook, LOOK_NAMES, LOOK_STORAGE_KEY, LOOKS, type LookName } from './looks';
 import { MaterialLibrary } from './materials';
 import { clamp, pickNearest, pointerToNdc, type Ray } from './math';
 import { ModelRegistry } from './ModelRegistry';
@@ -40,8 +40,14 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFShadowMap;
-  const wanted = import.meta.env.DEV ? new URLSearchParams(location.search).get('look') : null;
-  const look = LOOKS[isLook(wanted) ? wanted : DEFAULT_LOOK];
+  let lookName: LookName = DEFAULT_LOOK;
+  try {
+    const remembered = globalThis.localStorage?.getItem(LOOK_STORAGE_KEY);
+    if (isLook(remembered)) lookName = remembered;
+  } catch {
+    // No storage (private window): the default look.
+  }
+  const look = LOOKS[lookName];
   applyLook(renderer, look);
 
   const materials = new MaterialLibrary(theme);
@@ -182,6 +188,21 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
   return {
     models,
+    looks: {
+      names: LOOK_NAMES,
+      current: () => lookName,
+      set(name: string): void {
+        if (!isLook(name) || name === lookName) return;
+        lookName = name;
+        applyLook(renderer, LOOKS[name]);
+        environment.setLook(LOOKS[name]);
+        try {
+          globalThis.localStorage?.setItem(LOOK_STORAGE_KEY, name);
+        } catch {
+          // Not remembered, but it still applies.
+        }
+      },
+    },
     render(prev: GameSnapshot, curr: GameSnapshot, alpha: number, realTimeSec: number): void {
       if (disposed) return;
       if (curr.island.id !== islandId) {
