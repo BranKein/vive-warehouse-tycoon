@@ -89,7 +89,7 @@ export const BALANCE: Balance = {
   storage: { inputBufferSec: 40, minInputCycles: 2, outputBufferSec: 150, minOutputCycles: 2 },
   waste: { limitSec: 120, minLimitCycles: 4, slowdown: 0.5, source: 'wasteClogged' },
   weight: { slowPerWeight: 0.15, minFactor: 0.3, carrierSensitivity: 0.5, inboundSensitivity: 0.5 },
-  carriers: { model: 'vehicle.carrier', speed: 12, baseCount: 1, baseLoad: 6, handlingSec: 1, maxStops: 4 },
+  carriers: { model: 'vehicle.carrier', speed: 12, baseCount: 1, baseLoad: 12, handlingSec: 1, maxStops: 4 },
   saleCarriers: { baseCount: 2, baseLoad: 20, maxStops: 8, minFill: 0.6, urgentFullness: 0.5 },
   channels: {
     backlogLoads: 2,
