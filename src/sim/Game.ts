@@ -276,6 +276,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     if (!this.isUnlocked(def.unlock)) return fail('locked');
     if (island.buildingAt(plotId)) return fail('plotOccupied');
     if (island.isFull) return fail('islandFull');
+    if (island.countOf(typeId) >= def.maxCount) return fail('typeFull');
     const cost = island.costOf(def);
     if (!this.trySpend(cost)) return fail('notEnoughMoney');
     const building = island.build(plotId, typeId, cost);

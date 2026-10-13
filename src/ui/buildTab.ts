@@ -119,12 +119,15 @@ export function createBuildTab(ctx: UIContext) {
               ? `${formatRecipeSide(tr, recipeDef.inputs)} ${tr.t('recipe.arrow')} ${formatRecipeSide(tr, recipeDef.outputs)}`
               : '',
           );
-          setText(built, tr.t('build.built', { count: option.builtCount }));
+          setText(built, tr.t('build.built', { count: option.builtCount, max: option.maxCount }));
           setHidden(built, option.builtCount === 0);
           setClass(row, 'is-locked', !option.unlocked);
           if (option.unlocked) {
             setText(action, tr.t('build.action', { cost: formatAmount(option.cost) }));
-            setDisabled(action, !option.affordable || item.full || item.targetPlot === null);
+            setDisabled(
+              action,
+              !option.affordable || item.full || item.targetPlot === null || option.builtCount >= option.maxCount,
+            );
           } else {
             const unlock = option.unlockId ? frame.unlocks.get(option.unlockId) : undefined;
             setText(

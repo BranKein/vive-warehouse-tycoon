@@ -64,6 +64,8 @@ export interface BuildingDef {
   buildCost: number;
   /** Each additional building of the same type costs this many times more. */
   buildCostGrowth: number;
+  /** At most this many buildings of the type may stand on an island. */
+  maxCount: number;
   /** Multiplies the base cost of every upgrade track on this building type. */
   upgradeCostScale: number;
   /** Null means available from the start. */

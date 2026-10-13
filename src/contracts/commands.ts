@@ -15,6 +15,7 @@ export type CommandFailure =
   | 'locked'
   | 'plotOccupied'
   | 'islandFull'
+  | 'typeFull'
   | 'maxLevel'
   | 'notFound'
   | 'requirementsNotMet'

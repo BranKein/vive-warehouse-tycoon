@@ -230,6 +230,7 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
           unlockId: def.unlock,
           cost,
           affordable: money.gte(cost),
+          maxCount: def.maxCount,
           builtCount: builtCount(typeId),
         };
       }),

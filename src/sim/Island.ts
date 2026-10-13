@@ -393,6 +393,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
           cost,
           affordable: money.gte(cost),
           builtCount: this.countOf(typeId),
+          maxCount: def.maxCount,
         };
       }),
       specialCargo,

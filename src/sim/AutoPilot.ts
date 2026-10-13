@@ -81,6 +81,7 @@ export class AutoPilot {
     for (const typeId of island.def.buildingTypes) {
       const def = island.catalog.buildings[typeId];
       if (!def || !island.isUnlocked(def.unlock) || empty <= 0) continue;
+      if (island.countOf(typeId) >= def.maxCount) continue;
       if (island.countOf(typeId) > 0 && spare <= 0) continue;
       goals.push({
         view: { key: 'auto.target.build', params: { building: typeId } },

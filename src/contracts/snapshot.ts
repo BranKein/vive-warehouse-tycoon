@@ -122,6 +122,8 @@ export interface BuildOptionView {
   cost: BigNum;
   affordable: boolean;
   builtCount: number;
+  /** No more of this type can be built once `builtCount` reaches it. */
+  maxCount: number;
 }
 
 export interface UnlockView {
