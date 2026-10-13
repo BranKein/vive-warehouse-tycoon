@@ -87,6 +87,8 @@ interface RoadTrack {
   lagFrom: number;
   /** A sideways step left over when it went back onto the trail, smoothed away from `from` on. */
   slip: { x: number; z: number; from: number } | null;
+  /** Units per second it pulls in at once the game has stopped it: fast enough to be in before it sets off again. */
+  pull: number;
   /** True once it stands at its site; false while it is still driving in, or out on the road. */
   parked: boolean;
   /** The way into the site it stands at, which is the way it drove in. */
@@ -139,6 +141,8 @@ export class ViewSync {
   /** Ships and planes while they fade in or out. */
   private readonly fading: FadingModels;
   private gate: GroundPoint | null = null;
+  /** How fast the game runs (0 paused, 1, 2, 4): what happens in game time is drawn that much faster. */
+  private gameSpeed = 1;
   /** Buildings and facilities that are hopping, by id, with the seconds since they started. */
   private readonly bounces = new Map<string, number>();
   /** False until the first frame of a layout has been drawn: what is there then does not grow in. */
@@ -408,6 +412,7 @@ export class ViewSync {
       this.tracks.clear();
       this.settled = false;
     }
+    this.gameSpeed = curr.speed;
     for (const track of this.tracks.values()) track.seen = false;
     const drawn = vehiclePoses(prev ? prev.island.vehicles : null, list, alpha, rule.snapDistance);
     for (let index = 0; index < drawn.length; index += 1) {
@@ -432,7 +437,7 @@ export class ViewSync {
           slow: SLOW_KINDS.has(vehicle.kind),
           truck: TRUCK_KINDS.has(vehicle.kind),
           road: onRoad
-            ? { trail: [{ x: pose.x, z: pose.z, d: 0 }], dist: 0, floor: 0, at: 0, speed: 0, lag: 0, lagFrom: 0, slip: null, parked: false, parkHeading: null, leaving: null }
+            ? { trail: [{ x: pose.x, z: pose.z, d: 0 }], dist: 0, floor: 0, at: 0, speed: 0, lag: 0, lagFrom: 0, slip: null, pull: 0, parked: false, parkHeading: null, leaving: null }
             : null,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
@@ -543,9 +548,11 @@ export class ViewSync {
       }
       const into = road.parkHeading ?? pose.heading;
       const target = road.parkHeading === null ? ZERO_SHIFT : parkedShift(into, rule.laneOffset, inset);
-      const ease = fresh ? 1 : 1 - Math.exp(-rule.laneDamping * dt);
-      track.shiftX += (target.x - track.shiftX) * ease;
-      track.shiftZ += (target.z - track.shiftZ) * ease;
+      const gap = Math.hypot(target.x - track.shiftX, target.z - track.shiftZ);
+      const step = fresh ? gap : Math.max(road.pull, road.speed, 1) * dt;
+      const part = gap <= step ? 1 : step / gap;
+      track.shiftX += (target.x - track.shiftX) * part;
+      track.shiftZ += (target.z - track.shiftZ) * part;
       track.heading = into;
       return;
     }
@@ -554,6 +561,7 @@ export class ViewSync {
       // Setting off. It waits where it stands until the game has taken it round the corner onto the road,
       // which shows which way it has to back out.
       road.parked = false;
+      road.pull = 0;
       road.trail = [{ x: track.x, z: track.z, d: road.dist - Math.max(0, moved) }, { x: pose.x, z: pose.z, d: road.dist }];
       road.floor = road.dist;
       road.at = road.dist;
@@ -597,8 +605,14 @@ export class ViewSync {
     }
 
     // On the road: drawn on the way it came, steering by a point ahead and one behind.
-    if (stopped) road.at = Math.min(road.at + road.speed * dt, road.dist + reach);
-    else {
+    if (stopped) {
+      // The game has it at its stop already and will not keep it there long: it drives the rest of the way
+      // in, faster than usual if it has far to go.
+      const left = road.dist + reach - road.at + inset;
+      road.pull = Math.max(road.pull, road.speed, this.gameSpeed > 0 ? (left * this.gameSpeed) / rule.arriveSec : 0);
+      road.at = Math.min(road.at + road.pull * dt, road.dist + reach);
+    } else {
+      road.pull = 0;
       const lag = road.lag * (1 - smoothstep((road.dist - road.lagFrom) / back.catchUp));
       road.at = Math.max(road.at, road.dist - reach - lag);
     }

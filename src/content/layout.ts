@@ -125,10 +125,10 @@ export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   roadGate: 'gate',
   // Ships and planes come in from the west, so they are seen travelling the length of the board.
   // Both lanes start over the board: the view fades vehicles in and out at the first point.
+  // The ship keeps one straight line along the quay, clear of the end of the wharf, up to its berth at the dock.
   shipLane: [
     { x: GATE_X + 18, y: 0, z: SOUTH_ROAD_Z + 33 },
-    { x: EAST_X - 22, y: 0, z: SOUTH_ROAD_Z + 33 },
-    { x: EAST_X + 2, y: 0, z: SOUTH_ROAD_Z + 29 },
+    { x: EAST_X + 2, y: 0, z: SOUTH_ROAD_Z + 33 },
   ],
   flightLane: [
     { x: EAST_X - 135, y: 28, z: NORTH_ROAD_Z - 35 },

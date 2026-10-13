@@ -169,7 +169,7 @@ export const defaultTheme: Theme = {
   vehicles: {
     truckBody: 0xfffaf2,
     truckCab: 0xffb5a3,
-    carrierCab: 0x9fdccb,
+    carrierCab: 0xf2887a,
     carrierBed: 0xf1e3cf,
     forklift: 0xffd66e,
     shipHull: 0xf59d93,
@@ -179,12 +179,12 @@ export const defaultTheme: Theme = {
     planeBody: 0xfffaf2,
     planeAccent: 0xb9a8e6,
     carrierOwners: {
-      tier2: 0x9ccbee,
+      tier2: 0xf5ad55,
       tier3: 0xc3b1ea,
-      tier4: 0xf5a9c6,
+      tier4: 0xe88bc0,
       handmade: 0xf7dc8a,
       disposal: 0xa9a3b8,
-      facility: 0xf6bd94,
+      facility: 0xc99b7d,
     },
   },
   goods: {

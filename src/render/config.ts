@@ -72,8 +72,6 @@ export const renderConfig = {
     slowDisappearSec: 1.2,
     /** Road vehicles keep to the right: this far from the centre line (half a lane of a 6 wide road). */
     laneOffset: 1.5,
-    /** Higher moves a vehicle onto its lane faster; low enough to round off corners and U-turns. */
-    laneDamping: 5,
     /**
      * A parked vehicle pulls this much further in than the loading point the game puts it at,
      * so it stands on the pad and off the road.
@@ -92,6 +90,8 @@ export const renderConfig = {
      * stands. The step from the end of the curve onto the lane is smoothed away over `settle`.
      */
     backOut: { radius: 3, giveUp: 12, catchUp: 40, settle: 6 },
+    /** A vehicle the game has stopped at a site is in and standing within this many seconds of game time. */
+    arriveSec: 0.45,
     /** A parked vehicle belongs to the site whose centre is within this distance. */
     parkReach: 12,
     /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */
