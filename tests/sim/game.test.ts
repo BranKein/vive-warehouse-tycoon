@@ -248,6 +248,25 @@ describe('saving', () => {
     expect(text).toContain('"plot":"p2-0"');
   });
 
+  it('moves buildings whose plot no longer exists to a free plot when loading', () => {
+    const original = createGame({ catalog, seed: 5 });
+    original.grant(1e6);
+    original.setAutoPilot(true);
+    original.tick(seconds(300));
+    const before = original.snapshot().island.buildings;
+    expect(before.length).toBeGreaterThan(2);
+
+    // A save written on the older, wider layout names a column that is gone now.
+    const gone = before[0]!.plotId;
+    const save: SaveData = JSON.parse(JSON.stringify(stored(original.serialize())).split(`"plot":"${gone}"`).join('"plot":"p0-7"'));
+    const loaded = createGame({ catalog, save, seed: 5 });
+    const after = loaded.snapshot().island.buildings;
+    expect(after.map((building) => building.id).sort()).toEqual(before.map((building) => building.id).sort());
+    expect(new Set(after.map((building) => building.plotId)).size).toBe(after.length);
+    loaded.tick(seconds(120));
+    expect(loaded.snapshot().island.buildings.length).toBeGreaterThanOrEqual(after.length);
+  });
+
   it('restores an equivalent game that then plays on identically', () => {
     const balance = balanceWith({ specialCargo: { minIntervalSec: 20, maxIntervalSec: 60, lifetimeSec: 30 } });
     const original = createGame({ catalog, seed: 11, balance });

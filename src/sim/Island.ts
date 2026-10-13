@@ -414,20 +414,31 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     };
   }
 
-  /** Restores a freshly constructed island (built with `skipStart`). Unknown content is skipped. */
+  /** Restores a freshly constructed island (built with `skipStart`). Unknown content is skipped; buildings on plots that no longer exist are moved. */
   restore(saved: unknown): void {
     if (!saved || typeof saved !== 'object') return;
     const data = saved as Record<string, unknown>;
     this.tickCount = Number(data.tick) || 0;
     this.estimatedIncome = parseAmount(data.estimated);
     const entries: Array<{ building: Building; saved: Record<string, unknown> }> = [];
+    const displaced: Array<{ id: string; type: string; entry: Record<string, unknown> }> = [];
     for (const raw of Array.isArray(data.buildings) ? data.buildings : []) {
       if (!raw || typeof raw !== 'object') continue;
       const entry = raw as Record<string, unknown>;
       const { id, type, plot } = entry;
       if (typeof id !== 'string' || typeof type !== 'string' || typeof plot !== 'string') continue;
-      if (!this.catalog.buildings[type] || !this.plotSites.has(plot) || this.byPlot.has(plot) || this.nodes.has(id)) continue;
+      if (!this.catalog.buildings[type] || this.nodes.has(id)) continue;
+      if (!this.plotSites.has(plot) || this.byPlot.has(plot)) {
+        displaced.push({ id, type, entry });
+        continue;
+      }
       entries.push({ building: this.build(plot, type, BigNum.ZERO, id), saved: entry });
+    }
+    // A save from an older layout may name plots that are gone; those buildings move to free plots.
+    for (const { id, type, entry } of displaced) {
+      const free = [...this.plotSites.keys()].find((plot) => !this.byPlot.has(plot));
+      if (!free || this.nodes.has(id)) continue;
+      entries.push({ building: this.build(free, type, BigNum.ZERO, id), saved: entry });
     }
     this.nextBuildingSeq = Math.max(1, Number(data.nextBuilding) || 1);
     for (const building of this.buildings) {
