@@ -1,6 +1,7 @@
 import type { ModelRegistry } from '../ModelRegistry';
 import { registerBuildingModels } from './buildings';
 import { registerFacilityModels } from './facilities';
+import { registerEffectModels } from './effects';
 import { registerGoodsModels } from './goods';
 import type { Kit } from './kit';
 import { registerPropModels, registerStreetModels } from './props';
@@ -30,6 +31,7 @@ export function registerGameModels(registry: ModelRegistry, kit: Kit): void {
   registerVehicleModels(registry);
   registerFacilityModels(registry);
   registerGoodsModels(registry);
+  registerEffectModels(registry);
 }
 
 /** Vehicles redrawn by hand. */
@@ -56,6 +58,7 @@ export function registerDefaultModels(registry: ModelRegistry, kit: Kit): string
   // After the props, whose facility drafts these replace.
   registerFacilityModels(registry);
   registerGoodsModels(registry);
+  registerEffectModels(registry);
   const redrawn = registry.names().filter((name) => drafts.get(name) !== registry.get(name) && !name.endsWith('.default'));
   return [...redrawn, ...HAND_DRAWN_VEHICLES];
 }

@@ -18,7 +18,7 @@ import {
 import { renderConfig } from './config';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
-import { damp, log10Of, pileCrateCount, pileHeight, pileSlot, type PickProxy } from './math';
+import { bounceStretch, log10Of, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
 import { carrierModel } from './models/vehicles';
@@ -81,6 +81,8 @@ export class ViewSync {
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
   private readonly tracks = new Map<string, VehicleTrack>();
+  /** Buildings and facilities that are hopping, by id, with the seconds since they started. */
+  private readonly bounces = new Map<string, number>();
   /** False until the first frame of a layout has been drawn: what is there then does not grow in. */
   private settled = false;
   private specialObject: Object3D | null = null;
@@ -107,6 +109,11 @@ export class ViewSync {
     this.facilityDefs.clear();
     for (const plot of layout?.plots ?? []) this.plots.set(plot.id, plot);
     for (const facility of layout?.facilities ?? []) this.facilityDefs.set(facility.id, facility);
+  }
+
+  /** Makes a building or facility hop once (it was just upgraded). */
+  bounce(id: string): void {
+    this.bounces.set(id, 0);
   }
 
   setSelection(selection: Selection): void {
@@ -161,6 +168,16 @@ export class ViewSync {
 
     this.vehicles(prev, curr, alpha, dt);
 
+    const hop = renderConfig.effects.upgrade.bounce;
+    for (const [id, elapsed] of this.bounces) {
+      if (elapsed + dt >= hop.durationSec) this.bounces.delete(id);
+      else this.bounces.set(id, elapsed + dt);
+    }
+    const stretchOf = (id: string): number => {
+      const elapsed = this.bounces.get(id);
+      return elapsed === undefined ? 1 : bounceStretch(elapsed, hop);
+    };
+
     for (const building of island.buildings) {
       const plot = this.plots.get(building.plotId);
       if (!plot) continue;
@@ -168,7 +185,9 @@ export class ViewSync {
       const stand = siteToWorld(plot, 0, renderConfig.boxes.buildingOffsetZ);
       this.position.set(stand.x, 0, stand.z);
       this.rotation.setFromAxisAngle(UP, plot.facing);
-      this.scale.set(1, 1, 1);
+      const stretch = stretchOf(building.id);
+      const squash = squashFor(stretch);
+      this.scale.set(squash, stretch, squash);
       this.model(buildingModel(building.typeId), 8).add(this.matrix.compose(this.position, this.rotation, this.scale));
       this.piles(plot, 'inputs', building.inputs);
       this.piles(plot, 'outputs', building.outputs);
@@ -177,6 +196,9 @@ export class ViewSync {
     for (const facility of island.facilities) {
       const def = this.facilityDefs.get(facility.id);
       if (def && facility.unlocked) this.facilityPiles(def, facility.stock);
+      const stretch = stretchOf(facility.id);
+      const squash = squashFor(stretch);
+      this.facilities.get(`${facility.id}|${facility.kind}`)?.scale.set(squash, stretch, squash);
     }
 
     for (const model of this.instanced.values()) model.end();

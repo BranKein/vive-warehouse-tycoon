@@ -92,6 +92,38 @@ export const renderConfig = {
     amplitude: 0.22,
     frequency: 3,
   },
+  /** Decoration shown when something happens (Effects.ts). Times in real seconds. */
+  effects: {
+    maxParticles: 160,
+    upgrade: {
+      /** At most one upgrade effect this often anywhere, and this often on the same building. */
+      minGapSec: 0.25,
+      minGapPerTargetSec: 1.2,
+      sparks: 7,
+      size: 2,
+      radius: 4.2,
+      rise: 5,
+      lifeSec: 0.8,
+      /** The upgraded building hops: a small, quick wobble of its height. */
+      bounce: { durationSec: 0.6, amplitude: 0.09, frequency: 2 },
+    },
+    sale: {
+      /** A facility shows at most one effect this often; money earned in between is added to the next. */
+      minGapSec: 1.5,
+      coins: 5,
+      coinSize: 1.6,
+      /** Where the coins start, above the ground. */
+      height: 3.5,
+      jump: 11,
+      spread: 3,
+      gravity: 24,
+      coinSec: 0.9,
+      labelSec: 1.3,
+      labelRise: 3.5,
+      maxLabels: 6,
+      labelColor: '#b9791f',
+    },
+  },
   click: {
     /** Pixels the pointer may travel between press and release and still count as a click. */
     maxTravelPx: 5,

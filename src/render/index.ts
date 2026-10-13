@@ -3,6 +3,8 @@ import type { GameEvent, GameRenderer, GameSnapshot, PickTarget, RendererOptions
 import { BLOCK_MODEL, registerBoxModels } from './boxModels';
 import { registerGameModels } from './models/index';
 import { CameraRig } from './CameraRig';
+import { Effects } from './Effects';
+import { siteToWorld } from './layout';
 import { renderConfig } from './config';
 import { Environment } from './Environment';
 import { MaterialLibrary } from './materials';
@@ -55,6 +57,10 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   const environment = new Environment(scene, models, theme, materials);
   const view = new ViewSync(models, theme);
   scene.add(view.group);
+  const effects = new Effects(models, theme, canvas);
+  scene.add(effects.group);
+  /** The latest snapshot drawn: events name buildings and channels, this says where they stand. */
+  let latest: GameSnapshot | null = null;
 
   const listeners: Array<(target: PickTarget) => void> = [];
   const pickPoint = new Vector3();
@@ -71,8 +77,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     for (const listener of [...listeners]) listener(target);
   });
 
-  // Dev server only: lets a test session point the camera from the console.
-  if (import.meta.env.DEV) (globalThis as { __wtRig?: CameraRig }).__wtRig = rig;
+
+  // Dev server only: lets a test session point the camera and watch the effects from the console.
+  if (import.meta.env.DEV) Object.assign(globalThis, { __wtRig: rig, __wtEffects: effects });
 
   // Hovering and carrying. The pointer position is kept and picked again every
   // frame, so what is under a still pointer stays right while the scene moves.
@@ -177,11 +184,13 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
         const layout = catalog.islands[islandId]?.layout ?? null;
         environment.setLayout(layout);
         view.setLayout(layout);
+        effects.clear();
         if (layout) rig.setTarget((layout.bounds.minX + layout.bounds.maxX) / 2, (layout.bounds.minZ + layout.bounds.maxZ) / 2);
       }
       if (stale) {
         stale = false;
         view.clear();
+        effects.clear();
       }
       const dt = lastTimeSec === null ? 0 : clamp(realTimeSec - lastTimeSec, 0, renderConfig.maxFrameSec);
       lastTimeSec = realTimeSec;
@@ -189,6 +198,8 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       // Windows, street lamps and headlights come on as it gets dark.
       materials.setNight(environment.update(realTimeSec));
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha, dt);
+      latest = curr;
+      effects.update(dt, rig.camera);
       refreshPointer();
       renderer.render(scene, rig.camera);
     },
@@ -206,8 +217,30 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     onDrop(listener): void {
       dropListeners.push(listener);
     },
-    handleEvents(_events: GameEvent[]): void {
-      // Nothing reacts to events yet: build, demolish and sale effects belong to the deferred decoration stage.
+    handleEvents(events: GameEvent[]): void {
+      const layout = islandId === null ? null : (catalog.islands[islandId]?.layout ?? null);
+      if (!latest || !layout) return;
+      const sizes = renderConfig.boxes;
+      const facilityOf = (channelId: string | null) => {
+        const facility = latest!.island.facilities.find((candidate) => candidate.channelId === channelId);
+        return facility ? layout.facilities.find((def) => def.id === facility.id) : undefined;
+      };
+      for (const event of events) {
+        if (event.type === 'sale') {
+          const def = facilityOf(event.channelId);
+          if (def) effects.sale(def.id, siteToWorld(def, 0, sizes.siteOffsetZ), event.amount);
+        } else if (event.type === 'upgraded' && event.scope === 'building') {
+          const building = latest.island.buildings.find((candidate) => candidate.id === event.targetId);
+          const plot = building && layout.plots.find((candidate) => candidate.id === building.plotId);
+          if (building && plot) {
+            const at = siteToWorld(plot, 0, sizes.siteOffsetZ + sizes.buildingOffsetZ);
+            if (effects.upgrade(building.id, at, sizes.building[1])) view.bounce(building.id);
+          }
+        } else if (event.type === 'upgraded' && (event.scope === 'inbound' || event.scope === 'sale')) {
+          const def = facilityOf(event.targetId);
+          if (def && effects.upgrade(def.id, siteToWorld(def, 0, sizes.siteOffsetZ), sizes.building[1])) view.bounce(def.id);
+        }
+      }
     },
     dispose(): void {
       if (disposed) return;
@@ -223,6 +256,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       canvas.removeEventListener('pointercancel', stopCarrying);
       rig.dispose();
       view.dispose();
+      effects.dispose();
       environment.dispose();
       kit.dispose();
       materials.dispose();
