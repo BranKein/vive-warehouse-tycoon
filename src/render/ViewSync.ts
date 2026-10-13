@@ -22,9 +22,8 @@ import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileG
 import { bounceStretch, log10Of, smoothstep, type Pose, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
-import { carrierModel } from './models/vehicles';
 import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, trailPoint, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
-import { itemColor, type Theme } from './theme';
+import { carrierColor, itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
 const ZERO_SHIFT = { x: 0, z: 0 };
@@ -62,6 +61,8 @@ interface VehicleTrack {
   lift: number;
   /** Kinds of goods on board, for the crates on a carrier's bed. */
   cargo: string[];
+  /** Body colour of a carrier; null for the vehicles that keep their model's colours. */
+  paint: Color | null;
   seen: boolean;
 }
 
@@ -137,6 +138,7 @@ export class ViewSync {
   private readonly facilities = new Map<string, Object3D>();
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
+  private readonly paints = new Map<number, Color>();
   private readonly tracks = new Map<string, VehicleTrack>();
   /** Ships and planes while they fade in or out. */
   private readonly fading: FadingModels;
@@ -422,7 +424,7 @@ export class ViewSync {
       if (!track) {
         const onRoad = ROAD_KINDS.has(vehicle.kind);
         track = {
-          model: this.vehicleModel(vehicle),
+          model: vehicle.model,
           x: pose.x,
           y: pose.y,
           z: pose.z,
@@ -441,6 +443,7 @@ export class ViewSync {
             : null,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
+          paint: vehicle.kind === 'carrier' ? this.carrierPaint(vehicle, curr) : null,
           seen: true,
         };
         this.tracks.set(vehicle.id, track);
@@ -499,7 +502,7 @@ export class ViewSync {
         continue;
       }
       const model = this.model(track.model, 64);
-      model.add(this.matrix);
+      model.add(this.matrix, track.paint ?? undefined);
       if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? []);
     }
     this.fading.end();
@@ -685,11 +688,16 @@ export class ViewSync {
     return track.truck && this.gate !== null && Math.hypot(track.x - this.gate.x, track.z - this.gate.z) < renderConfig.vehicle.tunnelCover;
   }
 
-  /** Carriers are painted by who they work for, where the registry has a model for that owner. */
-  private vehicleModel(vehicle: VehicleView): string {
-    if (vehicle.kind !== 'carrier' || !vehicle.owner) return vehicle.model;
-    const painted = carrierModel(vehicle.owner);
-    return this.registry.has(painted) ? painted : vehicle.model;
+  /** Carriers are painted by who they work for and, for a building's own, by what it makes. */
+  private carrierPaint(vehicle: VehicleView, snapshot: GameSnapshot): Color {
+    const home = vehicle.owner === 'facility' ? undefined : snapshot.island.buildings.find((building) => building.id === vehicle.home);
+    const key = carrierColor(this.theme, vehicle.owner, home?.outputs[0]?.item);
+    let color = this.paints.get(key);
+    if (!color) {
+      color = new Color(key);
+      this.paints.set(key, color);
+    }
+    return color;
   }
 
   private piles(site: Site, group: PileGroup, stocks: ReadonlyArray<StockView>): void {

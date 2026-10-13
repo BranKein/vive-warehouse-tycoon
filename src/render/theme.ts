@@ -71,6 +71,8 @@ export interface Theme {
     planeAccent: number;
     /** Cab colour of a carrier by who it works for; `carrierCab` where there is no entry. */
     carrierOwners: Record<string, number>;
+    /** How far a carrier's colour moves from its owner's towards the colour of the goods its building makes, 0..1. */
+    carrierGoodsMix: number;
   };
   goods: {
     pallet: number;
@@ -186,6 +188,7 @@ export const defaultTheme: Theme = {
       disposal: 0xa9a3b8,
       facility: 0xc99b7d,
     },
+    carrierGoodsMix: 0.4,
   },
   goods: {
     pallet: 0xdcb98f,
@@ -413,6 +416,23 @@ export const defaultTheme: Theme = {
     ],
   },
 };
+
+/**
+ * Colour of a carrier's cab: the colour of who it works for, moved towards the
+ * colour of the goods its building makes (when it makes any).
+ */
+export function carrierColor(theme: Theme, owner: string | undefined, itemId?: string): number {
+  const v = theme.vehicles;
+  const base = (owner !== undefined ? v.carrierOwners[owner] : undefined) ?? v.carrierCab;
+  if (itemId === undefined) return base;
+  const goods = itemColor(theme, itemId);
+  const mix = (shift: number): number => {
+    const from = (base >> shift) & 0xff;
+    const to = (goods >> shift) & 0xff;
+    return Math.round(from + (to - from) * v.carrierGoodsMix) << shift;
+  };
+  return mix(16) | mix(8) | mix(0);
+}
 
 /** Colour of the crates that carry an item. Unknown items get a stable colour from the fallback list. */
 export function itemColor(theme: Theme, itemId: string): number {

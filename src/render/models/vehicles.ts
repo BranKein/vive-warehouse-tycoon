@@ -4,13 +4,13 @@
  */
 import type { Mesh, Object3D } from 'three';
 import type { ModelRegistry } from '../ModelRegistry';
-import type { Kit } from './kit';
+import type { Kit, Paint } from './kit';
 
 /** Chunky wheel for the hand-drawn vehicles: tyre, pale rim and a coloured cap. Axle along x, centred at (x, radius, z). */
-function toyWheel(kit: Kit, radius: number, width: number, x: number, z: number, cap: number): Mesh[] {
+function toyWheel(kit: Kit, radius: number, width: number, x: number, z: number, cap: Paint): Mesh[] {
   const side = Math.sign(x) || 1;
   const p = kit.theme.props;
-  const disc = (r: number, w: number, paint: number, shift: number): Mesh =>
+  const disc = (r: number, w: number, paint: Paint, shift: number): Mesh =>
     kit.cyl(r, r, w, paint, { x: x + side * shift, y: radius - w / 2, z, rz: Math.PI / 2 }, 18);
   return [
     disc(radius, width, p.tire, 0),
@@ -97,9 +97,11 @@ function boxTruck(kit: Kit): Object3D {
 
 /**
  * Carrier: the little flatbed that shuttles goods around the estate. Same toy
- * look as the box truck, one size down: round mint cab, cream bed with slatted rails.
+ * look as the box truck, one size down: round cab, cream bed with slatted rails.
  */
-function carrier(kit: Kit, cab = kit.theme.vehicles.carrierCab): Object3D {
+function carrier(kit: Kit): Object3D {
+  // The cab is body paint: the game colours each carrier by its owner and goods.
+  const cab: Paint = kit.materials.paint;
   const v = { ...kit.theme.vehicles, carrierCab: cab };
   const p = kit.theme.props;
   const light = kit.materials.headlight;
@@ -329,17 +331,9 @@ function cargoPlane(kit: Kit): Object3D {
   return kit.group(parts);
 }
 
-/** Owners whose carriers are painted in their own colour (`theme.vehicles.carrierOwners`). Tier 1 keeps the plain mint one. */
-export const CARRIER_OWNERS = ['tier2', 'tier3', 'tier4', 'handmade', 'disposal', 'facility'];
-export const carrierModel = (owner: string): string => `vehicle.carrier.${owner}`;
-
 export function registerVehicleModels(registry: ModelRegistry): void {
   registry.register('vehicle.boxTruck', boxTruck);
-  registry.register('vehicle.carrier', (kit) => carrier(kit));
-  // One more carrier per owner that has its own colour; the plain one stays for the rest.
-  for (const owner of CARRIER_OWNERS) {
-    registry.register(carrierModel(owner), (kit) => carrier(kit, kit.theme.vehicles.carrierOwners[owner]));
-  }
+  registry.register('vehicle.carrier', carrier);
   registry.register('vehicle.forklift', forklift);
   registry.register('vehicle.cargoShip', cargoShip);
   registry.register('vehicle.cargoPlane', cargoPlane);

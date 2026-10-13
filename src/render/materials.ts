@@ -21,6 +21,12 @@ export class MaterialLibrary {
   /** White base that is tinted per instance (crates). */
   readonly tintable: MeshStandardMaterial;
   readonly tintableDark: MeshStandardMaterial;
+  /**
+   * Body paint of the vehicles whose colour is chosen per copy. On its own it
+   * shows the plain carrier colour; InstancedModel draws those parts with the
+   * white `userData.tintBase` instead and tints each copy.
+   */
+  readonly paint: MeshStandardMaterial;
   /** Clouds: slightly see-through, with a light of their own by day so their underside is not dark. */
   readonly cloud: MeshStandardMaterial;
 
@@ -47,6 +53,8 @@ export class MaterialLibrary {
     });
     this.tintable = new MeshStandardMaterial({ color: 0xffffff, roughness: surface.roughness, metalness: surface.metalness });
     this.tintableDark = new MeshStandardMaterial({ color: 0xd9d2cc, roughness: surface.roughness, metalness: surface.metalness });
+    this.paint = new MeshStandardMaterial({ color: theme.vehicles.carrierCab, roughness: surface.roughness, metalness: surface.metalness });
+    this.paint.userData.tintBase = this.tintable;
     this.cloud = new MeshStandardMaterial({
       color: theme.props.cloud,
       emissive: theme.props.cloud,
@@ -56,7 +64,7 @@ export class MaterialLibrary {
       transparent: true,
       opacity: 0.9,
     });
-    this.extras.push(this.cloud, this.window, this.lamp, this.headlight, this.tintable, this.tintableDark);
+    this.extras.push(this.cloud, this.window, this.lamp, this.headlight, this.tintable, this.tintableDark, this.paint);
   }
 
   /** The one matte, clay-like material for a colour. */

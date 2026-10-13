@@ -131,24 +131,6 @@
   "vehicle.carrier": {
     "approved": "48-18e1e535"
   },
-  "vehicle.carrier.disposal": {
-    "approved": "48-4cf4da1e"
-  },
-  "vehicle.carrier.facility": {
-    "approved": "48-30bd2982"
-  },
-  "vehicle.carrier.handmade": {
-    "approved": "48-31163e34"
-  },
-  "vehicle.carrier.tier2": {
-    "approved": "48-84a2ff50"
-  },
-  "vehicle.carrier.tier3": {
-    "approved": "48-1ce05414"
-  },
-  "vehicle.carrier.tier4": {
-    "approved": "48-53b09d8"
-  },
   "vehicle.forklift": {
     "approved": "36-4194c59e"
   }

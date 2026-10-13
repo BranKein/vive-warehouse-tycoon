@@ -20,6 +20,8 @@ export interface InstancedModelOptions {
 export interface Part {
   geometry: BufferGeometry;
   material: Material;
+  /** Whether a copy's tint colours this part. */
+  tinted: boolean;
 }
 
 /**
@@ -30,6 +32,10 @@ export interface Part {
  *
  * Usage is immediate-mode: `begin()`, `add(matrix)` for every copy this
  * frame, `end()`.
+ *
+ * A copy's tint colours the parts drawn in a material that has a
+ * `userData.tintBase` (the white material used in its place), or the whole
+ * model when it has no such part.
  */
 export class InstancedModel {
   readonly group = new Group();
@@ -46,7 +52,7 @@ export class InstancedModel {
     private readonly options: InstancedModelOptions = {},
   ) {
     this.anchors = (prototype.userData.anchors as Anchors | undefined) ?? {};
-    this.parts = extractParts(prototype);
+    this.parts = paintable(extractParts(prototype));
     this.allocate(Math.max(1, capacity));
   }
 
@@ -62,9 +68,10 @@ export class InstancedModel {
   add(matrix: Matrix4, tint?: Color): number {
     if (this.count >= this.capacity) this.allocate(this.capacity * 2);
     const index = this.count;
-    for (const mesh of this.meshes) {
+    for (let part = 0; part < this.meshes.length; part += 1) {
+      const mesh = this.meshes[part]!;
       mesh.setMatrixAt(index, matrix);
-      if (tint) mesh.setColorAt(index, tint);
+      if (tint && this.parts[part]!.tinted) mesh.setColorAt(index, tint);
     }
     if (tint) this.tinted = true;
     this.count += 1;
@@ -119,6 +126,15 @@ export class InstancedModel {
 
 const WHITE = new Color(1, 1, 1);
 
+/** Swaps paint materials for their white base and marks which parts a tint colours. */
+function paintable(parts: Part[]): Part[] {
+  const some = parts.some((part) => part.material.userData.tintBase);
+  return parts.map((part) => {
+    const base = part.material.userData.tintBase as Material | undefined;
+    return base ? { ...part, material: base, tinted: true } : { ...part, tinted: !some };
+  });
+}
+
 /** Merges all meshes of a model into one world-space geometry per material. */
 export function extractParts(prototype: Object3D): Part[] {
   prototype.updateMatrixWorld(true);
@@ -151,7 +167,7 @@ export function extractParts(prototype: Object3D): Part[] {
     if (!merged) continue;
     if (geometries.length > 1) for (const geometry of geometries) geometry.dispose();
     merged.computeBoundingSphere();
-    parts.push({ geometry: merged, material });
+    parts.push({ geometry: merged, material, tinted: false });
   }
   return parts;
 }

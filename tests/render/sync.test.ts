@@ -5,6 +5,7 @@ import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/rend
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
 import { buildingKey, diffKeys, backOutPose, laneShift, trailPoint, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
+import { carrierColor, defaultTheme } from '@/render/theme';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -262,5 +263,21 @@ describe('scenery', () => {
     const turnOff = layout.flightLane[layout.flightLane.length - 2]!;
     const mid = { x: (apron.x + turnOff.x) / 2, z: (apron.z + turnOff.z) / 2 };
     for (const light of lights.edge) expect(Math.hypot(light.x - mid.x, light.z - mid.z)).toBeGreaterThan(lightRule.clearance * 0.9);
+  });
+});
+
+describe('carrierColor', () => {
+  it('keeps the colour of the owner when the building makes nothing', () => {
+    expect(carrierColor(defaultTheme, 'tier2')).toBe(defaultTheme.vehicles.carrierOwners.tier2);
+    expect(carrierColor(defaultTheme, 'tier1')).toBe(defaultTheme.vehicles.carrierCab);
+  });
+
+  it('moves towards the colour of the goods, differently for each kind', () => {
+    const lumber = carrierColor(defaultTheme, 'tier1', 'lumber');
+    const steel = carrierColor(defaultTheme, 'tier1', 'steel');
+    expect(lumber).not.toBe(steel);
+    expect(lumber).not.toBe(defaultTheme.vehicles.carrierCab);
+    // Still nearer its owner's colour than the goods': red stays the strongest channel.
+    expect((steel >> 16) & 0xff).toBeGreaterThan(steel & 0xff);
   });
 });
