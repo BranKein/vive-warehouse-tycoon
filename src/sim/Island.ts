@@ -314,6 +314,23 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     return building;
   }
 
+  /** Moves a building to a plot; a building standing there takes the plot that was left. Returns that building, if any. */
+  move(building: Building, plotId: PlotId): Building | null {
+    const target = this.plotSites.get(plotId);
+    if (!target) throw new Error(`Cannot move ${building.id} to ${plotId}`);
+    const origin = building.site;
+    const other = this.byPlot.get(plotId) ?? null;
+    if (other === building) return null;
+    this.byPlot.delete(origin.id);
+    building.moveTo(target);
+    this.byPlot.set(plotId, building);
+    if (other) {
+      other.moveTo(origin);
+      this.byPlot.set(origin.id, other);
+    }
+    return other;
+  }
+
   /** Removes a building and everything it holds; returns the refund. */
   demolish(building: Building): BigNum {
     const refund = building.refund;

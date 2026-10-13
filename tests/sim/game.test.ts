@@ -301,6 +301,34 @@ describe('saving', () => {
     }
   });
 
+  it('moves a building to a free plot and swaps two buildings, and keeps running', () => {
+    const game = createGame({ catalog, seed: 6 });
+    game.grant(1e6);
+    game.setAutoPilot(true);
+    game.tick(seconds(400));
+    game.setAutoPilot(false);
+    const before = game.snapshot().island;
+    const [first, second] = before.buildings;
+    const free = before.plots.find((plot) => plot.buildingId === null)!.id;
+    const earned = game.snapshot().totalEarned;
+
+    expect(game.moveBuilding(first!.id, free)).toEqual({ ok: true });
+    expect(game.moveBuilding(second!.id, free)).toEqual({ ok: true });
+    expect(game.moveBuilding('nope', free)).toEqual({ ok: false, reason: 'notFound' });
+    const after = game.snapshot().island;
+    const plotOf = (id: string): string => after.buildings.find((building) => building.id === id)!.plotId;
+    // The second took the free plot, so the first was pushed to where the second stood.
+    expect(plotOf(second!.id)).toBe(free);
+    expect(plotOf(first!.id)).toBe(second!.plotId);
+    expect(after.plots.find((plot) => plot.id === first!.plotId)!.buildingId).toBeNull();
+    expect(after.buildings).toHaveLength(before.buildings.length);
+
+    game.tick(seconds(600));
+    expect(game.snapshot().totalEarned.gt(earned)).toBe(true);
+    const loaded = createGame({ catalog, save: stored(game.serialize()), seed: 6 });
+    expect(loaded.snapshot().island.buildings.find((building) => building.id === second!.id)!.plotId).toBe(free);
+  });
+
   it('restores an equivalent game that then plays on identically', () => {
     const balance = balanceWith({ specialCargo: { minIntervalSec: 20, maxIntervalSec: 60, lifetimeSec: 30 } });
     const original = createGame({ catalog, seed: 11, balance });

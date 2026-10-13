@@ -61,6 +61,7 @@ async function start(): Promise<void> {
   const commands: GameCommands = {
     build: (plotId, typeId): CommandResult => changed(engine.commands.build(plotId, typeId)),
     demolish: (buildingId) => changed(engine.commands.demolish(buildingId)),
+    moveBuilding: (buildingId, plotId) => changed(engine.commands.moveBuilding(buildingId, plotId)),
     upgradeBuilding: (buildingId, trackId) => changed(engine.commands.upgradeBuilding(buildingId, trackId)),
     upgradeChannel: (channelId, trackId) => changed(engine.commands.upgradeChannel(channelId, trackId)),
     upgradeGlobal: (trackId) => changed(engine.commands.upgradeGlobal(trackId)),

@@ -66,7 +66,8 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
   constructor(
     readonly id: string,
     readonly def: BuildingDef,
-    readonly site: Site,
+    /** Changes when the building is moved; see `moveTo`. */
+    public site: Site,
     private readonly ctx: BuildingContext,
   ) {
     const catalog: ContentCatalog = ctx.catalog;
@@ -312,7 +313,22 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
     };
   }
 
-  toJSON(): JsonValue {
+/**
+   * Puts the building on another site. Carriers waiting at home go with it;
+   * the ones on the road, its own and others', find the new site at their next stop.
+   */
+  moveTo(site: Site): void {
+    const from = this.site.index;
+    this.site = site;
+    for (const carrier of this.carriers) {
+      if (carrier.phase === 'idle' && carrier.at === from) {
+        carrier.at = site.index;
+        carrier.to = site.index;
+      }
+    }
+  }
+
+    toJSON(): JsonValue {
     return {
       id: this.id,
       type: this.def.id,

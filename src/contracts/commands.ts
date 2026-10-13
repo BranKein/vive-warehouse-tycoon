@@ -27,6 +27,8 @@ export type CommandResult = { ok: true } | { ok: false; reason: CommandFailure }
 export interface GameCommands {
   build(plotId: PlotId, typeId: BuildingTypeId): CommandResult;
   demolish(buildingId: BuildingId): CommandResult;
+  /** Moves a building to another plot. A building already standing there takes the plot that was left. */
+  moveBuilding(buildingId: BuildingId, plotId: PlotId): CommandResult;
   upgradeBuilding(buildingId: BuildingId, trackId: UpgradeTrackId): CommandResult;
   /** Upgrades an inbound or sale channel. */
   upgradeChannel(channelId: ChannelId, trackId: UpgradeTrackId): CommandResult;
@@ -41,6 +43,7 @@ export interface GameCommands {
 export type GameEvent =
   | { type: 'buildingBuilt'; buildingId: BuildingId; typeId: BuildingTypeId; plotId: PlotId }
   | { type: 'buildingDemolished'; buildingId: BuildingId; plotId: PlotId; refund: BigNum }
+  | { type: 'buildingMoved'; buildingId: BuildingId; plotId: PlotId; swappedWith: BuildingId | null }
   | { type: 'upgraded'; scope: UpgradeScope; targetId: string | null; trackId: UpgradeTrackId; level: number }
   | { type: 'unlocked'; unlockId: UnlockId }
   | { type: 'sale'; channelId: ChannelId; amount: BigNum; x: number; z: number }

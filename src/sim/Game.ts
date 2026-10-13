@@ -301,6 +301,16 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     return OK;
   }
 
+  moveBuilding(buildingId: BuildingId, plotId: PlotId): CommandResult {
+    const island = this.island;
+    const building = island.building(buildingId);
+    if (!building || !island.hasPlot(plotId)) return fail('notFound');
+    if (building.site.id === plotId) return OK;
+    const other = island.move(building, plotId);
+    this.emit({ type: 'buildingMoved', buildingId, plotId, swappedWith: other?.id ?? null });
+    return OK;
+  }
+
   /** Buys one level of a track; returns the price paid or the reason it failed. */
   private buyLevel(target: Upgradable, trackId: UpgradeTrackId): BigNum | CommandResult {
     const track = target.tracks.find((entry) => entry.id === trackId);

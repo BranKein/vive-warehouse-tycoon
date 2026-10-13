@@ -24,6 +24,7 @@ const log = (name: string, ...args: unknown[]): CommandResult => {
 const commands: GameCommands = {
   build: (plotId, typeId) => log('build', plotId, typeId),
   demolish: (buildingId) => log('demolish', buildingId),
+  moveBuilding: (buildingId, plotId) => log('moveBuilding', buildingId, plotId),
   upgradeBuilding: (buildingId, trackId) => log('upgradeBuilding', buildingId, trackId),
   upgradeChannel: (channelId, trackId) => log('upgradeChannel', channelId, trackId),
   upgradeGlobal: (trackId) => log('upgradeGlobal', trackId),
