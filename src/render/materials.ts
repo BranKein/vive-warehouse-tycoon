@@ -9,6 +9,9 @@ const CLOUD_GLOW = 0.45;
  * models that use the same colour batch together, and the few glowing
  * materials can be driven by the day/night cycle from one place.
  */
+/** How far the lights are on, 0..1, for `night` (0 by day, 1 at night): they come on a little before it is fully dark. */
+export const lightsOn = (night: number): number => Math.min(1, Math.max(0, (night - 0.2) / 0.5));
+
 export class MaterialLibrary {
   private readonly solids = new Map<number, MeshStandardMaterial>();
   private readonly extras: Material[] = [];
@@ -112,8 +115,7 @@ export class MaterialLibrary {
   /** `night` is 0 by day and 1 at night. */
   setNight(night: number): void {
     const glow = this.theme.glow;
-    // Lights come on a little before it is fully dark.
-    const on = Math.min(1, Math.max(0, (night - 0.2) / 0.5));
+    const on = lightsOn(night);
     this.window.emissiveIntensity = on * glow.windowIntensity;
     this.lamp.emissiveIntensity = on * glow.lampIntensity;
     this.headlight.emissiveIntensity = on * glow.lampIntensity;

@@ -98,7 +98,7 @@ export interface Theme {
     windowIntensity: number;
     lamp: number;
     lampIntensity: number;
-    /** Opacity of the pool of light under a street lamp at full night. */
+    /** Strength of the cone and pool of light under a street lamp at full night. */
     lampPoolOpacity: number;
     headlight: number;
     /** Colour of the headlight lens when it is not lit. */
@@ -272,7 +272,7 @@ export const defaultTheme: Theme = {
     windowIntensity: 1.6,
     lamp: 0xffe2a1,
     lampIntensity: 2.2,
-    lampPoolOpacity: 0.32,
+    lampPoolOpacity: 0.8,
     headlight: 0xfff3c4,
     headlightDay: 0xffdf7e,
   },

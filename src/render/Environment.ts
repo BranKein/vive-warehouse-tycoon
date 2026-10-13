@@ -15,6 +15,7 @@ import {
   type Scene,
 } from 'three';
 import type { IslandLayoutDef } from '@/contracts';
+import { LampLights } from './LampLight';
 import { DEFAULT_LOOK, LOOKS, type Look } from './looks';
 import { BLOCK_MODEL } from './boxModels';
 import { renderConfig } from './config';
@@ -24,7 +25,7 @@ import { lampSpots, roadStrips, treeSpots, type PropSpot } from './layout';
 import { HOUSE_MODEL, LAMP_MODEL, TREE_MODEL } from './models/props';
 import { CLOUD_MODEL, HILL_MODEL, RUNWAY_END_LIGHT_MODEL, RUNWAY_LIGHT_MODEL, TUNNEL_MODEL, TUNNEL_SIZE } from './models/scenery';
 import { gapTreeSpots, outskirts, runwayLightSpots, type ScaledSpot } from './scenery';
-import type { MaterialLibrary } from './materials';
+import { lightsOn, type MaterialLibrary } from './materials';
 import type { ModelRegistry } from './ModelRegistry';
 import type { Theme } from './theme';
 
@@ -45,6 +46,7 @@ export class Environment {
   private flats: InstancedModel | null = null;
   /** Trees and street lamps standing on the board, and the countryside around it. */
   private props: InstancedModel[] = [];
+  private lampLights: LampLights | null = null;
   /** The board, its rim and the water: slabs with rounded corners, so each has a mesh of its own. */
   private slabs: Mesh[] = [];
   /** The beach and the sea: flat bands beside the grass. */
@@ -102,6 +104,11 @@ export class Environment {
       prop.dispose();
     }
     this.props = [];
+    if (this.lampLights) {
+      this.group.remove(this.lampLights.mesh);
+      this.lampLights.dispose();
+      this.lampLights = null;
+    }
     for (const slab of this.slabs) {
       this.group.remove(slab);
       slab.geometry.dispose();
@@ -250,7 +257,21 @@ export class Environment {
     const tunnel = gate ? tunnelArea(gate, b) : null;
     const clearOfTunnel = <T extends { x: number; z: number }>(spots: ReadonlyArray<T>): T[] =>
       spots.filter((spot) => !tunnel || spot.x > tunnel.maxX + 4 || spot.z < tunnel.minZ - 1 || spot.z > tunnel.maxZ + 1);
-    stand(LAMP_MODEL, clearOfTunnel(lampSpots(layout.roadNodes, layout.roadEdges, scenery.lampOffset)));
+    const lamps = clearOfTunnel(lampSpots(layout.roadNodes, layout.roadEdges, scenery.lampOffset));
+    stand(LAMP_MODEL, lamps);
+    // The light the lamps throw on the road at night.
+    this.lampLights = new LampLights(
+      { ...scenery.lampLight, ground: g.roadHeight + scenery.lampLight.lift - g.padHeight },
+      this.theme.glow.lamp,
+      this.theme.glow.lampPoolOpacity,
+      lamps.map((spot) => {
+        position.set(spot.x, g.padHeight, spot.z);
+        rotation.setFromAxisAngle(UP, spot.heading);
+        scale.set(1, 1, 1);
+        return matrix.compose(position, rotation, scale).clone();
+      }),
+    );
+    this.group.add(this.lampLights.mesh);
     stand(RUNWAY_LIGHT_MODEL, lights.edge, g.runwayHeight, false);
     stand(RUNWAY_END_LIGHT_MODEL, lights.ends, g.runwayHeight, false);
     // Trucks come and go through a tunnel at the gate, so no road has to run on beyond the board.
@@ -340,6 +361,7 @@ export class Environment {
     this.ambient.intensity = sample.ambientIntensity * this.look.ambient;
     setRgb(this.background, lerpRgb(sample.skyHorizon, sample.skyTop, 0.5));
     setRgb(this.fog.color, sample.fog);
+    this.lampLights?.setOn(lightsOn(sample.night));
     return sample.night;
   }
 
@@ -348,6 +370,8 @@ export class Environment {
     this.flats = null;
     for (const prop of this.props) prop.dispose();
     this.props = [];
+    this.lampLights?.dispose();
+    this.lampLights = null;
     for (const slab of this.slabs) slab.geometry.dispose();
     this.slabs = [];
     this.ground.geometry.dispose();

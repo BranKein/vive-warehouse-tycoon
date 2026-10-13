@@ -177,6 +177,8 @@ export const renderConfig = {
     treeSpacing: 3.4,
     /** Street lamps stand this far from the centre of their road. */
     lampOffset: 3.75,
+    /** The cone and pool of light under a street lamp: the head it starts at (lamp model frame), its radii, and how far over the road the pool lies. */
+    lampLight: { head: [0, 3.2, 0.95], topRadius: 0.22, radius: 3.4, coneAlpha: 0.6, lift: 0.04 },
     /** Small trees in the strips between neighbouring plots: about half of the possible places get one. */
     gapTrees: {
       share: 0.5,

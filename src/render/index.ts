@@ -90,7 +90,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
 
   // Dev server only: lets a test session point the camera and watch the effects from the console.
-  if (import.meta.env.DEV) Object.assign(globalThis, { __wtRig: rig, __wtEffects: effects, __wtView: view });
+  if (import.meta.env.DEV) Object.assign(globalThis, { __wtRig: rig, __wtEffects: effects, __wtView: view, __wtTheme: theme });
 
   // Hovering and carrying. The pointer position is kept and picked again every
   // frame, so what is under a still pointer stays right while the scene moves.
