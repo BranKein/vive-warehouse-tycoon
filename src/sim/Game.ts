@@ -94,6 +94,8 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
   money = BigNum.ZERO;
   totalEarned = BigNum.ZERO;
   incomePerSec = BigNum.ZERO;
+  /** First smoothing stage; `incomePerSec` follows it, so a single sale never makes the shown income jump. */
+  private incomeStage = BigNum.ZERO;
   speed: GameSpeed = 1;
   tickCount = 0;
 
@@ -128,6 +130,8 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
       this.money = parseAmount(state.money);
       this.totalEarned = parseAmount(state.totalEarned);
       this.incomePerSec = parseAmount(state.income);
+      // Saves from before the second stage start it level with the shown income.
+      this.incomeStage = state.incomeStage === undefined ? this.incomePerSec : parseAmount(state.incomeStage);
       this.earnedThisWindow = parseAmount(state.incomeWindow);
       const speed = state.speed as GameSpeed;
       if (SPEEDS.includes(speed)) this.speed = speed;
@@ -212,9 +216,11 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     this.updateSpecial(tick);
     this.autoPilot.update(tick);
     if (tick % TICKS_PER_SECOND === 0) {
-      // Exponential moving average, sampled once a second.
+      // Two exponential moving averages in a row, sampled once a second. The second one
+      // turns the spike of a sale and the slide after it into a gentle rise and fall.
       const alpha = 1 - Math.exp(-1 / Math.max(1e-6, this.balance.income.smoothingSec));
-      this.incomePerSec = this.incomePerSec.mul(1 - alpha).add(this.earnedThisWindow.mul(alpha));
+      this.incomeStage = this.incomeStage.mul(1 - alpha).add(this.earnedThisWindow.mul(alpha));
+      this.incomePerSec = this.incomePerSec.mul(1 - alpha).add(this.incomeStage.mul(alpha));
       this.earnedThisWindow = BigNum.ZERO;
     }
   }
@@ -483,6 +489,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
       money: this.money.toString(),
       totalEarned: this.totalEarned.toString(),
       income: this.incomePerSec.toString(),
+      incomeStage: this.incomeStage.toString(),
       incomeWindow: this.earnedThisWindow.toString(),
       speed: this.speed,
       unlocked: [...this.unlocked],

@@ -78,7 +78,7 @@ export interface Balance {
     estimateSec: number;
   };
   income: {
-    /** Time constant of the rolling income average. */
+    /** Time constant of each of the two stages of the rolling income average. */
     smoothingSec: number;
   };
   /** Undrained events beyond this count are dropped, oldest first. */
@@ -103,6 +103,6 @@ export const BALANCE: Balance = {
   },
   specialCargo: { minIntervalSec: 180, maxIntervalSec: 420, lifetimeSec: 40, rewardSeconds: 45, minReward: 10 },
   islands: { estimateSec: 600 },
-  income: { smoothingSec: 30 },
+  income: { smoothingSec: 60 },
   eventQueueLimit: 2000,
 };

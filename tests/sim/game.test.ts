@@ -267,6 +267,23 @@ describe('saving', () => {
     expect(loaded.snapshot().island.buildings.length).toBeGreaterThanOrEqual(after.length);
   });
 
+  it('shows an income that does not jump when a sale lands or slide much between sales', () => {
+    const game = createGame({ catalog, seed: 3 });
+    game.grant(1e6);
+    game.setAutoPilot(true);
+    game.tick(seconds(1200));
+    let previous = game.snapshot().incomePerSec.toNumber();
+    let largestStep = 0;
+    for (let second = 0; second < 300; second += 1) {
+      game.tick(seconds(1));
+      const now = game.snapshot().incomePerSec.toNumber();
+      largestStep = Math.max(largestStep, Math.abs(now - previous) / Math.max(previous, 1e-9));
+      previous = now;
+    }
+    expect(previous).toBeGreaterThan(0);
+    expect(largestStep).toBeLessThan(0.03);
+  });
+
   it('restores an equivalent game that then plays on identically', () => {
     const balance = balanceWith({ specialCargo: { minIntervalSec: 20, maxIntervalSec: 60, lifetimeSec: 30 } });
     const original = createGame({ catalog, seed: 11, balance });
