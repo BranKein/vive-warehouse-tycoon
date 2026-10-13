@@ -36,6 +36,11 @@ export class ModelRegistry {
     return this.factories.has(name);
   }
 
+  /** The factory registered under exactly this name. */
+  get(name: string): ModelFactory | undefined {
+    return this.factories.get(name);
+  }
+
   names(): string[] {
     return [...this.factories.keys()];
   }

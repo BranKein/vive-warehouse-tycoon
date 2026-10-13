@@ -241,8 +241,8 @@ export class ViewSync {
   }
 
   private place(object: Object3D, site: Site): Object3D {
-    const centre = siteToWorld(site, 0, renderConfig.boxes.siteOffsetZ);
-    object.position.set(centre.x, 0, centre.z);
+    // Models are drawn in the frame of their site.
+    object.position.set(site.x, 0, site.z);
     object.rotation.y = site.facing;
     this.group.add(withShadows(object));
     return object;

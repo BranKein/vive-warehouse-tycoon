@@ -1,5 +1,6 @@
 import type { ModelRegistry } from '../ModelRegistry';
 import { registerBuildingModels } from './buildings';
+import { registerFacilityModels } from './facilities';
 import type { Kit } from './kit';
 import { registerPropModels } from './props';
 import { registerSawmillModel } from './sawmill';
@@ -8,27 +9,42 @@ import { registerGroup2Models } from './tier2/index';
 import { registerGroup3Models } from './tier3/index';
 import { registerVehicleModels } from './vehicles';
 
-/** The buildings: the parametric drafts first, then the hand-drawn ones that replace them by name. */
-function registerBuildings(registry: ModelRegistry): void {
-  registerBuildingModels(registry);
+function registerHandDrawnBuildings(registry: ModelRegistry): void {
   registerSawmillModel(registry);
   registerGroup1Models(registry);
   registerGroup2Models(registry);
   registerGroup3Models(registry);
 }
 
-/** What the game draws with shaped models so far: buildings and vehicles. Everything else is still a box. */
+/** The buildings: the parametric drafts first, then the hand-drawn ones that replace them by name. */
+function registerBuildings(registry: ModelRegistry): void {
+  registerBuildingModels(registry);
+  registerHandDrawnBuildings(registry);
+}
+
+/** What the game draws with shaped models so far: buildings, vehicles and facilities. Everything else is still a box. */
 export function registerGameModels(registry: ModelRegistry): void {
   registerBuildings(registry);
   registerVehicleModels(registry);
+  registerFacilityModels(registry);
 }
 
-/** Registers every primitive-built model under its default name. */
-export function registerDefaultModels(registry: ModelRegistry, kit: Kit): void {
-  registerBuildings(registry);
+/** Vehicles already redrawn by hand; the others are still the first drafts. */
+const HAND_DRAWN_VEHICLES = ['vehicle.boxTruck', 'vehicle.carrier'];
+
+/**
+ * Registers every primitive-built model under its default name. Returns the
+ * names of the models drawn by hand (PLAN.md stage 5): those are the ones the
+ * user reviews on the model page; everything else is an old draft.
+ */
+export function registerDefaultModels(registry: ModelRegistry, kit: Kit): string[] {
+  registerBuildingModels(registry);
   registerVehicleModels(registry);
   registerPropModels(registry, kit);
+  const drafts = new Map(registry.names().map((name) => [name, registry.get(name)]));
+  registerHandDrawnBuildings(registry);
+  // After the props, whose facility drafts these replace.
+  registerFacilityModels(registry);
+  const redrawn = registry.names().filter((name) => drafts.get(name) !== registry.get(name) && !name.endsWith('.default'));
+  return [...redrawn, ...HAND_DRAWN_VEHICLES];
 }
-
-/** Models redrawn as style samples for review (PLAN.md stage 5). The model page lists them first. */
-export const STYLE_SAMPLES: string[] = ['building.sawmill', 'vehicle.boxTruck', 'vehicle.carrier'];

@@ -21,8 +21,8 @@ function toyWheel(kit: Kit, radius: number, width: number, x: number, z: number,
     kit.cyl(r, r, w, paint, { x: x + side * shift, y: radius - w / 2, z, rz: Math.PI / 2 }, 18);
   return [
     disc(radius, width, p.tire, 0),
-    disc(radius * 0.62, width * 0.5, p.sign, width * 0.3),
-    disc(radius * 0.26, width * 0.5, cap, width * 0.36),
+    disc(radius * 0.62, width * 0.5, p.sign, width * 0.34),
+    disc(radius * 0.26, width * 0.5, cap, width * 0.44),
   ];
 }
 
@@ -39,7 +39,7 @@ function boxTruck(kit: Kit): Object3D {
   const parts: Object3D[] = [];
 
   // Frame, fuel tanks and the step under each door.
-  parts.push(kit.box(1.6, 0.3, 5.1, p.darkMetal, { y: 0.42, z: -0.05, r: 0.1 }));
+  parts.push(kit.box(1.6, 0.3, 5.3, p.darkMetal, { y: 0.42, z: -0.05, r: 0.1 }));
   for (const x of [-0.92, 0.92]) {
     parts.push(kit.cyl(0.24, 0.24, 0.85, p.metal, { x, y: 0.5 - 0.425, z: 0.25, rx: HALF_PI }, 12));
     parts.push(kit.box(0.3, 0.1, 0.7, p.darkMetal, { x: x * 1.12, y: 0.42, z: 1.75, r: 0.04 }));
@@ -78,7 +78,7 @@ function boxTruck(kit: Kit): Object3D {
   parts.push(kit.box(2.24, 0.72, 0.85, p.glass, { y: 1.53, z: CAB_Z + 0.12, r: 0.12 }));
   parts.push(kit.box(2.26, 0.74, 0.12, v.truckCab, { y: 1.52, z: CAB_Z - 0.38, r: 0.04 }));
   parts.push(kit.box(1.25, 0.36, 0.14, p.sign, { y: 0.88, z: CAB_Z + 0.82, r: 0.08 }));
-  for (const y of [0.97, 1.09]) parts.push(kit.box(1.05, 0.04, 0.16, p.door, { y, z: CAB_Z + 0.82, r: 0.01 }));
+  for (const y of [0.97, 1.09]) parts.push(kit.box(1.05, 0.04, 0.22, p.door, { y, z: CAB_Z + 0.82, r: 0.01 }));
   parts.push(kit.box(2.3, 0.3, 0.42, p.sign, { y: 0.4, z: CAB_Z + 0.72, r: 0.13 }));
   for (const x of [-0.82, 0.82]) {
     parts.push(kit.cyl(0.19, 0.19, 0.12, light, { x, y: 1.06 - 0.06, z: CAB_Z + 0.83, rx: HALF_PI }, 14));
@@ -94,8 +94,8 @@ function boxTruck(kit: Kit): Object3D {
   const FRONT_Z = 1.85;
   const REAR_Z = -1.6;
   for (const x of [-0.98, 0.98]) {
-    parts.push(kit.barrel(0.42, 0.66, 1.42, v.truckCab, { x, y: 0.5, z: FRONT_Z }));
-    parts.push(kit.barrel(0.42, 0.66, 1.42, p.darkMetal, { x, y: 0.5, z: REAR_Z }));
+    parts.push(kit.barrel(0.36, 0.66, 1.42, v.truckCab, { x, y: 0.5, z: FRONT_Z }));
+    parts.push(kit.barrel(0.3, 0.66, 1.42, p.darkMetal, { x, y: 0.5, z: REAR_Z }));
     parts.push(...toyWheel(kit, 0.5, 0.44, x, FRONT_Z, v.truckCab));
     parts.push(...toyWheel(kit, 0.5, 0.44, x, REAR_Z, v.truckCab));
   }
@@ -118,13 +118,13 @@ function carrier(kit: Kit): Object3D {
     }
   }
   const parts: Object3D[] = [];
-  parts.push(kit.box(1.3, 0.26, 3.2, p.darkMetal, { y: 0.36, z: -0.05, r: 0.09 }));
+  parts.push(kit.box(1.3, 0.26, 3.4, p.darkMetal, { y: 0.36, z: -0.1, r: 0.09 }));
 
   // Bed: a thick cream deck, rails on posts, a tailgate with a coloured band.
   const BED_Z = -0.68;
   const BED_LEN = 2.25;
   parts.push(kit.box(1.9, 0.24, BED_LEN, v.carrierBed, { y: 0.62, z: BED_Z, r: 0.09 }));
-  for (const x of [-0.9, 0.9]) {
+  for (const x of [-0.87, 0.87]) {
     parts.push(kit.box(0.1, 0.12, BED_LEN - 0.1, v.carrierCab, { x, y: 1.12, z: BED_Z, r: 0.04 }));
     parts.push(kit.box(0.08, 0.1, BED_LEN - 0.1, p.sign, { x, y: 0.94, z: BED_Z, r: 0.03 }));
     for (const dz of [-0.95, -0.32, 0.32, 0.95]) {
@@ -132,12 +132,12 @@ function carrier(kit: Kit): Object3D {
     }
   }
   const back = BED_Z - BED_LEN / 2;
-  parts.push(kit.box(1.9, 0.46, 0.12, v.carrierBed, { y: 0.82, z: back + 0.04, r: 0.05 }));
-  parts.push(kit.box(1.5, 0.16, 0.14, v.carrierCab, { y: 0.97, z: back + 0.03, r: 0.04 }));
+  parts.push(kit.box(1.82, 0.46, 0.12, v.carrierBed, { y: 0.84, z: back, r: 0.05 }));
+  parts.push(kit.box(1.5, 0.16, 0.14, v.carrierCab, { y: 0.99, z: back - 0.03, r: 0.04 }));
   parts.push(kit.box(1.8, 0.16, 0.2, p.darkMetal, { y: 0.34, z: back + 0.02, r: 0.06 }));
   for (const x of [-0.72, 0.72]) parts.push(kit.box(0.2, 0.14, 0.08, v.truckCab, { x, y: 0.62, z: back - 0.03, r: 0.04 }));
   // Headboard between the cab and the load.
-  parts.push(kit.box(1.8, 0.75, 0.1, v.carrierCab, { y: 0.82, z: BED_Z + BED_LEN / 2 - 0.02, r: 0.05 }));
+  parts.push(kit.box(1.8, 0.75, 0.1, v.carrierCab, { y: 0.84, z: BED_Z + BED_LEN / 2 - 0.08, r: 0.05 }));
 
   // Cab.
   const CAB_Z = 1.12;
@@ -149,6 +149,7 @@ function carrier(kit: Kit): Object3D {
   parts.push(kit.box(0.5, 0.1, 0.3, p.hazard, { y: 1.92, z: CAB_Z - 0.1, r: 0.05 }));
   for (const x of [-0.64, 0.64]) {
     parts.push(kit.cyl(0.15, 0.15, 0.1, light, { x, y: 0.86 - 0.05, z: CAB_Z + 0.59, rx: HALF_PI }, 12));
+    parts.push(kit.box(0.24, 0.05, 0.05, p.darkMetal, { x: x * 1.5, y: 1.42, z: CAB_Z + 0.36 }));
     parts.push(kit.box(0.08, 0.3, 0.2, p.darkMetal, { x: x * 1.62, y: 1.2, z: CAB_Z + 0.36, r: 0.03 }));
   }
 
@@ -156,8 +157,8 @@ function carrier(kit: Kit): Object3D {
   const FRONT_Z = 1.05;
   const REAR_Z = -1.05;
   for (const x of [-0.8, 0.8]) {
-    parts.push(kit.barrel(0.3, 0.5, 1.08, v.carrierCab, { x, y: 0.38, z: FRONT_Z }));
-    parts.push(kit.barrel(0.3, 0.5, 1.08, p.darkMetal, { x, y: 0.38, z: REAR_Z }));
+    parts.push(kit.barrel(0.26, 0.5, 1.08, v.carrierCab, { x, y: 0.38, z: FRONT_Z }));
+    parts.push(kit.barrel(0.26, 0.5, 1.08, p.darkMetal, { x, y: 0.38, z: REAR_Z }));
     parts.push(...toyWheel(kit, 0.38, 0.36, x, FRONT_Z, v.carrierCab));
     parts.push(...toyWheel(kit, 0.38, 0.36, x, REAR_Z, v.carrierCab));
   }
