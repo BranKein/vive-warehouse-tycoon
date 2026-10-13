@@ -94,7 +94,7 @@ export const BALANCE: Balance = {
   channels: {
     backlogLoads: 2,
     handlingSec: 2,
-    upgradeCostScale: { 'inbound.truck': 1, 'sale.truck': 1, 'sale.ship': 2e4, 'sale.plane': 2e7 },
+    upgradeCostScale: { 'inbound.truck': 1, 'sale.truck': 1, 'sale.ship': 2, 'sale.plane': 200 },
     dockOffset: 6,
   },
   baseStats: { batchSize: 1, cycleSpeed: 1, priceMultiplier: 1 },

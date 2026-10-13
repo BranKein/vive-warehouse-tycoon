@@ -34,7 +34,7 @@ export const SALE_CHANNELS: SaleChannelDef[] = [
     facility: 'dock',
     vehicleModel: 'vehicle.cargoShip',
     baseIntervalSec: 60,
-    baseLoad: 80,
+    baseLoad: 200,
     vehicleSpeed: 7,
     priceMultiplier: 1.25,
     weightSensitivity: 0.1,
@@ -57,6 +57,6 @@ export const SALE_CHANNELS: SaleChannelDef[] = [
 ];
 
 export const CHANNEL_UNLOCKS: UnlockDef[] = [
-  { id: 'unlock.channel.ship', cost: 1.5e6, requires: [], grants: { type: 'saleChannel', channel: 'sale.ship' } },
+  { id: 'unlock.channel.ship', cost: 1e6, requires: [], grants: { type: 'saleChannel', channel: 'sale.ship' } },
   { id: 'unlock.channel.plane', cost: 3e9, requires: ['unlock.channel.ship'], grants: { type: 'saleChannel', channel: 'sale.plane' } },
 ];
