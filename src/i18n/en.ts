@@ -104,6 +104,7 @@ export const en = {
   'stat.interval': 'interval',
   'stat.load': 'load',
   'stat.priceMultiplier': 'prices',
+  'stat.wasteOutput': 'waste',
 
   // Upgrades
   'upgrade.level': 'Lv {level}',
@@ -250,6 +251,8 @@ export const en = {
   'upgrade.building.carriers.desc': 'More carriers fetch ingredients for this building.',
   'upgrade.building.carrierLoad.name': 'Carrier Load',
   'upgrade.building.carrierLoad.desc': 'Each carrier hauls more per trip.',
+  'upgrade.building.wasteCut.name': 'Cleaner Process',
+  'upgrade.building.wasteCut.desc': 'Each cycle leaves less waste. Some always remains.',
   'upgrade.inbound.interval.name': 'Delivery Interval',
   'upgrade.inbound.interval.desc': 'Raw material trucks arrive more often.',
   'upgrade.inbound.load.name': 'Delivery Load',

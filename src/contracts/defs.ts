@@ -81,6 +81,8 @@ export const Stat = {
   interval: 'interval',
   load: 'load',
   priceMultiplier: 'priceMultiplier',
+  /** Share of a recipe's waste that is actually produced; 1 = all of it. */
+  wasteOutput: 'wasteOutput',
 } as const;
 
 export type UpgradeScope = 'building' | 'inbound' | 'sale' | 'global';

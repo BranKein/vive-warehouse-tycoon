@@ -1,5 +1,7 @@
 import type { BuildingCategory, BuildingDef, UnlockDef } from '@/contracts';
-import { BUILDING_TRACKS } from './upgrades';
+import { ITEMS } from './items';
+import { RECIPES } from './recipes';
+import { BUILDING_TRACKS, WASTE_TRACKS } from './upgrades';
 
 interface Row {
   id: string;
@@ -33,6 +35,11 @@ const ROWS: Row[] = [
 
 export const buildingUnlockId = (buildingType: string): string => `unlock.building.${buildingType}`;
 
+const WASTE_ITEMS = new Set(ITEMS.filter((item) => item.kind === 'waste').map((item) => item.id));
+/** Buildings whose recipe leaves waste get one more upgrade, to cut it down. */
+const makesWaste = (recipeId: string): boolean =>
+  RECIPES.find((recipe) => recipe.id === recipeId)?.outputs.some((output) => WASTE_ITEMS.has(output.item)) ?? false;
+
 export const BUILDINGS: BuildingDef[] = ROWS.map((row) => ({
   id: row.id,
   category: row.category,
@@ -42,7 +49,7 @@ export const BUILDINGS: BuildingDef[] = ROWS.map((row) => ({
   buildCostGrowth: 4,
   upgradeCostScale: Math.max(1, row.buildCost / 40),
   unlock: row.unlockCost > 0 ? buildingUnlockId(row.id) : null,
-  upgradeTracks: BUILDING_TRACKS,
+  upgradeTracks: makesWaste(row.id) ? [...BUILDING_TRACKS, ...WASTE_TRACKS] : BUILDING_TRACKS,
 }));
 
 export const BUILDING_UNLOCKS: UnlockDef[] = ROWS.filter((row) => row.unlockCost > 0).map((row) => ({

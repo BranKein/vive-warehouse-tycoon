@@ -95,6 +95,7 @@ export const ko: Translations = {
   'stat.interval': '주기',
   'stat.load': '적재량',
   'stat.priceMultiplier': '가격',
+  'stat.wasteOutput': '폐기물',
 
   'upgrade.level': 'Lv {level}',
   'upgrade.levelOfMax': 'Lv {level}/{max}',
@@ -232,6 +233,8 @@ export const ko: Translations = {
   'upgrade.building.carriers.desc': '이 건물의 재료를 가져오는 운반차가 늘어납니다.',
   'upgrade.building.carrierLoad.name': '운반차 적재량',
   'upgrade.building.carrierLoad.desc': '운반차가 한 번에 더 많이 나릅니다.',
+  'upgrade.building.wasteCut.name': '폐기물 줄이기',
+  'upgrade.building.wasteCut.desc': '한 번 가공할 때 나오는 폐기물이 줄어듭니다. 완전히 없어지지는 않습니다.',
   'upgrade.inbound.interval.name': '입고 주기',
   'upgrade.inbound.interval.desc': '원자재 트럭이 더 자주 옵니다.',
   'upgrade.inbound.load.name': '입고 적재량',

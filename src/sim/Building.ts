@@ -85,6 +85,7 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
         [Stat.cycleSpeed]: baseStats.cycleSpeed,
         [Stat.carrierCount]: carriers.baseCount,
         [Stat.carrierLoad]: carriers.baseLoad,
+        [Stat.wasteOutput]: 1,
       },
       this.tracks,
       this.levels,
@@ -127,7 +128,9 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
   update(tick: number): void {
     if (this.cycle && tick >= this.cycle.end) {
       for (const out of this.line.produce(this.cycle.scale)) {
-        (this.waste.get(out.item) ?? this.outputs.slot(out.item)).add(out.amount);
+        const wasteSlot = this.waste.get(out.item);
+        if (wasteSlot) wasteSlot.add(out.amount.mul(this.stats.value(Stat.wasteOutput)));
+        else this.outputs.slot(out.item).add(out.amount);
       }
       this.cycle = null;
       this.updateWaste();
