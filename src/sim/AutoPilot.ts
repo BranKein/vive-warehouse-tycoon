@@ -12,8 +12,11 @@ interface Goal {
   /** Current price; null when the goal can no longer be bought. */
   cost(): BigNum | null;
   buy(): CommandResult;
-  /** Unlocks are taken ahead of cheaper goals once the money covers them. */
-  unlock?: boolean;
+  /**
+   * Unlocks, and after them new buildings, are taken ahead of cheaper goals
+   * once the money covers them. Upgrades have no priority.
+   */
+  priority?: 'unlock' | 'build';
 }
 
 /** What auto mode needs to see of the game. */
@@ -30,7 +33,8 @@ export interface AutoPilotHost {
 
 /**
  * Plays the game on its own: saves up for the cheapest thing that can be
- * bought and buys it, but takes an unlock first whenever the money covers one. Only acts on the watched island.
+ * bought and buys it, but takes an unlock, or else a new building, first
+ * whenever the money covers one. Only acts on the watched island.
  */
 /** Auto mode builds on one of this many empty plots nearest the truck yard. */
 const NEAREST_PLOTS = 3;
@@ -58,20 +62,24 @@ export class AutoPilot {
   }
 
   /**
-   * An unlock that the money already covers comes first, even when an upgrade
-   * is cheaper; otherwise the cheapest goal. Among equally cheap ones the first listed wins.
+   * An unlock that the money already covers comes first, then a building it
+   * covers, even when an upgrade is cheaper; otherwise the cheapest goal.
+   * Among equally cheap ones the first listed wins.
    */
   private pick(): Goal | null {
     const money = this.host.money;
-    let best: { goal: Goal; cost: BigNum } | null = null;
-    let unlock: { goal: Goal; cost: BigNum } | null = null;
+    type Choice = { goal: Goal; cost: BigNum };
+    let best: Choice | null = null;
+    const covered: { unlock: Choice | null; build: Choice | null } = { unlock: null, build: null };
     for (const goal of this.candidates()) {
       const cost = goal.cost();
       if (!cost) continue;
       if (!best || cost.lt(best.cost)) best = { goal, cost };
-      if (goal.unlock && money.gte(cost) && (!unlock || cost.lt(unlock.cost))) unlock = { goal, cost };
+      if (!goal.priority || !money.gte(cost)) continue;
+      const first = covered[goal.priority];
+      if (!first || cost.lt(first.cost)) covered[goal.priority] = { goal, cost };
     }
-    return (unlock ?? best)?.goal ?? null;
+    return (covered.unlock ?? covered.build ?? best)?.goal ?? null;
   }
 
   /** Everything that can be bought right now, ignoring price. */
@@ -84,7 +92,7 @@ export class AutoPilot {
         view: { key: 'auto.target.unlock', params: { unlock: unlock.id } },
         cost: () => unlock.cost,
         buy: () => commands.unlock(unlock.id),
-        unlock: true,
+        priority: 'unlock',
       });
     }
 
@@ -104,6 +112,7 @@ export class AutoPilot {
           const plots = island.emptyPlotsNearSales().slice(0, NEAREST_PLOTS);
           return plots.length > 0 ? commands.build(rng.pick(plots), typeId) : { ok: false, reason: 'islandFull' };
         },
+        priority: 'build',
       });
     }
 

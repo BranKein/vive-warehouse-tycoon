@@ -294,6 +294,21 @@ describe('saving', () => {
     expect(unlocked.unlocked).toBe(true);
   });
 
+  it('auto mode builds as soon as it can pay for a building, before a cheaper upgrade', () => {
+    const game = createGame({ catalog, seed: 2 });
+    const before = game.snapshot();
+    const builds = before.island.buildOptions.filter((option) => option.unlocked && option.builtCount < option.maxCount);
+    const cheapestBuild = builds.reduce((min, option) => (option.cost.lt(min) ? option.cost : min), builds[0]!.cost);
+    const upgrades = before.island.buildings.flatMap((building) => building.upgrades.map((upgrade) => upgrade.cost));
+    expect(upgrades.some((cost) => cost !== null && cost.lt(cheapestBuild))).toBe(true);
+    // Enough for the building, not for the first unlock (200), which would come first.
+    expect(cheapestBuild.toNumber()).toBeLessThan(200);
+    game.grant(cheapestBuild.toNumber() - before.money.toNumber());
+    game.setAutoPilot(true);
+    game.tick(seconds(1));
+    expect(game.snapshot().island.buildings.length).toBe(before.island.buildings.length + 1);
+  });
+
   it('measures uptime, shortages and sales over the last minutes', () => {
     const game = createGame({ catalog, seed: 9 });
     game.grant(1e5);
