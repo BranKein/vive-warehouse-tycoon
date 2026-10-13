@@ -17,7 +17,8 @@ import { BLOCK_MODEL } from './boxModels';
 import { renderConfig } from './config';
 import { celestialState, dayPhase, lerpRgb, sampleDayNight, type Rgb } from './dayNight';
 import { InstancedModel } from './InstancedModel';
-import { roadStrips } from './layout';
+import { lampSpots, roadStrips, treeSpots, type PropSpot } from './layout';
+import { LAMP_MODEL, TREE_MODEL } from './models/props';
 import type { MaterialLibrary } from './materials';
 import type { ModelRegistry } from './ModelRegistry';
 import type { Theme } from './theme';
@@ -26,8 +27,8 @@ const UP = new Vector3(0, 1, 0);
 
 /**
  * Everything that does not come from the snapshot: the grass, the board, the
- * roads and flat pads of an island layout, the sky colour and the two lights.
- * Deliberately plain; scenery is a later stage (PLAN.md 3.13).
+ * roads and flat pads of an island layout, the street lamps and trees on it,
+ * the sky colour and the two lights.
  */
 export class Environment {
   readonly group = new Group();
@@ -37,6 +38,8 @@ export class Environment {
   private readonly fog: Fog;
   private readonly ground: Mesh;
   private flats: InstancedModel | null = null;
+  /** Trees and street lamps standing on the board. */
+  private props: InstancedModel[] = [];
   private layout: IslandLayoutDef | null = null;
   private centre = new Vector3();
   private lightDistance = 300;
@@ -78,6 +81,11 @@ export class Environment {
       this.flats.dispose();
       this.flats = null;
     }
+    for (const prop of this.props) {
+      this.group.remove(prop.group);
+      prop.dispose();
+    }
+    this.props = [];
     const layout = this.layout;
     if (!layout) return;
     const g = renderConfig.boxes.ground;
@@ -102,9 +110,19 @@ export class Environment {
       add((r.minX + r.maxX) / 2, 0, (r.minZ + r.maxZ) / 2, r.maxX - r.minX, h, r.maxZ - r.minZ, 0, color);
 
     flats.begin();
+    // The board on a wider, lower rim.
+    const [rimWidth, rimDrop] = g.rim;
+    add(this.centre.x, -g.boardThickness, this.centre.z, b.maxX - b.minX + rimWidth, g.boardThickness - rimDrop, b.maxZ - b.minZ + rimWidth, 0, colors.boardRim);
     add(this.centre.x, -g.boardThickness, this.centre.z, b.maxX - b.minX, g.boardThickness, b.maxZ - b.minZ, 0, colors.board);
-    rect(layout.river, g.padHeight, colors.water);
-    rect(layout.runway, g.padHeight, colors.runway);
+    // Layers from the lowest up; no two of them share a height, so nothing flickers where they overlap.
+    const river = layout.river;
+    rect(river, g.waterHeight, colors.water);
+    rect({ ...river, minZ: river.minZ + (river.maxZ - river.minZ) * 0.45 }, g.waterHeight + 0.008, colors.waterDeep);
+    rect({ ...river, minZ: river.minZ - 2.2, maxZ: river.minZ }, g.runwayHeight + 0.008, colors.sand);
+    const runway = layout.runway;
+    rect(runway, g.runwayHeight, colors.runway);
+    const runwayZ = (runway.minZ + runway.maxZ) / 2;
+    for (let x = runway.minX + 5; x < runway.maxX - 4; x += 9) add(x, 0, runwayZ, 4.5, g.runwayHeight + 0.012, 0.5, 0, colors.runwayMark);
     for (const plot of layout.plots) {
       const w = layout.plotSize.width - g.plotInset * 2;
       const d = layout.plotSize.depth - g.plotInset * 2;
@@ -113,14 +131,58 @@ export class Environment {
     for (const facility of layout.facilities) {
       add(facility.x, 0, facility.z, g.facilityPad[0], g.padHeight, g.facilityPad[1], facility.facing, colors.yardPad);
     }
-    for (const strip of roadStrips(layout.roadNodes, layout.roadEdges)) {
+    // Roads: a pale curb under each, the roadway on top, dashes down the middle.
+    const strips = roadStrips(layout.roadNodes, layout.roadEdges);
+    const curb = layout.roadWidth + g.curbWidth * 2;
+    const [dashLength, dashWidth, dashStep] = g.dash;
+    for (const strip of strips) {
+      add(strip.x, 0, strip.z, curb, g.curbHeight, strip.length, strip.heading, colors.roadEdge);
       add(strip.x, 0, strip.z, layout.roadWidth, g.roadHeight, strip.length, strip.heading, colors.road);
+      // Dashes stop short of both ends, where the crossings are.
+      const run = strip.length - layout.roadWidth - dashLength;
+      const count = Math.floor(run / dashStep);
+      for (let i = 0; i <= count && run > 0; i += 1) {
+        const along = (i - count / 2) * dashStep;
+        add(strip.x + Math.sin(strip.heading) * along, 0, strip.z + Math.cos(strip.heading) * along, dashWidth, g.markHeight, dashLength, strip.heading, colors.roadMark);
+      }
     }
     // A square on every node closes the corners and caps the dead ends.
-    for (const node of layout.roadNodes) add(node.x, 0, node.z, layout.roadWidth, g.roadHeight, layout.roadWidth, 0, colors.road);
+    for (const node of layout.roadNodes) {
+      add(node.x, 0, node.z, curb, g.curbHeight, curb, 0, colors.roadEdge);
+      add(node.x, 0, node.z, layout.roadWidth, g.roadHeight, layout.roadWidth, 0, colors.road);
+    }
     flats.end();
     this.flats = flats;
     this.group.add(flats.group);
+
+    // Street lamps along the roads and trees on the free ground.
+    const scenery = renderConfig.scenery;
+    const stand = (name: string, spots: PropSpot[]): void => {
+      if (spots.length === 0) return;
+      const model = new InstancedModel(this.registry.create(name), spots.length);
+      model.begin();
+      for (const spot of spots) {
+        position.set(spot.x, g.padHeight, spot.z);
+        rotation.setFromAxisAngle(UP, spot.heading);
+        scale.set(1, 1, 1);
+        model.add(matrix.compose(position, rotation, scale));
+      }
+      model.end();
+      this.props.push(model);
+      this.group.add(model.group);
+    };
+    stand(LAMP_MODEL, lampSpots(layout.roadNodes, layout.roadEdges, scenery.lampOffset));
+    const trees = treeSpots(layout, {
+      count: scenery.boardTrees,
+      seed: scenery.seed,
+      clearance: scenery.treeClearance,
+      spacing: scenery.treeSpacing,
+      facilityPad: g.facilityPad,
+    });
+    const kinds = this.theme.props.foliage.length;
+    for (let kind = 0; kind < kinds; kind += 1) {
+      stand(TREE_MODEL(kind), trees.filter((_, index) => index % kinds === kind));
+    }
 
     // One shadow map covers the whole board.
     const half = Math.hypot(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + renderConfig.shadow.margin;
@@ -136,8 +198,11 @@ export class Environment {
     this.sun.target.position.copy(this.centre);
   }
 
-  /** Moves the light and recolours the sky for the given real time. The cycle is visual only. */
-  update(realTimeSec: number): void {
+  /**
+   * Moves the light and recolours the sky for the given real time. The cycle is visual only.
+   * Returns how far into the night it is (0 by day, 1 at night), which the glowing materials follow.
+   */
+  update(realTimeSec: number): number {
     const settings = this.theme.dayNight;
     const phase = dayPhase(realTimeSec, settings);
     const sample = sampleDayNight(settings.keyframes, phase);
@@ -154,11 +219,14 @@ export class Environment {
     this.ambient.intensity = sample.ambientIntensity;
     setRgb(this.background, lerpRgb(sample.skyHorizon, sample.skyTop, 0.5));
     setRgb(this.fog.color, sample.fog);
+    return sample.night;
   }
 
   dispose(): void {
     this.flats?.dispose();
     this.flats = null;
+    for (const prop of this.props) prop.dispose();
+    this.props = [];
     this.ground.geometry.dispose();
     this.sun.shadow.map?.dispose();
     this.scene.remove(this.group);

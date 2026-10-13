@@ -216,6 +216,16 @@ function airport(kit: Kit): Object3D {
 export const TREE_MODEL = (index: number): string => `prop.tree${index}`;
 export const HOUSE_MODEL = (index: number): string => `prop.house${index}`;
 
+/** The trees and the street lamp: the props the game's board is dressed with. */
+export function registerStreetModels(registry: ModelRegistry, kit: Kit): void {
+  kit.theme.props.foliage.forEach((color, index) => {
+    registry.register(TREE_MODEL(index), (k) => tree(k, color, index));
+  });
+  registry.register(LAMP_MODEL, lamp);
+}
+
+export const LAMP_MODEL = 'prop.lamp';
+
 export function registerPropModels(registry: ModelRegistry, kit: Kit): void {
   const theme = kit.theme;
   registry.register('prop.pallet', pallet);

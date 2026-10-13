@@ -90,6 +90,11 @@ export const renderConfig = {
   scenery: {
     seed: 20261012,
     boardTrees: 70,
+    /** Trees keep this far from plots, pads, roads, water and each other. */
+    treeClearance: 1.6,
+    treeSpacing: 3.4,
+    /** Street lamps stand this far from the centre of their road. */
+    lampOffset: 3.75,
     villageHouses: 46,
     villageTrees: 260,
     hills: 16,
@@ -108,6 +113,8 @@ export const renderConfig = {
   boxes: {
     /** Building and facility boxes sit this far behind the centre of their site, leaving a yard in front. */
     siteOffsetZ: -2,
+    /** Building models are drawn in the plot frame and then moved this far towards the road. */
+    buildingOffsetZ: 1.3,
     building: [10, 5, 7],
     facility: [12, 2, 7],
     vehicles: {
@@ -132,13 +139,13 @@ export const renderConfig = {
     /** Where piles stand on a site, in the site's local frame. */
     yard: {
       /** z of the row of input and output piles in front of the box. */
-      frontZ: 4.6,
+      frontZ: 5.5,
       /** Inputs start at -edgeX and run towards the centre, outputs start at +edgeX. */
       edgeX: 7,
       step: 1.7,
       /** Waste piles stand beside the box and run towards the back. */
       wasteX: 7,
-      wasteZ: -0.6,
+      wasteZ: 0.7,
       wasteStep: 2.3,
     },
     ground: {
@@ -146,8 +153,19 @@ export const renderConfig = {
       extent: 1600,
       boardThickness: 0.6,
       /** Heights of the flat pads above the board; each layer sits a little higher to avoid flicker. */
+      /** Water and tarmac lie lowest, so a pad that reaches over them never shares their plane. */
+      waterHeight: 0.025,
+      runwayHeight: 0.04,
       padHeight: 0.06,
+      curbHeight: 0.08,
+      /** How far the pale curb shows on each side of a road. */
+      curbWidth: 0.7,
       roadHeight: 0.1,
+      markHeight: 0.115,
+      /** Centre-line dashes: length, width and the distance from one to the next. */
+      dash: [2, 0.28, 5],
+      /** The rim is a ledge this much wider than the board and this much lower. */
+      rim: [2.4, 0.22],
       selectionHeight: 0.16,
       /** Gap left around a plot pad so neighbouring plots read as separate. */
       plotInset: 0.7,

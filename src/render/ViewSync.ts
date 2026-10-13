@@ -138,8 +138,9 @@ export class ViewSync {
     for (const building of island.buildings) {
       const plot = this.plots.get(building.plotId);
       if (!plot) continue;
-      // Building models are drawn in the plot's own frame, so they stand on the plot centre.
-      this.position.set(plot.x, 0, plot.z);
+      // Building models are drawn in the plot's own frame, then stand a little closer to the road.
+      const stand = siteToWorld(plot, 0, renderConfig.boxes.buildingOffsetZ);
+      this.position.set(stand.x, 0, stand.z);
       this.rotation.setFromAxisAngle(UP, plot.facing);
       this.scale.set(1, 1, 1);
       this.model(buildingModel(building.typeId), 8).add(this.matrix.compose(this.position, this.rotation, this.scale));
@@ -169,8 +170,8 @@ export class ViewSync {
         volume: { shape: 'box', cx: site.x, cy: 0, cz: site.z, hx: width / 2, hy: 0.3, hz: depth / 2, yaw: site.facing },
       });
     };
-    const standing = (site: Site, size: readonly [number, number, number], target: PickTarget): void => {
-      const centre = siteToWorld(site, 0, sizes.siteOffsetZ);
+    const standing = (site: Site, size: readonly [number, number, number], target: PickTarget, shift = 0): void => {
+      const centre = siteToWorld(site, 0, sizes.siteOffsetZ + shift);
       proxies.push({
         target,
         priority: PRIORITY_BOX,
@@ -194,7 +195,7 @@ export class ViewSync {
       // The whole plot of a building selects that building, not just its box.
       const target: PickTarget = buildingId ? { type: 'building', buildingId } : { type: 'plot', plotId: plot.id };
       flat(plot, layout.plotSize.width, layout.plotSize.depth, target);
-      if (buildingId) standing(plot, sizes.building, target);
+      if (buildingId) standing(plot, sizes.building, target, sizes.buildingOffsetZ);
     }
     for (const facility of layout.facilities) {
       const target: PickTarget = { type: 'facility', facilityId: facility.id };

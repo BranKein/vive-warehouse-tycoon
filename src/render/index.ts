@@ -49,7 +49,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   }
   registerBoxModels(models, Object.keys(catalog.buildings), facilityKinds);
   // Shaped models replace the boxes of the same name.
-  registerGameModels(models);
+  registerGameModels(models, kit);
 
   const scene = new Scene();
   const environment = new Environment(scene, models, theme, materials);
@@ -183,7 +183,8 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       const dt = lastTimeSec === null ? 0 : clamp(realTimeSec - lastTimeSec, 0, renderConfig.maxFrameSec);
       lastTimeSec = realTimeSec;
       rig.update(dt);
-      environment.update(realTimeSec);
+      // Windows, street lamps and headlights come on as it gets dark.
+      materials.setNight(environment.update(realTimeSec));
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha);
       refreshPointer();
       renderer.render(scene, rig.camera);

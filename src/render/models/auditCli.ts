@@ -20,6 +20,8 @@ registerDefaultModels(registry, kit);
 /** Where the game stacks stock on a site, as boxes of the tallest pile: a model must stay out of them. */
 function pileBoxes(facility: boolean): Array<{ label: string; box: Box3 }> {
   const rule = renderConfig.boxes;
+  // Piles are placed in the plot frame; a building model stands `buildingOffsetZ` in front of it.
+  const shift = facility ? 0 : rule.buildingOffsetZ;
   const site = { x: 0, z: 0, facing: 0 };
   const counts: Array<[PileGroup, number]> = facility ? [['inputs', 9]] : [['inputs', 3], ['outputs', 2], ['waste', 2]];
   const boxes: Array<{ label: string; box: Box3 }> = [];
@@ -29,7 +31,10 @@ function pileBoxes(facility: boolean): Array<{ label: string; box: Box3 }> {
       const at = pilePosition(site, group, index, rule.yard);
       boxes.push({
         label: `${group} pile ${index + 1}`,
-        box: new Box3(new Vector3(at.x - half, 0.35, at.z - half), new Vector3(at.x + half, rule.pile.maxHeight, at.z + half)),
+        box: new Box3(
+          new Vector3(at.x - half, 0.35, at.z - shift - half),
+          new Vector3(at.x + half, rule.pile.maxHeight, at.z - shift + half),
+        ),
       });
     }
   }

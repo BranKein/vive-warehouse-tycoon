@@ -186,7 +186,8 @@ function dock(kit: Kit): Object3D {
   const parts: Parts = [];
   parts.push(kit.box(14.8, FLOOR, 8.6, p.concrete, { z: -2.6, r: 0.1 }));
   // Wooden pier along the water, with bollards.
-  parts.push(kit.box(15.6, 0.3, 5.6, p.wood, { y: -0.26, z: 4.3, r: 0.08 }));
+  // Its top stands clear of the pad and the water it reaches over, so the three never flicker.
+  parts.push(kit.box(15.6, 0.36, 5.6, p.wood, { y: -0.22, z: 4.3, r: 0.08 }));
   for (let i = 0; i < 6; i += 1) {
     const x = -7.2 + i * 2.88;
     parts.push(kit.cyl(0.3, 0.3, 2.0, p.trunk, { x, y: -1.5, z: 7.0 }, 10));
@@ -205,9 +206,9 @@ function dock(kit: Kit): Object3D {
   parts.push(kit.box(0.55, 0.5, 9.0, p.hazard, { x: TX, y: FLOOR + 7.2, z: TZ + 2.4, r: 0.14 }));
   parts.push(kit.box(1.1, 0.9, 1.3, p.darkMetal, { x: TX, y: FLOOR + 6.9, z: TZ - 1.9, r: 0.14 }));
   parts.push(kit.box(0.3, 1.4, 0.3, p.hazard, { x: TX, y: FLOOR + 7.5, z: TZ, r: 0.08 }));
-  parts.push(kit.cyl(0.04, 0.04, 3.4, p.darkMetal, { x: TX, y: FLOOR + 3.9, z: TZ + 5.6 }, 6));
-  parts.push(kit.box(0.5, 0.2, 0.5, p.darkMetal, { x: TX, y: FLOOR + 3.75, z: TZ + 5.6, r: 0.05 }));
-  parts.push(kit.box(1.1, 1.0, 1.1, itemColor(theme, 'giftSet'), { x: TX, y: FLOOR + 2.75, z: TZ + 5.6, r: 0.1 }));
+  parts.push(kit.cyl(0.04, 0.04, 3.4, p.darkMetal, { x: TX, y: FLOOR + 3.9, z: TZ + 6.6 }, 6));
+  parts.push(kit.box(0.5, 0.2, 0.5, p.darkMetal, { x: TX, y: FLOOR + 3.75, z: TZ + 6.6, r: 0.05 }));
+  parts.push(kit.box(1.1, 1.0, 1.1, itemColor(theme, 'giftSet'), { x: TX, y: FLOOR + 2.75, z: TZ + 6.6, r: 0.1 }));
 
   // Containers stacked on the quay.
   const colors = [v.shipStripe, v.shipHull, p.houseRoofs[2] ?? v.shipStripe, p.hazard];
