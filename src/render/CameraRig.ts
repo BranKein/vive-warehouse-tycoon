@@ -103,6 +103,11 @@ export class CameraRig {
     this.camera.updateMatrixWorld();
   }
 
+  /** True once the camera has started drifting on its own because nothing was touched for a while. */
+  get sightseeing(): boolean {
+    return !this.dragging && !this.panning && this.sinceInput > renderConfig.camera.idle.delaySec;
+  }
+
   /** The player did something: leave the sightseeing view but keep looking from where the camera is now. */
   private wake(): void {
     if (this.idleYaw !== 0) {

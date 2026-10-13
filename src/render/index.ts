@@ -93,7 +93,8 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       view.setSelection(landing);
       return;
     }
-    const target = picked.type === 'none' ? null : picked;
+    // The sightseeing view moves the scene under a still pointer; nothing is being pointed at then.
+    const target = picked.type === 'none' || rig.sightseeing ? null : picked;
     if (pointerMoved || keyOf(target) !== hoverKey) emitHover(target);
     pointerMoved = false;
   };
