@@ -1,4 +1,5 @@
 import {
+  SAVE_VERSION,
   Stat,
   type BuildingId,
   type BuildingTypeId,
@@ -31,8 +32,7 @@ import { IslandManager } from './IslandManager';
 import { StatResolver } from './modifiers';
 import { isMaxed, restoreLevels, serializeLevels, upgradeCost, upgradeViews, type Upgradable } from './upgrades';
 
-/** Version of the `SaveData` envelope this simulation reads and writes. Must match `CURRENT_SAVE_VERSION` in `src/save`. */
-export const SAVE_VERSION = 1;
+export { SAVE_VERSION };
 
 const DEFAULT_SEED = 1;
 const GLOBAL_TARGET = 'global';

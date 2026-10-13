@@ -4,10 +4,10 @@
  * `state` belong to the simulation; steps registered here may reshape it, but
  * nothing else in this module interprets it.
  */
-import type { SaveData } from '@/contracts';
+import { SAVE_VERSION, type SaveData } from '@/contracts';
 
-/** Version written by this build. Bump it and add a step to `MIGRATIONS` whenever the format changes. */
-export const CURRENT_SAVE_VERSION = 1;
+/** Version written by this build. Bump `SAVE_VERSION` and add a step to `MIGRATIONS` whenever the format changes. */
+export const CURRENT_SAVE_VERSION = SAVE_VERSION;
 
 /** Upgrades a save from version N to version N + 1. Must not mutate its argument. */
 export type MigrationStep = (data: SaveData) => SaveData;

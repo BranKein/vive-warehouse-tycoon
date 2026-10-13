@@ -14,6 +14,9 @@ export interface SaveSummary {
   playSeconds: number;
 }
 
+/** Format version written by this build. Bump it together with a step in `src/save/migrations.ts`. */
+export const SAVE_VERSION = 1;
+
 export interface SaveData {
   /** Format version; older versions are upgraded step by step on load. */
   version: number;
