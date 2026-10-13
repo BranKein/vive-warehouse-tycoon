@@ -1021,3 +1021,31 @@
   gap: 8px;
   margin-top: auto;
 }
+
+/* A second, smaller row of tabs inside a dock tab. */
+.wt-ui .wt-subtabs {
+  flex: none;
+  align-self: flex-start;
+  margin-right: 0;
+}
+
+.wt-ui .wt-subtabs .wt-tab-btn {
+  flex: none;
+  padding: 5px 14px;
+}
+
+.wt-ui .wt-subtabs .wt-tab-btn.is-locked:not(.is-active) {
+  opacity: 0.6;
+}
+
+.wt-detail-bar .wt-facility-stock {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-detail-bar > .wt-btn {
+  margin-left: auto;
+}

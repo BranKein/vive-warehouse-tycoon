@@ -118,8 +118,6 @@ export const ko: Translations = {
   'unlocks.grants.building': '새 건물: {name}',
   'unlocks.grants.saleChannel': '새 판매 수단이 열립니다: {name}.',
 
-  'logistics.inbound': '입고',
-  'logistics.sale': '판매 수단',
   'logistics.global': '전체',
   'logistics.nextArrival': '다음 차량까지 {time}',
   'logistics.priceBonus': '판매가 ×{value}',

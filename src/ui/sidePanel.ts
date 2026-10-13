@@ -12,7 +12,7 @@ export function createSidePanel(ctx: UIContext, onChange: () => void) {
   let active: TabId = 'building';
   let collapsed = false;
 
-  const logistics = createLogisticsTab(ctx);
+  const logistics = createLogisticsTab(ctx, onChange);
   const tabs: Record<TabId, { el: HTMLElement; update(frame: Frame): void }> = {
     building: createBuildingTab(ctx),
     unlocks: createUnlocksTab(ctx),
@@ -43,9 +43,6 @@ export function createSidePanel(ctx: UIContext, onChange: () => void) {
     show(tab: TabId): void {
       active = tab;
       collapsed = false;
-    },
-    reveal(facilityId: string): void {
-      logistics.reveal(facilityId);
     },
     update(frame: Frame): void {
       for (const { id, el: tabButton } of tabButtons) {

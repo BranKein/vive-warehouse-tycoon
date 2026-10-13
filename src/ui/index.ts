@@ -52,10 +52,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   /** Opens the tab that belongs to what was just selected. An empty plot opens the build window by itself. */
   function follow(next: Selection): void {
     if (next.type === 'building') panel.show('building');
-    else if (next.type === 'facility') {
-      panel.show('upgrades');
-      panel.reveal(next.facilityId);
-    }
+    else if (next.type === 'facility') panel.show('upgrades');
   }
 
   const ctx: UIContext = {

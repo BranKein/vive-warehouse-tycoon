@@ -130,8 +130,6 @@ export const en = {
   'unlocks.grants.saleChannel': 'Opens a new way to sell: {name}.',
 
   // Logistics tab
-  'logistics.inbound': 'Inbound',
-  'logistics.sale': 'Sale channels',
   'logistics.global': 'Whole game',
   'logistics.nextArrival': 'Next vehicle in {time}',
   'logistics.priceBonus': 'Sells at ×{value}',
