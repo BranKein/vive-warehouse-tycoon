@@ -69,7 +69,8 @@
     "approved": "69-408fb963"
   },
   "facility.inboundYard": {
-    "approved": "68-4810ca30"
+    "approved": "68-36233e7",
+    "note": "천장에 있는 화살표 있는 저거"
   },
   "facility.truckYard": {
     "approved": "77-dcc3329f"
@@ -120,7 +121,7 @@
     "approved": "5-ce5fb6d1"
   },
   "vehicle.boxTruck": {
-    "approved": "63-4a3e0ea7"
+    "approved": "63-80017b19"
   },
   "vehicle.cargoPlane": {
     "approved": "56-2fad029a"

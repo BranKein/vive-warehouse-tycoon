@@ -34,7 +34,9 @@ import { ModelRegistry } from './ModelRegistry';
 import { auditModel, modelFingerprint, type AuditIssue } from './models/audit';
 import { registerDefaultModels } from './models/index';
 import { Kit } from './models/kit';
-import { defaultTheme as theme } from './theme';
+import { carrierColor, defaultTheme as theme, itemColor } from './theme';
+import { catalog } from '@/content';
+import { ko } from '@/i18n/ko';
 
 const ALL = 'all';
 const REVIEW_URL = '/__models/review';
@@ -155,9 +157,71 @@ function frame(target: Object3D): void {
   setTime(Number(timeInput.value));
 }
 
+/** A colour a model is painted in somewhere in the game, and where. */
+interface Swatch {
+  color: number;
+  label: string;
+}
+
+const word = (key: string): string => (ko as Record<string, string>)[key] ?? key;
+
+/** Every colour the game paints carriers in: by owner and by what its building makes. */
+function carrierSwatches(): Swatch[] {
+  const byColor = new Map<number, string[]>();
+  const add = (color: number, label: string): void => void byColor.set(color, [...(byColor.get(color) ?? []), label]);
+  for (const building of Object.values(catalog.buildings)) {
+    const item = catalog.recipes[building.recipe]?.outputs[0]?.item;
+    const made = item ? ` → ${word(`item.${item}.name`)}` : '';
+    add(carrierColor(theme, building.category, item), `${word(`category.${building.category}`)} · ${word(`building.${building.id}.name`)}${made}`);
+  }
+  add(carrierColor(theme, 'facility'), '물류 시설');
+  return [...byColor].map(([color, labels]) => ({ color, label: labels.join(', ') }));
+}
+
+/** The colours the game tints a model with, for the models it tints. */
+const SWATCHES: Record<string, () => Swatch[]> = {
+  'vehicle.carrier': carrierSwatches,
+  'prop.crate': () => Object.keys(catalog.items).map((item) => ({ color: itemColor(theme, item), label: word(`item.${item}.name`) })),
+};
+
+const swatchBox = document.querySelector<HTMLElement>('#swatches')!;
+const swatchList = document.querySelector<HTMLElement>('#swatch-list')!;
+const swatchName = document.querySelector<HTMLElement>('#swatch-name')!;
+const TINTABLE_DARK = materials.tintableDark.color.clone();
+
+/** Paints the tinted materials the way the game does for one copy; null puts the plain colours back. */
+function paint(color: number | null): void {
+  materials.paint.color.set(color ?? theme.vehicles.carrierCab);
+  materials.tintable.color.set(color ?? 0xffffff);
+  materials.tintableDark.color.copy(TINTABLE_DARK).multiply(materials.tintable.color);
+}
+
+function showSwatches(name: string): void {
+  const swatches = SWATCHES[name]?.() ?? [];
+  paint(null);
+  swatchBox.hidden = swatches.length === 0;
+  swatchName.textContent = '기본';
+  swatchList.replaceChildren(
+    ...swatches.map((swatch) => {
+      const button = document.createElement('button');
+      button.style.background = `#${swatch.color.toString(16).padStart(6, '0')}`;
+      button.title = swatch.label;
+      button.addEventListener('click', () => {
+        const on = button.getAttribute('aria-pressed') !== 'true';
+        for (const other of swatchList.children) other.setAttribute('aria-pressed', 'false');
+        button.setAttribute('aria-pressed', String(on));
+        paint(on ? swatch.color : null);
+        swatchName.textContent = on ? swatch.label : '기본';
+      });
+      return button;
+    }),
+  );
+}
+
 let current = '';
 function show(name: string): void {
   current = name;
+  showSwatches(name);
   holder.clear();
   if (name === ALL) {
     // Rows by kind, each model on a cell as wide as the widest of its row.
