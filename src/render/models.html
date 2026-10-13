@@ -31,6 +31,8 @@
       #scene { display: block; width: 100%; height: 100%; }
       #bar { position: absolute; left: 12px; top: 12px; display: flex; gap: 14px; align-items: center; padding: 6px 14px; border-radius: 999px; background: #fff8ecd9; }
       #bar label { display: flex; gap: 6px; align-items: center; }
+      #to-game { padding: 4px 12px; border-radius: 999px; background: #ffd9c9; color: inherit; font-weight: 600; text-decoration: none; }
+      #to-game:hover { background: #ffc4ae; }
       #info { position: absolute; left: 12px; bottom: 12px; padding: 4px 12px; border-radius: 999px; background: #fff8ecd9; pointer-events: none; }
     </style>
   </head>
@@ -43,6 +45,7 @@
         <label><input id="spin" type="checkbox" checked /> 회전</label>
         <label><input id="grid" type="checkbox" checked /> 눈금(1칸 = 1)</label>
         <label><input id="pad" type="checkbox" checked /> 부지</label>
+        <a id="to-game" href="/">게임으로 돌아가기 →</a>
       </div>
       <div id="review" hidden>
         <b id="review-state"></b>

@@ -66,7 +66,7 @@
     "approved": "45-f690e4c8"
   },
   "facility.dock": {
-    "approved": "69-5dc34211"
+    "approved": "69-408fb963"
   },
   "facility.inboundYard": {
     "approved": "68-4810ca30"
@@ -86,5 +86,7 @@
   "vehicle.carrier": {
     "approved": "48-18e1e535"
   },
-  "vehicle.forklift": {}
+  "vehicle.forklift": {
+    "approved": "36-4194c59e"
+  }
 }
