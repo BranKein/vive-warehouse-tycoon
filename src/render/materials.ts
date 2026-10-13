@@ -1,6 +1,9 @@
 import { AdditiveBlending, Color, MeshBasicMaterial, MeshStandardMaterial, type Material } from 'three';
 import type { Theme } from './theme';
 
+/** How much of its own colour a cloud gives off by day. */
+const CLOUD_GLOW = 0.45;
+
 /**
  * Shared materials. Every solid colour maps to exactly one material, so
  * models that use the same colour batch together, and the few glowing
@@ -18,6 +21,8 @@ export class MaterialLibrary {
   /** White base that is tinted per instance (crates). */
   readonly tintable: MeshStandardMaterial;
   readonly tintableDark: MeshStandardMaterial;
+  /** Clouds: slightly see-through, with a light of their own by day so their underside is not dark. */
+  readonly cloud: MeshStandardMaterial;
 
   constructor(readonly theme: Theme) {
     const surface = theme.surface;
@@ -42,7 +47,16 @@ export class MaterialLibrary {
     });
     this.tintable = new MeshStandardMaterial({ color: 0xffffff, roughness: surface.roughness, metalness: surface.metalness });
     this.tintableDark = new MeshStandardMaterial({ color: 0xd9d2cc, roughness: surface.roughness, metalness: surface.metalness });
-    this.extras.push(this.window, this.lamp, this.headlight, this.tintable, this.tintableDark);
+    this.cloud = new MeshStandardMaterial({
+      color: theme.props.cloud,
+      emissive: theme.props.cloud,
+      emissiveIntensity: CLOUD_GLOW,
+      roughness: 1,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.9,
+    });
+    this.extras.push(this.cloud, this.window, this.lamp, this.headlight, this.tintable, this.tintableDark);
   }
 
   /** The one matte, clay-like material for a colour. */
@@ -81,6 +95,7 @@ export class MaterialLibrary {
     this.window.emissiveIntensity = on * glow.windowIntensity;
     this.lamp.emissiveIntensity = on * glow.lampIntensity;
     this.headlight.emissiveIntensity = on * glow.lampIntensity;
+    this.cloud.emissiveIntensity = CLOUD_GLOW * (1 - 0.85 * Math.min(1, Math.max(0, night)));
   }
 
   dispose(): void {

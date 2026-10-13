@@ -17,7 +17,7 @@ export interface InstancedModelOptions {
   receiveShadow?: boolean;
 }
 
-interface Part {
+export interface Part {
   geometry: BufferGeometry;
   material: Material;
 }

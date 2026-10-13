@@ -108,8 +108,8 @@ export interface OutskirtsRule {
 }
 
 /**
- * The countryside around the board. `corridors` are kept clear: the river
- * and the gate road run on through them.
+ * The countryside around the board. `corridors` are kept clear: the sea,
+ * the tunnel at the gate and the way planes come in.
  */
 export function outskirts(bounds: Area, corridors: ReadonlyArray<Area>, rule: OutskirtsRule): Outskirts {
   const random = seededRandom(rule.seed);
@@ -199,4 +199,59 @@ export function outskirts(bounds: Area, corridors: ReadonlyArray<Area>, rule: Ou
     });
   }
   return { hills, houses, trees, clouds };
+}
+
+export interface RunwayLightRule {
+  /** Distance from one edge light to the next. */
+  step: number;
+  /** How far in from the runway's edge the lights stand. */
+  inset: number;
+  /** Distance between the lights across each end. */
+  endStep: number;
+  /** Lights keep this far from the line planes roll along on the ground. */
+  clearance: number;
+}
+
+/**
+ * Lights along both long edges of the runway and a row across each end.
+ * `lane` is the path planes follow; where it runs on the ground (y = 0) the
+ * lights leave it free, so a plane taxiing off the runway does not roll over them.
+ */
+export function runwayLightSpots(
+  runway: Area,
+  lane: ReadonlyArray<{ x: number; y: number; z: number }>,
+  rule: RunwayLightRule,
+): { edge: PropSpot[]; ends: PropSpot[] } {
+  const inWay = (x: number, z: number): boolean => {
+    for (let index = 1; index < lane.length; index += 1) {
+      const a = lane[index - 1]!;
+      const b = lane[index]!;
+      if (a.y !== 0 || b.y !== 0) continue;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const t = Math.min(1, Math.max(0, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+      if (Math.hypot(x - (a.x + dx * t), z - (a.z + dz * t)) < rule.clearance) return true;
+    }
+    return false;
+  };
+  const edge: PropSpot[] = [];
+  const length = runway.maxX - runway.minX - rule.inset * 2;
+  const count = Math.max(1, Math.round(length / rule.step));
+  for (let index = 0; index <= count; index += 1) {
+    const x = runway.minX + rule.inset + (length * index) / count;
+    for (const z of [runway.minZ + rule.inset, runway.maxZ - rule.inset]) {
+      if (!inWay(x, z)) edge.push({ x, z, heading: 0 });
+    }
+  }
+  const ends: PropSpot[] = [];
+  const width = runway.maxZ - runway.minZ - rule.inset * 2;
+  const across = Math.max(2, Math.round(width / rule.endStep));
+  // The corners already have an edge light.
+  for (let index = 1; index < across; index += 1) {
+    const z = runway.minZ + rule.inset + (width * index) / across;
+    for (const x of [runway.minX + rule.inset, runway.maxX - rule.inset]) {
+      if (!inWay(x, z)) ends.push({ x, z, heading: 0 });
+    }
+  }
+  return { edge, ends };
 }

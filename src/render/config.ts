@@ -62,16 +62,25 @@ export const renderConfig = {
     snapDistance: 30,
     /** Radians per second the drawn heading may turn; rounds off corners. */
     turnRate: 7,
-    /** Vehicles grow in when they first show and shrink away when they leave. */
+    /** Carriers grow in when they first show and shrink away when they leave. */
     appearSec: 0.35,
     disappearSec: 0.3,
-    /** Ships and planes do it slowly, over the board, instead of sailing in from beyond its edge. */
+    /** Ships and planes fade in and out instead, slowly, over the board. */
     slowAppearSec: 1.6,
     slowDisappearSec: 1.2,
     /** Road vehicles keep to the right: this far from the centre line (half a lane of a 6 wide road). */
     laneOffset: 1.5,
     /** Higher moves a vehicle onto its lane faster; low enough to round off corners and U-turns. */
     laneDamping: 5,
+    /**
+     * A parked vehicle pulls this much further in than the loading point the game puts it at,
+     * so it stands on the pad and off the road.
+     */
+    parkInset: { carrier: 2.4, truck: 1.8 },
+    /** A parked vehicle belongs to the site whose centre is within this distance. */
+    parkReach: 12,
+    /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */
+    tunnelCover: 3,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },
@@ -104,6 +113,8 @@ export const renderConfig = {
       radius: 4.2,
       rise: 5,
       lifeSec: 0.8,
+      /** A ring of light spreads over the ground under it: up to this radius, starting at this share of it. */
+      glow: { radius: 9.5, startSize: 0.35, lifeSec: 0.9, opacity: 0.85, height: 0.14 },
       /** The upgraded building hops: a small, quick wobble of its height. */
       bounce: { durationSec: 0.6, amplitude: 0.09, frequency: 2 },
     },
@@ -160,8 +171,8 @@ export const renderConfig = {
       clouds: 12,
       margin: 8,
       reach: 260,
-      /** How far the river and the gate road run on beyond the board. */
-      runOn: 900,
+      /** How far the sea reaches beyond the board, south and to both sides. */
+      seaReach: 1500,
     },
     fenceSegment: 3.2,
   },
@@ -223,7 +234,12 @@ export const renderConfig = {
       /** Heights of the flat pads above the board; each layer sits a little higher to avoid flicker. */
       /** Water and tarmac lie lowest, so a pad that reaches over them never shares their plane. */
       waterHeight: 0.025,
+      deepWaterLift: 0.05,
       runwayHeight: 0.04,
+      /** Runway lights: distance between two along an edge, how far in from the edge they stand, and how far they keep from where planes taxi off. */
+      runwayLights: { step: 7, inset: 0.45, endStep: 1.4, clearance: 3 },
+      /** Beyond the board the beach is this wide, then a step this wide and this much lower leads down to the grass. */
+      beach: [7, 3, 0.3],
       padHeight: 0.06,
       curbHeight: 0.08,
       /** How far the pale curb shows on each side of a road. */

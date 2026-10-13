@@ -94,12 +94,29 @@ export function laneShift(heading: number, lane: number): { x: number; z: number
 }
 
 /**
- * Size of a vehicle that has been on screen for `age` seconds and, once it
- * left the snapshot, has been gone for `gone` seconds (negative while it is
- * still there): it grows in, and shrinks away to nothing after leaving.
+ * How much of a vehicle is there, 0..1, when it has been on screen for `age`
+ * seconds and, once it left the snapshot, has been gone for `gone` seconds
+ * (negative while it is still there). Ships and planes use it as their
+ * opacity, carriers as their size.
  */
-export function vehicleSize(age: number, gone: number, appearSec: number, disappearSec: number): number {
+export function vehicleFade(age: number, gone: number, appearSec: number, disappearSec: number): number {
   const grown = appearSec > 0 ? smoothstep(age / appearSec) : 1;
   if (gone < 0) return grown;
   return grown * (1 - smoothstep(disappearSec > 0 ? clamp01(gone / disappearSec) : 1));
+}
+
+/** `from` turned towards `to` the short way round, by at most `maxStep` radians. */
+export function turnToward(from: number, to: number, maxStep: number): number {
+  const turn = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+  return Math.abs(turn) <= maxStep ? to : from + Math.sign(turn) * maxStep;
+}
+
+/**
+ * Where a parked road vehicle is drawn, as a shift from the loading point the
+ * game puts it at: it stays on the lane it drove in on and pulls `inset`
+ * further in, the way it was heading, so it stands on the site and off the road.
+ */
+export function parkedShift(heading: number, lane: number, inset: number): { x: number; z: number } {
+  const side = laneShift(heading, lane);
+  return { x: side.x + Math.sin(heading) * inset, z: side.z + Math.cos(heading) * inset };
 }

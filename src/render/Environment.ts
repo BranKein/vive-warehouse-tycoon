@@ -21,8 +21,8 @@ import { celestialState, dayPhase, lerpRgb, sampleDayNight, type Rgb } from './d
 import { InstancedModel } from './InstancedModel';
 import { lampSpots, roadStrips, treeSpots, type PropSpot } from './layout';
 import { HOUSE_MODEL, LAMP_MODEL, TREE_MODEL } from './models/props';
-import { CLOUD_MODEL, HILL_MODEL } from './models/scenery';
-import { gapTreeSpots, outskirts, type ScaledSpot } from './scenery';
+import { CLOUD_MODEL, HILL_MODEL, RUNWAY_END_LIGHT_MODEL, RUNWAY_LIGHT_MODEL, TUNNEL_MODEL, TUNNEL_SIZE } from './models/scenery';
+import { gapTreeSpots, outskirts, runwayLightSpots, type ScaledSpot } from './scenery';
 import type { MaterialLibrary } from './materials';
 import type { ModelRegistry } from './ModelRegistry';
 import type { Theme } from './theme';
@@ -135,21 +135,28 @@ export class Environment {
     const all = (radius: number): CornerRadii => ({ nw: radius, ne: radius, se: radius, sw: radius });
     slab(grown(b, rimWidth / 2), -g.boardThickness, g.boardThickness - rimDrop, colors.boardRim, all(R + rimWidth / 2));
     slab(b, -g.boardThickness, g.boardThickness, colors.board, all(R));
-    // A corner of the water is rounded only where it is a corner of the board too.
+    const runway = layout.runway;
     const river = clip(layout.river, b);
-    const waterCorners = (area: Area): CornerRadii => ({
-      nw: area.minX <= b.minX && area.minZ <= b.minZ ? R : 0,
-      ne: area.maxX >= b.maxX && area.minZ <= b.minZ ? R : 0,
-      se: area.maxX >= b.maxX && area.maxZ >= b.maxZ ? R : 0,
-      sw: area.minX <= b.minX && area.maxZ >= b.maxZ ? R : 0,
-    });
-    const deep = { ...river, minZ: river.minZ + (river.maxZ - river.minZ) * 0.45 };
-    slab(river, 0, g.waterHeight, colors.water, waterCorners(river));
-    slab(deep, 0, g.waterHeight + 0.008, colors.waterDeep, waterCorners(deep));
+    const deepZ = river.minZ + (river.maxZ - river.minZ) * 0.45;
 
     flats.begin();
+    // The south of the board is a shore: the water that starts on the board runs on as the sea, out to the haze
+    // and past both ends of the board. It lies over the board's southern edge and rim, which end under it.
+    const low = -g.boardThickness;
+    const far = renderConfig.scenery.outskirts.seaReach;
+    const edge = rimWidth / 2;
+    const [beachWidth, stepWidth, stepDrop] = g.beach;
+    const sea = (minZ: number, top: number, color: number): void =>
+      add((b.minX + b.maxX) / 2, low, (minZ + b.maxZ + far) / 2, (b.maxX - b.minX) + far * 2, top - low, b.maxZ + far - minZ, 0, color);
+    sea(river.minZ, g.waterHeight, colors.water);
+    // Well above the shallow water: the two are seen from far away, where a thin gap flickers.
+    sea(deepZ, g.waterHeight + g.deepWaterLift, colors.waterDeep);
     rect({ ...river, minZ: river.minZ - 2.2, maxZ: river.minZ }, g.runwayHeight + 0.008, colors.sand);
-    const runway = layout.runway;
+    // Beyond the board the beach carries the shoreline on, and steps down to the grass.
+    for (const [minX, maxX] of [[b.minX - far, b.minX - edge], [b.maxX + edge, b.maxX + far]] as const) {
+      add((minX + maxX) / 2, low, river.minZ - beachWidth / 2, maxX - minX, g.runwayHeight + 0.008 - low, beachWidth, 0, colors.sand);
+      add((minX + maxX) / 2, low, river.minZ - beachWidth - stepWidth / 2, maxX - minX, g.boardThickness - stepDrop, stepWidth, 0, colors.sand);
+    }
     rect(runway, g.runwayHeight, colors.runway);
     const runwayZ = (runway.minZ + runway.maxZ) / 2;
     for (let x = runway.minX + 5; x < runway.maxX - 4; x += 9) add(x, 0, runwayZ, 4.5, g.runwayHeight + 0.012, 0.5, 0, colors.runwayMark);
@@ -183,25 +190,9 @@ export class Environment {
       rect(square(node.x, node.z, curb), g.curbHeight, colors.roadEdge);
       rect(square(node.x, node.z, layout.roadWidth), g.roadHeight, colors.road);
     }
-    // Beyond the board the river and the gate road run on over the grass, until the haze takes them.
-    const runOn = renderConfig.scenery.outskirts.runOn;
-    const low = -g.boardThickness;
-    const outside = (area: Area, lift: number, color: number): void => {
-      if (area.maxX > area.minX) add((area.minX + area.maxX) / 2, low, (area.minZ + area.maxZ) / 2, area.maxX - area.minX, lift, area.maxZ - area.minZ, 0, color);
-    };
-    const edge = rimWidth / 2;
-    for (const [minX, maxX] of [[b.minX - runOn, b.minX - edge], [b.maxX + edge, b.maxX + runOn]] as const) {
-      outside({ minX, maxX, minZ: river.minZ - 2.2, maxZ: river.maxZ + 2.2 }, 0.03, colors.sand);
-      outside({ minX, maxX, minZ: river.minZ, maxZ: river.maxZ }, 0.05, colors.water);
-      outside({ minX, maxX, minZ: deep.minZ, maxZ: river.maxZ - 1.5 }, 0.06, colors.waterDeep);
-    }
     const gate = layout.roadNodes.find((node) => node.id === layout.roadGate);
-    if (gate) {
-      const lane = { minX: b.minX - runOn, maxX: b.minX - edge };
-      outside({ ...lane, minZ: gate.z - curb / 2, maxZ: gate.z + curb / 2 }, 0.03, colors.roadEdge);
-      outside({ ...lane, minZ: gate.z - layout.roadWidth / 2, maxZ: gate.z + layout.roadWidth / 2 }, 0.05, colors.road);
-      for (let x = lane.maxX - dashStep; x > lane.maxX - 300; x -= dashStep) add(x, low, gate.z, dashLength, 0.06, dashWidth, 0, colors.roadMark);
-    }
+    // Lights along the runway.
+    const lights = runwayLightSpots(runway, layout.flightLane, g.runwayLights);
     flats.end();
     this.flats = flats;
     this.group.add(flats.group);
@@ -227,14 +218,23 @@ export class Environment {
     const standKinds = (name: (kind: number) => string, kinds: number, spots: ReadonlyArray<ScaledSpot>, y?: number, shadows?: boolean): void => {
       for (let kind = 0; kind < kinds; kind += 1) stand(name(kind), spots.filter((spot) => spot.kind % kinds === kind), y, shadows);
     };
-    stand(LAMP_MODEL, lampSpots(layout.roadNodes, layout.roadEdges, scenery.lampOffset));
-    const trees = treeSpots(layout, {
-      count: scenery.boardTrees,
-      seed: scenery.seed,
-      clearance: scenery.treeClearance,
-      spacing: scenery.treeSpacing,
-      facilityPad: g.facilityPad,
-    });
+    const tunnel = gate ? tunnelArea(gate, b) : null;
+    const clearOfTunnel = <T extends { x: number; z: number }>(spots: ReadonlyArray<T>): T[] =>
+      spots.filter((spot) => !tunnel || spot.x > tunnel.maxX + 4 || spot.z < tunnel.minZ - 1 || spot.z > tunnel.maxZ + 1);
+    stand(LAMP_MODEL, clearOfTunnel(lampSpots(layout.roadNodes, layout.roadEdges, scenery.lampOffset)));
+    stand(RUNWAY_LIGHT_MODEL, lights.edge, g.runwayHeight, false);
+    stand(RUNWAY_END_LIGHT_MODEL, lights.ends, g.runwayHeight, false);
+    // Trucks come and go through a tunnel at the gate, so no road has to run on beyond the board.
+    if (gate) stand(TUNNEL_MODEL, [{ x: gate.x, z: gate.z, heading: Math.PI / 2 }], 0);
+    const trees = clearOfTunnel(
+      treeSpots(layout, {
+        count: scenery.boardTrees,
+        seed: scenery.seed,
+        clearance: scenery.treeClearance,
+        spacing: scenery.treeSpacing,
+        facilityPad: g.facilityPad,
+      }),
+    );
     const kinds = this.theme.props.foliage.length;
     for (let kind = 0; kind < kinds; kind += 1) {
       stand(TREE_MODEL(kind), trees.filter((_, index) => index % kinds === kind));
@@ -243,13 +243,13 @@ export class Environment {
     standKinds(TREE_MODEL, kinds, gapTreeSpots(layout, { ...scenery.gapTrees, seed: scenery.seed + 1 }));
 
     // The countryside: nothing there casts or takes shadows, the shadow map only covers the board.
-    const far = 2000;
     const corridors: Area[] = [
-      { minX: -far, maxX: far, minZ: river.minZ - 5, maxZ: river.maxZ + 5 },
+      // The sea and its beach.
+      { minX: -far, maxX: far, minZ: river.minZ - beachWidth - stepWidth - 4, maxZ: far },
       // Planes come in low from the west of the runway.
       { minX: b.minX - 260, maxX: b.minX, minZ: layout.runway.minZ - 14, maxZ: layout.runway.maxZ + 14 },
     ];
-    if (gate) corridors.push({ minX: -far, maxX: b.minX, minZ: gate.z - 7, maxZ: gate.z + 7 });
+    if (tunnel) corridors.push(tunnel);
     const land = outskirts(b, corridors, { ...scenery.outskirts, seed: scenery.seed + 2 });
     standKinds(TREE_MODEL, kinds, land.trees, low, false);
     standKinds(HOUSE_MODEL, this.theme.props.houseWalls.length, land.houses, low, false);
@@ -343,6 +343,14 @@ interface CornerRadii {
   se: number;
   sw: number;
 }
+
+/** Ground the tunnel at the gate covers: it faces east, onto the board. */
+const tunnelArea = (gate: { x: number; z: number }, board: Area): Area => ({
+  minX: Math.min(board.minX, gate.x) - TUNNEL_SIZE.back,
+  maxX: gate.x + TUNNEL_SIZE.front,
+  minZ: gate.z - TUNNEL_SIZE.halfWidth,
+  maxZ: gate.z + TUNNEL_SIZE.halfWidth,
+});
 
 const clip = (area: Area, to: Area): Area => ({
   minX: Math.max(area.minX, to.minX),

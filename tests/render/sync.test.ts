@@ -3,8 +3,8 @@ import { catalog } from '@/content';
 import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
-import { gapTreeSpots, outskirts } from '@/render/scenery';
-import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleSize, type VehicleLike } from '@/render/sync';
+import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
+import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleFade, turnToward, parkedShift, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -164,13 +164,27 @@ describe('vehicles on the road', () => {
     expect(laneShift(Math.PI, 1.5).x).toBeCloseTo(1.5);
   });
 
-  it('grows in, stays whole, and shrinks away after leaving', () => {
-    expect(vehicleSize(0, -1, 1, 1)).toBe(0);
-    expect(vehicleSize(0.5, -1, 1, 1)).toBeCloseTo(0.5);
-    expect(vehicleSize(5, -1, 1, 1)).toBe(1);
-    expect(vehicleSize(5, 0.5, 1, 1)).toBeCloseTo(0.5);
-    expect(vehicleSize(5, 1, 1, 1)).toBe(0);
-    expect(vehicleSize(Infinity, -1, 1, 1)).toBe(1);
+  it('fades in, stays whole, and fades away after leaving', () => {
+    expect(vehicleFade(0, -1, 1, 1)).toBe(0);
+    expect(vehicleFade(0.5, -1, 1, 1)).toBeCloseTo(0.5);
+    expect(vehicleFade(5, -1, 1, 1)).toBe(1);
+    expect(vehicleFade(5, 0.5, 1, 1)).toBeCloseTo(0.5);
+    expect(vehicleFade(5, 1, 1, 1)).toBe(0);
+    expect(vehicleFade(Infinity, -1, 1, 1)).toBe(1);
+  });
+
+  it('turns the short way round, no faster than allowed', () => {
+    expect(turnToward(0, 1, 0.25)).toBeCloseTo(0.25);
+    expect(turnToward(0, 0.1, 0.25)).toBeCloseTo(0.1);
+    // From just short of half a turn one way to just short of it the other: across the back, not all the way round.
+    expect(turnToward(3, -3, 0.1)).toBeCloseTo(3.1);
+  });
+
+  it('parks on the lane it came in on, further into the site', () => {
+    // Driving north (-z) into a plot south of its road: the right-hand lane is east, further in is north.
+    const shift = parkedShift(Math.PI, 1.5, 2);
+    expect(shift.x).toBeCloseTo(1.5);
+    expect(shift.z).toBeCloseTo(-2);
   });
 });
 
@@ -193,18 +207,37 @@ describe('scenery', () => {
     }
   });
 
-  it('keeps the countryside off the board and out of the corridors', () => {
+  it('keeps the countryside off the board and out of the sea', () => {
     const b = layout.bounds;
-    const corridor = { minX: -2000, maxX: 2000, minZ: layout.river.minZ - 5, maxZ: layout.river.maxZ + 5 };
-    const land = outskirts(b, [corridor], { ...rule.outskirts, seed: rule.seed });
+    const sea = { minX: -2000, maxX: 2000, minZ: layout.river.minZ - 14, maxZ: 2000 };
+    const land = outskirts(b, [sea], { ...rule.outskirts, seed: rule.seed });
     expect(land.hills).toHaveLength(rule.outskirts.hills);
     expect(land.houses.length).toBe(rule.outskirts.villages * rule.outskirts.housesPerVillage);
     expect(land.trees.length).toBeGreaterThan(rule.outskirts.trees / 2);
     for (const spot of [...land.trees, ...land.houses]) {
       const onBoard = spot.x > b.minX && spot.x < b.maxX && spot.z > b.minZ && spot.z < b.maxZ;
       expect(onBoard).toBe(false);
+      expect(spot.z).toBeLessThan(sea.minZ);
     }
-    for (const tree of land.trees) expect(tree.z > corridor.minZ && tree.z < corridor.maxZ).toBe(false);
-    for (const hill of land.hills) expect(Math.abs(hill.z - (corridor.minZ + corridor.maxZ) / 2)).toBeGreaterThan(hill.radius);
+    for (const hill of land.hills) expect(hill.z + hill.radius).toBeLessThan(sea.minZ);
+  });
+
+  it('lines the runway with lights and leaves the way off it free', () => {
+    const runway = layout.runway;
+    const lightRule = renderConfig.boxes.ground.runwayLights;
+    const lights = runwayLightSpots(runway, layout.flightLane, lightRule);
+    expect(lights.edge.length).toBeGreaterThan(20);
+    expect(lights.ends.length).toBeGreaterThan(4);
+    for (const light of [...lights.edge, ...lights.ends]) {
+      expect(light.x).toBeGreaterThan(runway.minX);
+      expect(light.x).toBeLessThan(runway.maxX);
+      expect(light.z).toBeGreaterThan(runway.minZ);
+      expect(light.z).toBeLessThan(runway.maxZ);
+    }
+    // Planes leave the runway towards the apron, which is the last point of their lane.
+    const apron = layout.flightLane[layout.flightLane.length - 1]!;
+    const turnOff = layout.flightLane[layout.flightLane.length - 2]!;
+    const mid = { x: (apron.x + turnOff.x) / 2, z: (apron.z + turnOff.z) / 2 };
+    for (const light of lights.edge) expect(Math.hypot(light.x - mid.x, light.z - mid.z)).toBeGreaterThan(lightRule.clearance * 0.9);
   });
 });

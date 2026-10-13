@@ -54,6 +54,8 @@ export interface Theme {
     door: number;
     hazard: number;
     sign: number;
+    /** The dark inside of a tunnel. */
+    shade: number;
   };
   vehicles: {
     truckBody: number;
@@ -105,6 +107,8 @@ export interface Theme {
     hover: number;
     special: number;
     specialGlow: number;
+    /** Ring of light on the ground under something that was just upgraded. */
+    upgradeGlow: number;
     specialBeam: number;
     coin: number;
     smoke: number;
@@ -160,6 +164,7 @@ export const defaultTheme: Theme = {
     door: 0xb9aacb,
     hazard: 0xffd27d,
     sign: 0xfff7ea,
+    shade: 0x4a4258,
   },
   vehicles: {
     truckBody: 0xfffaf2,
@@ -271,6 +276,7 @@ export const defaultTheme: Theme = {
     hover: 0xffffff,
     special: 0xffd45e,
     specialGlow: 0xfff0a8,
+    upgradeGlow: 0xffd45e,
     specialBeam: 0xfff2b8,
     coin: 0xffd45e,
     smoke: 0xffffff,

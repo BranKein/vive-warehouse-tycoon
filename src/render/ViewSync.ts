@@ -16,13 +16,14 @@ import {
   SPECIAL_CARGO_MODEL,
 } from './boxModels';
 import { renderConfig } from './config';
+import { FadingModels } from './FadingModels';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
 import { bounceStretch, log10Of, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
 import { carrierModel } from './models/vehicles';
-import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleSize } from './sync';
+import { buildingKey, diffKeys, laneShift, parkedShift, pilesToShow, turnToward, vehicleFade, vehiclePoses } from './sync';
 import { itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -52,6 +53,12 @@ interface VehicleTrack {
   /** Seconds since it left the snapshot; negative while it is still there. */
   gone: number;
   slow: boolean;
+  /** Trucks come and go through the tunnel at the gate, which hides them: they neither grow nor shrink there. */
+  truck: boolean;
+  /** While parked: the way into the site it stands at, which is the way it drove in. */
+  parkHeading: number | null;
+  /** Height of the surface it stands on (road, runway) above the board. */
+  lift: number;
   /** Kinds of goods on board, for the crates on a carrier's bed. */
   cargo: string[];
   seen: boolean;
@@ -59,6 +66,14 @@ interface VehicleTrack {
 
 const ROAD_KINDS: ReadonlySet<string> = new Set(['carrier', 'inboundTruck', 'saleTruck']);
 const SLOW_KINDS: ReadonlySet<string> = new Set(['ship', 'plane']);
+const TRUCK_KINDS: ReadonlySet<string> = new Set(['inboundTruck', 'saleTruck']);
+
+/** Wheels stand on the road or the runway, which lie a little above the board. */
+function surfaceLift(kind: string): number {
+  const ground = renderConfig.boxes.ground;
+  if (ROAD_KINDS.has(kind)) return ground.roadHeight;
+  return kind === 'plane' ? ground.runwayHeight : 0;
+}
 
 /** Pick priorities: flat ground < things standing on it < special cargo. */
 const PRIORITY_GROUND = 0;
@@ -81,6 +96,9 @@ export class ViewSync {
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
   private readonly tracks = new Map<string, VehicleTrack>();
+  /** Ships and planes while they fade in or out. */
+  private readonly fading: FadingModels;
+  private gate: GroundPoint | null = null;
   /** Buildings and facilities that are hopping, by id, with the seconds since they started. */
   private readonly bounces = new Map<string, number>();
   /** False until the first frame of a layout has been drawn: what is there then does not grow in. */
@@ -99,7 +117,10 @@ export class ViewSync {
   constructor(
     private readonly registry: ModelRegistry,
     private readonly theme: Theme,
-  ) {}
+  ) {
+    this.fading = new FadingModels(registry);
+    this.group.add(this.fading.group);
+  }
 
   /** Switches to another island's layout (null shows nothing). Everything on screen is dropped. */
   setLayout(layout: IslandLayoutDef | null): void {
@@ -109,6 +130,8 @@ export class ViewSync {
     this.facilityDefs.clear();
     for (const plot of layout?.plots ?? []) this.plots.set(plot.id, plot);
     for (const facility of layout?.facilities ?? []) this.facilityDefs.set(facility.id, facility);
+    const gate = layout?.roadNodes.find((node) => node.id === layout.roadGate);
+    this.gate = gate ? { x: gate.x, z: gate.z } : null;
   }
 
   /** Makes a building or facility hop once (it was just upgraded). */
@@ -276,6 +299,7 @@ export class ViewSync {
       model.dispose();
     }
     this.instanced.clear();
+    this.fading.clear();
     this.tracks.clear();
     this.settled = false;
   }
@@ -311,8 +335,10 @@ export class ViewSync {
   }
 
   /**
-   * Vehicles: interpolated between ticks, moved onto the right-hand lane, and
-   * grown in and shrunk away as they come and go.
+   * Vehicles: interpolated between ticks and moved onto the right-hand lane.
+   * Parked ones stand on their site the way they drove in. Carriers grow in
+   * and shrink away as they come and go, ships and planes fade, and trucks
+   * are hidden by the tunnel at the gate.
    */
   private vehicles(prev: GameSnapshot | null, curr: GameSnapshot, alpha: number, dt: number): void {
     const rule = renderConfig.vehicle;
@@ -328,16 +354,24 @@ export class ViewSync {
     for (let index = 0; index < drawn.length; index += 1) {
       const vehicle = list[index]!;
       const pose = drawn[index]!.pose;
-      const onRoad = ROAD_KINDS.has(vehicle.kind) && vehicle.state === 'moving';
-      const shift = onRoad ? laneShift(pose.heading, rule.laneOffset) : ZERO_SHIFT;
+      const road = ROAD_KINDS.has(vehicle.kind);
+      const parked = road && vehicle.state !== 'moving';
       let track = this.tracks.get(vehicle.id);
+      const parkHeading = parked ? (track?.parkHeading ?? this.headingIntoSite(pose.x, pose.z)) : null;
+      const shift =
+        parkHeading !== null
+          ? parkedShift(parkHeading, rule.laneOffset, TRUCK_KINDS.has(vehicle.kind) ? rule.parkInset.truck : rule.parkInset.carrier)
+          : road
+            ? laneShift(pose.heading, rule.laneOffset)
+            : ZERO_SHIFT;
+      const heading = parkHeading ?? pose.heading;
       if (!track) {
         track = {
           model: this.vehicleModel(vehicle),
           x: pose.x,
           y: pose.y,
           z: pose.z,
-          heading: pose.heading,
+          heading,
           vx: 0,
           vy: 0,
           vz: 0,
@@ -346,6 +380,9 @@ export class ViewSync {
           age: this.settled ? 0 : Infinity,
           gone: -1,
           slow: SLOW_KINDS.has(vehicle.kind),
+          truck: TRUCK_KINDS.has(vehicle.kind),
+          parkHeading,
+          lift: surfaceLift(vehicle.kind),
           cargo: [],
           seen: true,
         };
@@ -359,9 +396,11 @@ export class ViewSync {
         track.x = pose.x;
         track.y = pose.y;
         track.z = pose.z;
-        track.heading = pose.heading;
+        // Road vehicles swing round instead of flipping when they set off the way they came.
+        track.heading = road && steady ? turnToward(track.heading, heading, rule.turnRate * dt) : heading;
         track.shiftX += (shift.x - track.shiftX) * ease;
         track.shiftZ += (shift.z - track.shiftZ) * ease;
+        track.parkHeading = parkHeading;
         track.age += dt;
         track.gone = -1;
         track.seen = true;
@@ -370,12 +409,14 @@ export class ViewSync {
       if (vehicle.kind === 'carrier') for (const load of vehicle.cargo) track.cargo.push(load.item);
     }
     this.settled = true;
+    this.fading.begin();
     for (const [id, track] of this.tracks) {
+      const inTunnel = track.truck && this.gate !== null && Math.hypot(track.x - this.gate.x, track.z - this.gate.z) < rule.tunnelCover;
       if (!track.seen) {
-        // Gone from the game: it rolls on for a moment, slowing down, while it shrinks away.
+        // Gone from the game: it rolls on for a moment, slowing down, while it shrinks or fades away.
         const disappearSec = track.slow ? rule.slowDisappearSec : rule.disappearSec;
         track.gone = Math.max(0, track.gone) + dt;
-        if (track.gone >= disappearSec) {
+        if (track.gone >= disappearSec || inTunnel) {
           this.tracks.delete(id);
           continue;
         }
@@ -384,20 +425,45 @@ export class ViewSync {
         track.y += track.vy * coast;
         track.z += track.vz * coast;
       }
-      const size = vehicleSize(
-        track.age,
-        track.gone,
-        track.slow ? rule.slowAppearSec : rule.appearSec,
-        track.slow ? rule.slowDisappearSec : rule.disappearSec,
-      );
-      if (size <= 0) continue;
-      this.position.set(track.x + track.shiftX, track.y, track.z + track.shiftZ);
+      const fade = inTunnel
+        ? 1
+        : vehicleFade(
+            track.age,
+            track.gone,
+            track.slow ? rule.slowAppearSec : rule.appearSec,
+            track.slow ? rule.slowDisappearSec : rule.disappearSec,
+          );
+      if (fade <= 0) continue;
+      const size = track.slow ? 1 : fade;
+      this.position.set(track.x + track.shiftX, track.y + track.lift, track.z + track.shiftZ);
       this.rotation.setFromAxisAngle(UP, track.heading);
       this.scale.set(size, size, size);
+      this.matrix.compose(this.position, this.rotation, this.scale);
+      if (track.slow && fade < 1) {
+        this.fading.show(id, track.model, this.matrix, fade);
+        continue;
+      }
       const model = this.model(track.model, 64);
-      model.add(this.matrix.compose(this.position, this.rotation, this.scale));
+      model.add(this.matrix);
       if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? []);
     }
+    this.fading.end();
+  }
+
+  /** Heading from a loading point towards the centre of the site it belongs to: the nearest plot or facility. */
+  private headingIntoSite(x: number, z: number): number | null {
+    let best: GroundPoint | null = null;
+    let nearest: number = renderConfig.vehicle.parkReach;
+    for (const sites of [this.plots, this.facilityDefs]) {
+      for (const site of sites.values()) {
+        const distance = Math.hypot(site.x - x, site.z - z);
+        if (distance < nearest && distance > 1e-6) {
+          nearest = distance;
+          best = site;
+        }
+      }
+    }
+    return best ? Math.atan2(best.x - x, best.z - z) : null;
   }
 
   /** One crate per kind of goods on a carrier's bed; `this.matrix` holds the carrier's transform. */
