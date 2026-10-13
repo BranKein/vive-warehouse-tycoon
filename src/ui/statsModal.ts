@@ -61,7 +61,6 @@ export function createStatsModal(ctx: UIContext, onChange: () => void) {
   };
 
   const title = h('div', 'wt-menu-title');
-  const note = h('span', 'wt-badge');
   const closeButton = button('wt-icon-btn', close);
   setText(closeButton, '×');
 
@@ -89,7 +88,7 @@ export function createStatsModal(ctx: UIContext, onChange: () => void) {
   const card = h(
     'div',
     'wt-build-modal wt-stats-modal wt-card',
-    h('div', 'wt-menu-head', h('div', 'wt-build-title', title, note), closeButton),
+    h('div', 'wt-menu-head', h('div', 'wt-build-title', title), closeButton),
     h('div', 'wt-stats-scroll', factBox, h('div', 'wt-stats-grid', byType.el, shortages.el, salesByItem.el, salesByChannel.el)),
   );
   card.setAttribute('role', 'dialog');
@@ -126,7 +125,6 @@ export function createStatsModal(ctx: UIContext, onChange: () => void) {
       const island = snapshot.island;
       const stats = island.stats;
       setText(title, tr.t('stats.detailsTitle'));
-      setText(note, stats.windowSec > 0 ? tr.t('stats.window', { time: formatDuration(stats.windowSec) }) : tr.t('stats.noData'));
       setAttr(closeButton, 'aria-label', tr.t('common.close'));
       setAttr(closeButton, 'title', tr.t('common.close'));
 
