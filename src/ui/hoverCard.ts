@@ -242,20 +242,13 @@ export function createHoverCard(ctx: UIContext) {
       const over = target;
       const building = over?.type === 'building' ? island.buildings.find((entry) => entry.id === over.buildingId) : undefined;
       const facility = over?.type === 'facility' ? island.facilities.find((entry) => entry.id === over.facilityId) : undefined;
-      const plot = over?.type === 'plot' ? island.plots.find((entry) => entry.id === over.plotId) : undefined;
-      const emptyPlot = plot !== undefined && plot.buildingId === null;
-      const visible = building !== undefined || (facility !== undefined && facility.channelId !== '') || emptyPlot;
+      const visible = building !== undefined || (facility !== undefined && facility.channelId !== '');
       setHidden(el, !visible);
       if (!visible) return;
 
       for (const part of optional) setHidden(part, true);
       if (building) showBuilding(building);
       else if (facility) showFacility(facility);
-      else {
-        setText(title, tr.t('hover.emptyPlot'));
-        setHidden(hint, false);
-        setText(hint, tr.t('hover.emptyPlotHint'));
-      }
       place();
     },
   };

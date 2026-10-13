@@ -69,8 +69,6 @@ export const ko: Translations = {
   'hover.stock': '쌓인 물품',
   'hover.stockEmpty': '쌓인 물품 없음',
   'hover.more': '외 {count}종',
-  'hover.emptyPlot': '빈 부지',
-  'hover.emptyPlotHint': '누르면 건물을 짓습니다',
   'hover.buildingHint': '누르면 업그레이드 · 두 번 눌러 끌면 이동',
   'build.all': '전체',
   'build.title': '건물 짓기',

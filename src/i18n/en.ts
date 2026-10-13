@@ -78,8 +78,6 @@ export const en = {
   'hover.stock': 'In stock',
   'hover.stockEmpty': 'Nothing in stock',
   'hover.more': '+{count} more',
-  'hover.emptyPlot': 'Empty plot',
-  'hover.emptyPlotHint': 'Click to build here',
   'hover.buildingHint': 'Click to upgrade · double-click and drag to move',
   'build.all': 'All',
   'build.title': 'Build',
