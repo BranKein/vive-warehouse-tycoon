@@ -7,6 +7,7 @@ import type {
   PlotDef,
   Selection,
   StockView,
+  VehicleView,
 } from '@/contracts';
 import {
   buildingModel,
@@ -17,18 +18,47 @@ import {
 import { renderConfig } from './config';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
-import { log10Of, pileCrateCount, pileHeight, pileSlot, type PickProxy } from './math';
+import { damp, log10Of, pileCrateCount, pileHeight, pileSlot, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
-import { buildingKey, diffKeys, pilesToShow, vehiclePoses } from './sync';
+import { carrierModel } from './models/vehicles';
+import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleSize } from './sync';
 import { itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
+const ZERO_SHIFT = { x: 0, z: 0 };
 
 interface BuildingEntry {
   id: string;
   plotId: string;
 }
+
+/** What the view remembers about a vehicle from one frame to the next. */
+interface VehicleTrack {
+  model: string;
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  /** Units per second, measured over the last frame; carries a vehicle on for a moment after it left. */
+  vx: number;
+  vy: number;
+  vz: number;
+  /** Sideways shift onto its lane, eased so corners and U-turns are rounded off. */
+  shiftX: number;
+  shiftZ: number;
+  /** Seconds on screen. */
+  age: number;
+  /** Seconds since it left the snapshot; negative while it is still there. */
+  gone: number;
+  slow: boolean;
+  /** Kinds of goods on board, for the crates on a carrier's bed. */
+  cargo: string[];
+  seen: boolean;
+}
+
+const ROAD_KINDS: ReadonlySet<string> = new Set(['carrier', 'inboundTruck', 'saleTruck']);
+const SLOW_KINDS: ReadonlySet<string> = new Set(['ship', 'plane']);
 
 /** Pick priorities: flat ground < things standing on it < special cargo. */
 const PRIORITY_GROUND = 0;
@@ -50,12 +80,16 @@ export class ViewSync {
   private readonly facilities = new Map<string, Object3D>();
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
+  private readonly tracks = new Map<string, VehicleTrack>();
+  /** False until the first frame of a layout has been drawn: what is there then does not grow in. */
+  private settled = false;
   private specialObject: Object3D | null = null;
   private special: { id: string; x: number; z: number } | null = null;
   private marker: Object3D | null = null;
   private selection: Selection = { type: 'none' };
 
   private readonly matrix = new Matrix4();
+  private readonly local = new Matrix4();
   private readonly position = new Vector3();
   private readonly rotation = new Quaternion();
   private readonly scale = new Vector3();
@@ -83,7 +117,7 @@ export class ViewSync {
    * Draws the state `alpha` of the way from `prev` to `curr`. Pass `prev` as
    * null when it cannot be compared with `curr` (another island).
    */
-  update(prev: GameSnapshot | null, curr: GameSnapshot, alpha: number): void {
+  update(prev: GameSnapshot | null, curr: GameSnapshot, alpha: number, dt = 0): void {
     if (!this.layout) return;
     const island = curr.island;
 
@@ -125,14 +159,7 @@ export class ViewSync {
     // Vehicles and piles are rebuilt from scratch every frame.
     for (const model of this.instanced.values()) model.begin();
 
-    const vehicles = vehiclePoses(prev ? prev.island.vehicles : null, island.vehicles, alpha, renderConfig.vehicle.snapDistance);
-    for (const vehicle of vehicles) {
-      const pose = vehicle.pose;
-      this.position.set(pose.x, pose.y, pose.z);
-      this.rotation.setFromAxisAngle(UP, pose.heading);
-      this.scale.set(1, 1, 1);
-      this.model(vehicle.model, 64).add(this.matrix.compose(this.position, this.rotation, this.scale));
-    }
+    this.vehicles(prev, curr, alpha, dt);
 
     for (const building of island.buildings) {
       const plot = this.plots.get(building.plotId);
@@ -227,6 +254,8 @@ export class ViewSync {
       model.dispose();
     }
     this.instanced.clear();
+    this.tracks.clear();
+    this.settled = false;
   }
 
   dispose(): void {
@@ -257,6 +286,114 @@ export class ViewSync {
       this.group.add(model.group);
     }
     return model;
+  }
+
+  /**
+   * Vehicles: interpolated between ticks, moved onto the right-hand lane, and
+   * grown in and shrunk away as they come and go.
+   */
+  private vehicles(prev: GameSnapshot | null, curr: GameSnapshot, alpha: number, dt: number): void {
+    const rule = renderConfig.vehicle;
+    const list = curr.island.vehicles;
+    // Snapshots that cannot be compared (another island, a loaded game): start over.
+    if (!prev) {
+      this.tracks.clear();
+      this.settled = false;
+    }
+    for (const track of this.tracks.values()) track.seen = false;
+    const drawn = vehiclePoses(prev ? prev.island.vehicles : null, list, alpha, rule.snapDistance);
+    const ease = dt > 0 ? 1 - Math.exp(-rule.laneDamping * dt) : 1;
+    for (let index = 0; index < drawn.length; index += 1) {
+      const vehicle = list[index]!;
+      const pose = drawn[index]!.pose;
+      const onRoad = ROAD_KINDS.has(vehicle.kind) && vehicle.state === 'moving';
+      const shift = onRoad ? laneShift(pose.heading, rule.laneOffset) : ZERO_SHIFT;
+      let track = this.tracks.get(vehicle.id);
+      if (!track) {
+        track = {
+          model: this.vehicleModel(vehicle),
+          x: pose.x,
+          y: pose.y,
+          z: pose.z,
+          heading: pose.heading,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+          shiftX: shift.x,
+          shiftZ: shift.z,
+          age: this.settled ? 0 : Infinity,
+          gone: -1,
+          slow: SLOW_KINDS.has(vehicle.kind),
+          cargo: [],
+          seen: true,
+        };
+        this.tracks.set(vehicle.id, track);
+      } else {
+        const moved = Math.hypot(pose.x - track.x, pose.y - track.y, pose.z - track.z);
+        const steady = dt > 0 && moved < rule.snapDistance;
+        track.vx = steady ? (pose.x - track.x) / dt : 0;
+        track.vy = steady ? (pose.y - track.y) / dt : 0;
+        track.vz = steady ? (pose.z - track.z) / dt : 0;
+        track.x = pose.x;
+        track.y = pose.y;
+        track.z = pose.z;
+        track.heading = pose.heading;
+        track.shiftX += (shift.x - track.shiftX) * ease;
+        track.shiftZ += (shift.z - track.shiftZ) * ease;
+        track.age += dt;
+        track.gone = -1;
+        track.seen = true;
+      }
+      track.cargo.length = 0;
+      if (vehicle.kind === 'carrier') for (const load of vehicle.cargo) track.cargo.push(load.item);
+    }
+    this.settled = true;
+    for (const [id, track] of this.tracks) {
+      if (!track.seen) {
+        // Gone from the game: it rolls on for a moment, slowing down, while it shrinks away.
+        const disappearSec = track.slow ? rule.slowDisappearSec : rule.disappearSec;
+        track.gone = Math.max(0, track.gone) + dt;
+        if (track.gone >= disappearSec) {
+          this.tracks.delete(id);
+          continue;
+        }
+        const coast = (1 - track.gone / disappearSec) * dt;
+        track.x += track.vx * coast;
+        track.y += track.vy * coast;
+        track.z += track.vz * coast;
+      }
+      const size = vehicleSize(
+        track.age,
+        track.gone,
+        track.slow ? rule.slowAppearSec : rule.appearSec,
+        track.slow ? rule.slowDisappearSec : rule.disappearSec,
+      );
+      if (size <= 0) continue;
+      this.position.set(track.x + track.shiftX, track.y, track.z + track.shiftZ);
+      this.rotation.setFromAxisAngle(UP, track.heading);
+      this.scale.set(size, size, size);
+      const model = this.model(track.model, 64);
+      model.add(this.matrix.compose(this.position, this.rotation, this.scale));
+      if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? []);
+    }
+  }
+
+  /** One crate per kind of goods on a carrier's bed; `this.matrix` holds the carrier's transform. */
+  private cargoCrates(items: ReadonlyArray<string>, places: ReadonlyArray<readonly [number, number, number]>): void {
+    const crates = this.model(CRATE_MODEL, 1024);
+    const size = renderConfig.vehicle.cargoCrateScale;
+    for (let index = 0; index < items.length && index < places.length; index += 1) {
+      const place = places[index]!;
+      this.local.makeScale(size, size, size).setPosition(place[0], place[1], place[2]);
+      crates.add(this.local.premultiply(this.matrix), this.colorOf(items[index]!));
+    }
+  }
+
+  /** Carriers are painted by who they work for, where the registry has a model for that owner. */
+  private vehicleModel(vehicle: VehicleView): string {
+    if (vehicle.kind !== 'carrier' || !vehicle.owner) return vehicle.model;
+    const painted = carrierModel(vehicle.owner);
+    return this.registry.has(painted) ? painted : vehicle.model;
   }
 
   private piles(site: Site, group: PileGroup, stocks: ReadonlyArray<StockView>): void {

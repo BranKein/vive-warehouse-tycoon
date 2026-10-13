@@ -349,7 +349,7 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
     super.refresh();
     const wanted = Math.max(0, Math.round(this.stats.number(Stat.carrierCount)));
     while (this.carriers.length < wanted) {
-      this.carriers.push(new Carrier(`${this.id}.c${this.carriers.length + 1}`, this, this.ctx.balance.carriers.model));
+      this.carriers.push(new Carrier(`${this.id}.c${this.carriers.length + 1}`, this, this.ctx.balance.carriers.model, 'facility'));
     }
   }
 

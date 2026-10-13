@@ -99,8 +99,8 @@ function boxTruck(kit: Kit): Object3D {
  * Carrier: the little flatbed that shuttles goods around the estate. Same toy
  * look as the box truck, one size down: round mint cab, cream bed with slatted rails.
  */
-function carrier(kit: Kit): Object3D {
-  const v = kit.theme.vehicles;
+function carrier(kit: Kit, cab = kit.theme.vehicles.carrierCab): Object3D {
+  const v = { ...kit.theme.vehicles, carrierCab: cab };
   const p = kit.theme.props;
   const light = kit.materials.headlight;
   const HALF_PI = Math.PI / 2;
@@ -329,9 +329,17 @@ function cargoPlane(kit: Kit): Object3D {
   return kit.group(parts);
 }
 
+/** Owners whose carriers are painted in their own colour (`theme.vehicles.carrierOwners`). Tier 1 keeps the plain mint one. */
+export const CARRIER_OWNERS = ['tier2', 'tier3', 'tier4', 'handmade', 'disposal', 'facility'];
+export const carrierModel = (owner: string): string => `vehicle.carrier.${owner}`;
+
 export function registerVehicleModels(registry: ModelRegistry): void {
   registry.register('vehicle.boxTruck', boxTruck);
-  registry.register('vehicle.carrier', carrier);
+  registry.register('vehicle.carrier', (kit) => carrier(kit));
+  // One more carrier per owner that has its own colour; the plain one stays for the rest.
+  for (const owner of CARRIER_OWNERS) {
+    registry.register(carrierModel(owner), (kit) => carrier(kit, kit.theme.vehicles.carrierOwners[owner]));
+  }
   registry.register('vehicle.forklift', forklift);
   registry.register('vehicle.cargoShip', cargoShip);
   registry.register('vehicle.cargoPlane', cargoPlane);

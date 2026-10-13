@@ -62,8 +62,18 @@ export const renderConfig = {
     snapDistance: 30,
     /** Radians per second the drawn heading may turn; rounds off corners. */
     turnRate: 7,
+    /** Vehicles grow in when they first show and shrink away when they leave. */
     appearSec: 0.35,
     disappearSec: 0.3,
+    /** Ships and planes do it slowly, over the board, instead of sailing in from beyond its edge. */
+    slowAppearSec: 1.6,
+    slowDisappearSec: 1.2,
+    /** Road vehicles keep to the right: this far from the centre line (half a lane of a 6 wide road). */
+    laneOffset: 1.5,
+    /** Higher moves a vehicle onto its lane faster; low enough to round off corners and U-turns. */
+    laneDamping: 5,
+    /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
+    cargoCrateScale: 1.25,
   },
   building: {
     buildSec: 0.75,

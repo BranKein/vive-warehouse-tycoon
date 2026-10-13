@@ -67,6 +67,8 @@ export interface Theme {
     shipStripe: number;
     planeBody: number;
     planeAccent: number;
+    /** Cab colour of a carrier by who it works for; `carrierCab` where there is no entry. */
+    carrierOwners: Record<string, number>;
   };
   goods: {
     pallet: number;
@@ -171,6 +173,14 @@ export const defaultTheme: Theme = {
     shipStripe: 0x8fc7e8,
     planeBody: 0xfffaf2,
     planeAccent: 0xb9a8e6,
+    carrierOwners: {
+      tier2: 0x9ccbee,
+      tier3: 0xc3b1ea,
+      tier4: 0xf5a9c6,
+      handmade: 0xf7dc8a,
+      disposal: 0xa9a3b8,
+      facility: 0xf6bd94,
+    },
   },
   goods: {
     pallet: 0xdcb98f,

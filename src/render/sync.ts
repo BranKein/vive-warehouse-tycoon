@@ -3,7 +3,7 @@
  * remove when the snapshot changes, and where each vehicle is drawn between
  * two ticks. Pure, so it is unit tested in Node.
  */
-import { interpolatePose, type Pose } from './math';
+import { clamp01, interpolatePose, smoothstep, type Pose } from './math';
 
 export interface KeyDiff {
   /** Wanted but not there yet, in the order they were asked for. */
@@ -83,4 +83,23 @@ export function pilesToShow(sizes: ReadonlyArray<number>, places: number): numbe
     .sort((a, b) => sizes[b]! - sizes[a]! || a - b)
     .slice(0, places)
     .sort((a, b) => a - b);
+}
+
+/**
+ * Sideways shift that puts a vehicle heading `heading` on the right-hand lane,
+ * `lane` away from the centre line its path follows.
+ */
+export function laneShift(heading: number, lane: number): { x: number; z: number } {
+  return { x: -Math.cos(heading) * lane, z: Math.sin(heading) * lane };
+}
+
+/**
+ * Size of a vehicle that has been on screen for `age` seconds and, once it
+ * left the snapshot, has been gone for `gone` seconds (negative while it is
+ * still there): it grows in, and shrinks away to nothing after leaving.
+ */
+export function vehicleSize(age: number, gone: number, appearSec: number, disappearSec: number): number {
+  const grown = appearSec > 0 ? smoothstep(age / appearSec) : 1;
+  if (gone < 0) return grown;
+  return grown * (1 - smoothstep(disappearSec > 0 ? clamp01(gone / disappearSec) : 1));
 }

@@ -3,7 +3,7 @@ import { catalog } from '@/content';
 import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
-import { buildingKey, diffKeys, pilesToShow, vehiclePoses, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleSize, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -149,5 +149,26 @@ describe('facility piles', () => {
     expect(pilesToShow([1, -Infinity, 3], 3)).toEqual([0, 1, 2]);
     expect(pilesToShow([1, -Infinity, 3, 2], 3)).toEqual([0, 2, 3]);
     expect(pilesToShow([1, 5, 3, 2, -Infinity], 2)).toEqual([1, 2]);
+  });
+});
+
+describe('vehicles on the road', () => {
+  it('keeps to the right of the way a vehicle is heading', () => {
+    // Heading 0 is +z (south): the right-hand side is west.
+    expect(laneShift(0, 1.5).x).toBeCloseTo(-1.5);
+    expect(laneShift(0, 1.5).z).toBeCloseTo(0);
+    // Heading east: the right-hand side is south.
+    expect(laneShift(Math.PI / 2, 1.5).z).toBeCloseTo(1.5);
+    // Turning round swaps the lane.
+    expect(laneShift(Math.PI, 1.5).x).toBeCloseTo(1.5);
+  });
+
+  it('grows in, stays whole, and shrinks away after leaving', () => {
+    expect(vehicleSize(0, -1, 1, 1)).toBe(0);
+    expect(vehicleSize(0.5, -1, 1, 1)).toBeCloseTo(0.5);
+    expect(vehicleSize(5, -1, 1, 1)).toBe(1);
+    expect(vehicleSize(5, 0.5, 1, 1)).toBeCloseTo(0.5);
+    expect(vehicleSize(5, 1, 1, 1)).toBe(0);
+    expect(vehicleSize(Infinity, -1, 1, 1)).toBe(1);
   });
 });

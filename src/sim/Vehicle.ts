@@ -1,4 +1,4 @@
-import type { ItemDef, ItemId, VehicleKind, VehicleState, VehicleView } from '@/contracts';
+import type { ItemDef, ItemId, VehicleKind, VehicleOwner, VehicleState, VehicleView } from '@/contracts';
 import { BigNum } from '@/core/BigNum';
 import { TICKS_PER_SECOND } from '@/core/time';
 import type { Balance } from '@/content/balance';
@@ -99,6 +99,7 @@ export class Vehicle {
     readonly id: string,
     readonly kind: VehicleKind,
     readonly model: string,
+    readonly owner?: VehicleOwner,
   ) {}
 
   /** Starts moving along `path`; returns the tick of arrival. */
@@ -131,6 +132,7 @@ export class Vehicle {
       state: this.state,
       cargo: this.cargo.view(),
       loadRatio,
+      ...(this.owner ? { owner: this.owner } : {}),
     };
   }
 }

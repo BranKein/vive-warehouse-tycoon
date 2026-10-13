@@ -5,6 +5,7 @@
  */
 import type { BigNum } from '@/core/BigNum';
 import type {
+  BuildingCategory,
   BuildingTypeId,
   ChannelId,
   FacilityId,
@@ -90,6 +91,8 @@ export interface FacilityView {
 }
 
 export type VehicleKind = 'carrier' | 'inboundTruck' | 'saleTruck' | 'ship' | 'plane';
+/** Who a carrier works for: a transport facility, or the category of its building. */
+export type VehicleOwner = 'facility' | BuildingCategory;
 export type VehicleState = 'moving' | 'loading' | 'unloading' | 'waiting';
 
 export interface VehicleView {
@@ -106,6 +109,8 @@ export interface VehicleView {
   cargo: Array<{ item: ItemId; amount: BigNum }>;
   /** 0 (empty) .. 1 (full). */
   loadRatio: number;
+  /** Set for carriers only; the view paints them by it. */
+  owner?: VehicleOwner;
 }
 
 export interface SpecialCargoView {

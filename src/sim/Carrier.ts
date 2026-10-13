@@ -1,4 +1,4 @@
-import type { ContentCatalog, ItemId, JsonValue, VehicleView } from '@/contracts';
+import type { ContentCatalog, ItemId, JsonValue, VehicleOwner, VehicleView } from '@/contracts';
 import { BigNum } from '@/core/BigNum';
 import { secondsToTicks } from '@/core/time';
 import type { Balance } from '@/content/balance';
@@ -57,8 +57,9 @@ export class Carrier extends Vehicle {
     id: string,
     readonly home: CarrierHome,
     model: string,
+    owner: VehicleOwner,
   ) {
-    super(id, 'carrier', model);
+    super(id, 'carrier', model, owner);
     this.at = home.site.index;
     this.to = home.site.index;
   }

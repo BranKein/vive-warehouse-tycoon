@@ -188,7 +188,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       rig.update(dt);
       // Windows, street lamps and headlights come on as it gets dark.
       materials.setNight(environment.update(realTimeSec));
-      view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha);
+      view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha, dt);
       refreshPointer();
       renderer.render(scene, rig.camera);
     },
