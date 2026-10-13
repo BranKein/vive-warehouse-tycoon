@@ -117,6 +117,11 @@ export interface VehicleView {
   home?: string;
   /** Carriers only, while they are out: the plot or facility they are driving to or handling goods at. */
   destination?: string;
+  /**
+   * While it is moving: the way it is on (to its next stop) and how far along
+   * it has come. `points` is shared with the game and must not be changed.
+   */
+  route?: { points: ReadonlyArray<{ x: number; y: number; z: number }>; travelled: number };
 }
 
 export interface SpecialCargoView {

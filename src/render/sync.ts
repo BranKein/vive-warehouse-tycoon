@@ -183,3 +183,35 @@ export function backOutPose(leaving: BackOut, distance: number): { x: number; z:
     done: part >= 1,
   };
 }
+
+/**
+ * Dots along the rest of a vehicle's way: every `spacing` from `from` (a
+ * distance along `points`) to the end, each on the right-hand lane of its
+ * stretch. The last dot is the end of the way.
+ */
+export function routeDots(
+  points: ReadonlyArray<{ x: number; z: number }>,
+  from: number,
+  spacing: number,
+  lane: number,
+): Array<{ x: number; z: number }> {
+  const dots: Array<{ x: number; z: number }> = [];
+  let start = 0;
+  let next = Math.max(0, from);
+  let last: { x: number; z: number } | null = null;
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1]!;
+    const b = points[index]!;
+    const length = Math.hypot(b.x - a.x, b.z - a.z);
+    if (length === 0) continue;
+    const side = laneShift(Math.atan2(b.x - a.x, b.z - a.z), lane);
+    for (; next <= start + length; next += spacing) {
+      const part = (next - start) / length;
+      dots.push({ x: a.x + (b.x - a.x) * part + side.x, z: a.z + (b.z - a.z) * part + side.z });
+    }
+    start += length;
+    last = { x: b.x + side.x, z: b.z + side.z };
+  }
+  if (last && from < start) dots.push(last);
+  return dots;
+}

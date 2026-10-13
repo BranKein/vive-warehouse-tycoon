@@ -1,4 +1,4 @@
-import { Color, Group, Matrix4, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
+import { CircleGeometry, Color, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
 import type {
   FacilityDef,
   GameSnapshot,
@@ -22,7 +22,7 @@ import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileG
 import { bounceStretch, log10Of, smoothstep, type Pose, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
-import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, trailPoint, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
+import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, routeDots, trailPoint, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
 import { carrierColor, itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -63,6 +63,8 @@ interface VehicleTrack {
   cargo: string[];
   /** Body colour of a carrier; null for the vehicles that keep their model's colours. */
   paint: Color | null;
+  /** The way it is on, from the game; null while it stands. */
+  route: VehicleView['route'] | null;
   seen: boolean;
 }
 
@@ -139,6 +141,7 @@ export class ViewSync {
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
   private readonly paints = new Map<number, Color>();
+  private routeMesh: InstancedMesh | null = null;
   private readonly tracks = new Map<string, VehicleTrack>();
   /** Ships and planes while they fade in or out. */
   private readonly fading: FadingModels;
@@ -272,6 +275,7 @@ export class ViewSync {
 
     for (const model of this.instanced.values()) model.end();
     this.updateMarker();
+    this.updateRoute();
   }
 
   /** Click targets for what is on screen now. */
@@ -372,6 +376,13 @@ export class ViewSync {
 
   dispose(): void {
     this.clear();
+    if (this.routeMesh) {
+      this.group.remove(this.routeMesh);
+      this.routeMesh.geometry.dispose();
+      (this.routeMesh.material as MeshBasicMaterial).dispose();
+      this.routeMesh.dispose();
+      this.routeMesh = null;
+    }
   }
 
   /** A model wrapped in a holder, so moving and scaling it never disturbs the model's own transform. */
@@ -444,6 +455,7 @@ export class ViewSync {
           lift: surfaceLift(vehicle.kind),
           cargo: [],
           paint: vehicle.kind === 'carrier' ? this.carrierPaint(vehicle, curr) : null,
+          route: null,
           seen: true,
         };
         this.tracks.set(vehicle.id, track);
@@ -463,6 +475,7 @@ export class ViewSync {
         track.gone = -1;
         track.seen = true;
       }
+      track.route = vehicle.route ?? null;
       track.cargo.length = 0;
       if (vehicle.kind === 'carrier') for (const load of vehicle.cargo) track.cargo.push(load.item);
     }
@@ -786,6 +799,35 @@ export class ViewSync {
       // Over the road it stands on; in the air under a plane.
       y: track.y + track.lift,
     };
+  }
+
+  /** Dots on the road along the rest of the selected road vehicle's way, with a larger one where it ends. */
+  private updateRoute(): void {
+    const rule = renderConfig.vehicle.route;
+    const track = this.selection.type === 'vehicle' ? this.tracks.get(this.selection.vehicleId) : undefined;
+    const route = track && track.seen && track.road && !track.road.leaving ? track.route : null;
+    if (!route) {
+      if (this.routeMesh) this.routeMesh.count = 0;
+      return;
+    }
+    if (!this.routeMesh) {
+      const geometry = new CircleGeometry(1, 16).rotateX(-Math.PI / 2);
+      const material = new MeshBasicMaterial({ color: this.theme.effects.route, toneMapped: false, fog: false });
+      this.routeMesh = new InstancedMesh(geometry, material, rule.max);
+      this.routeMesh.frustumCulled = false;
+      this.group.add(this.routeMesh);
+    }
+    const dots = routeDots(route.points, route.travelled + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset);
+    const count = Math.min(dots.length, rule.max);
+    for (let index = 0; index < count; index += 1) {
+      // The end of the way is always drawn, even when the dots run out.
+      const end = index === count - 1;
+      const dot = end ? dots[dots.length - 1]! : dots[index]!;
+      const size = rule.radius * (end ? rule.endScale : 1);
+      this.routeMesh.setMatrixAt(index, this.local.makeScale(size, 1, size).setPosition(dot.x, rule.height, dot.z));
+    }
+    this.routeMesh.count = count;
+    this.routeMesh.instanceMatrix.needsUpdate = true;
   }
 
   /** A flat coloured pad under whatever is selected. */

@@ -4,7 +4,7 @@ import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
-import { buildingKey, diffKeys, backOutPose, laneShift, trailPoint, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, backOutPose, laneShift, routeDots, trailPoint, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
 import { carrierColor, defaultTheme } from '@/render/theme';
 
 describe('diffKeys', () => {
@@ -279,5 +279,23 @@ describe('carrierColor', () => {
     expect(lumber).not.toBe(defaultTheme.vehicles.carrierCab);
     // Still nearer its owner's colour than the goods': red stays the strongest channel.
     expect((steel >> 16) & 0xff).toBeGreaterThan(steel & 0xff);
+  });
+});
+
+describe('routeDots', () => {
+  const way = [{ x: 0, z: 0 }, { x: 0, z: 10 }, { x: 10, z: 10 }];
+
+  it('runs from where the vehicle is to the end of its way, on the right-hand lane', () => {
+    const dots = routeDots(way, 4, 2, 1);
+    // Heading +z, the right-hand side is -x.
+    expect(dots[0]).toEqual({ x: -1, z: 4 });
+    const last = dots[dots.length - 1]!;
+    expect(last.x).toBeCloseTo(10);
+    expect(last.z).toBeCloseTo(11);
+    expect(dots.every((dot) => dot.z >= 4)).toBe(true);
+  });
+
+  it('is empty once the way is behind it', () => {
+    expect(routeDots(way, 25, 2, 1)).toEqual([]);
   });
 });

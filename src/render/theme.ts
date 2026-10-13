@@ -106,6 +106,8 @@ export interface Theme {
   };
   effects: {
     selection: number;
+    /** The dots along a selected vehicle's way. */
+    route: number;
     hover: number;
     special: number;
     specialGlow: number;
@@ -276,6 +278,7 @@ export const defaultTheme: Theme = {
   },
   effects: {
     selection: 0xff8fb0,
+    route: 0xff4f86,
     hover: 0xffffff,
     special: 0xffd45e,
     specialGlow: 0xfff0a8,

@@ -102,6 +102,8 @@ export const renderConfig = {
     pickScale: 1.4,
     /** The pad under a selected vehicle is this much bigger than the vehicle. */
     markerScale: 1.5,
+    /** The dots that show a selected road vehicle's way: how far apart, how big, how high over the ground, and how far ahead of it they begin. */
+    route: { spacing: 1.6, radius: 0.34, endScale: 2.6, height: 0.14, ahead: 2.5, max: 400 },
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },

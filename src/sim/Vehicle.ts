@@ -118,6 +118,13 @@ export class Vehicle {
     return poseAt(this.path, span <= 0 ? 1 : (tick - this.legStart) / span);
   }
 
+  /** How far along its path it is. */
+  private travelled(tick: number): number {
+    if (!this.path) return 0;
+    const span = this.legEnd - this.legStart;
+    return this.path.length * (span <= 0 ? 1 : Math.min(1, Math.max(0, (tick - this.legStart) / span)));
+  }
+
   view(tick: number, parked: Pose): VehicleView {
     const pose = this.pose(tick, parked);
     const loadRatio = this.capacity.isZero ? 0 : Math.min(1, ratio(this.cargo.total(), this.capacity));
@@ -134,6 +141,7 @@ export class Vehicle {
       loadRatio,
       capacity: this.capacity,
       ...(this.owner ? { owner: this.owner } : {}),
+      ...(this.path && this.state === 'moving' ? { route: { points: this.path.points, travelled: this.travelled(tick) } } : {}),
     };
   }
 }
