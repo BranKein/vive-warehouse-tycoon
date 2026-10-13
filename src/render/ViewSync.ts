@@ -29,7 +29,6 @@ const UP = new Vector3(0, 1, 0);
 interface BuildingEntry {
   id: string;
   plotId: string;
-  object: Object3D;
 }
 
 /** Pick priorities: flat ground < things standing on it < special cargo. */
@@ -38,10 +37,10 @@ const PRIORITY_BOX = 1;
 const PRIORITY_SPECIAL = 2;
 
 /**
- * Keeps the scene in step with the snapshot. Buildings, facilities and the
- * special cargo are objects that are created and removed as they come and go;
- * vehicles and piles are redrawn every frame through instancing, so they cost
- * one draw call per model no matter how many there are.
+ * Keeps the scene in step with the snapshot. Facilities and the special cargo
+ * are objects that are created and removed as they come and go; buildings,
+ * vehicles and piles are redrawn every frame through instancing, so a model
+ * costs one draw call per material no matter how many copies there are.
  */
 export class ViewSync {
   readonly group = new Group();
@@ -92,16 +91,10 @@ export class ViewSync {
     // Buildings.
     const wanted = new Map(island.buildings.map((building) => [buildingKey(building), building]));
     const diff = diffKeys(this.buildings.keys(), wanted.keys());
-    for (const key of diff.remove) {
-      this.group.remove(this.buildings.get(key)!.object);
-      this.buildings.delete(key);
-    }
+    for (const key of diff.remove) this.buildings.delete(key);
     for (const key of diff.create) {
       const building = wanted.get(key)!;
-      const plot = this.plots.get(building.plotId);
-      if (!plot) continue;
-      const object = this.place(this.instantiate(buildingModel(building.typeId)), plot);
-      this.buildings.set(key, { id: building.id, plotId: building.plotId, object });
+      if (this.plots.has(building.plotId)) this.buildings.set(key, { id: building.id, plotId: building.plotId });
     }
 
     // Facility placeholders.
@@ -145,6 +138,11 @@ export class ViewSync {
     for (const building of island.buildings) {
       const plot = this.plots.get(building.plotId);
       if (!plot) continue;
+      // Building models are drawn in the plot's own frame, so they stand on the plot centre.
+      this.position.set(plot.x, 0, plot.z);
+      this.rotation.setFromAxisAngle(UP, plot.facing);
+      this.scale.set(1, 1, 1);
+      this.model(buildingModel(building.typeId), 8).add(this.matrix.compose(this.position, this.rotation, this.scale));
       this.piles(plot, 'inputs', building.inputs);
       this.piles(plot, 'outputs', building.outputs);
       this.piles(plot, 'waste', building.waste);
@@ -216,7 +214,6 @@ export class ViewSync {
 
   /** Drops every object so the next frame rebuilds it from the registry. Call when a model was re-registered. */
   clear(): void {
-    for (const building of this.buildings.values()) this.group.remove(building.object);
     this.buildings.clear();
     for (const object of this.facilities.values()) this.group.remove(object);
     this.facilities.clear();

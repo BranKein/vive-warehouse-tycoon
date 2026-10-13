@@ -1,6 +1,7 @@
 import { ACESFilmicToneMapping, PCFShadowMap, Scene, Vector3, WebGLRenderer } from 'three';
 import type { GameEvent, GameRenderer, GameSnapshot, PickTarget, RendererOptions, Selection } from '@/contracts';
 import { BLOCK_MODEL, registerBoxModels } from './boxModels';
+import { registerGameModels } from './models/index';
 import { CameraRig } from './CameraRig';
 import { renderConfig } from './config';
 import { Environment } from './Environment';
@@ -47,6 +48,8 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     for (const facility of island.layout.facilities) facilityKinds.add(facility.kind);
   }
   registerBoxModels(models, Object.keys(catalog.buildings), facilityKinds);
+  // Shaped models replace the boxes of the same name.
+  registerGameModels(models);
 
   const scene = new Scene();
   const environment = new Environment(scene, models, theme, materials);

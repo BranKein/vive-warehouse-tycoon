@@ -137,7 +137,7 @@ export const renderConfig = {
       edgeX: 7,
       step: 1.7,
       /** Waste piles stand beside the box and run towards the back. */
-      wasteX: 6.7,
+      wasteX: 7,
       wasteZ: -0.6,
       wasteStep: 2.3,
     },
