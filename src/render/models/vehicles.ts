@@ -172,7 +172,8 @@ function forklift(kit: Kit): Object3D {
   parts.push(kit.cyl(0.2, 0.2, 0.05, p.tire, { y: 1.42, z: 0.1, rx: 1.07 }, 12));
   // Roll cage.
   for (const x of [-0.52, 0.52]) {
-    for (const z of [0.42, -0.9]) parts.push(kit.box(0.09, 1.2, 0.09, p.darkMetal, { x, y: 0.98, z, r: 0.03 }));
+    // The posts start inside the body: its shoulders are rounded, so posts set on top of it would hang in the air.
+    for (const z of [0.36, -0.86]) parts.push(kit.box(0.1, 1.66, 0.1, p.darkMetal, { x: x * 0.92, y: 0.52, z, r: 0.03 }));
   }
   parts.push(kit.box(1.2, 0.1, 1.5, v.forklift, { y: 2.14, z: -0.24, r: 0.05 }));
   // Warning beacon on the roof, work lights at the front, a tail light on the counterweight.

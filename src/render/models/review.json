@@ -74,13 +74,17 @@
   "facility.truckYard": {
     "approved": "77-dcc3329f"
   },
-  "vehicle.boxTruck": {},
-  "vehicle.cargoPlane": {},
+  "vehicle.boxTruck": {
+    "approved": "63-4a3e0ea7"
+  },
+  "vehicle.cargoPlane": {
+    "approved": "56-2fad029a"
+  },
   "vehicle.cargoShip": {
     "approved": "86-c2e8f8b6"
   },
   "vehicle.carrier": {
-    "approved": "48-7b06b861"
+    "approved": "48-18e1e535"
   },
   "vehicle.forklift": {}
 }
