@@ -272,7 +272,7 @@ export const defaultTheme: Theme = {
     windowIntensity: 1.6,
     lamp: 0xffe2a1,
     lampIntensity: 2.2,
-    lampPoolOpacity: 0.8,
+    lampPoolOpacity: 0.56,
     headlight: 0xfff3c4,
     headlightDay: 0xffdf7e,
   },

@@ -32,8 +32,7 @@ export function createDayClock(ctx: UIContext) {
   const hand = h('div', 'wt-dial-hand', h('span', 'wt-dial-knob'));
   const dial = h('div', 'wt-dial', hand);
   const name = h('div', 'wt-dial-name');
-  const hint = h('p', 'wt-hint');
-  const popover = h('div', 'wt-card wt-daytime-pop', title, dial, name, hint);
+  const popover = h('div', 'wt-card wt-daytime-pop', title, dial, name);
   popover.setAttribute('role', 'dialog');
   const el = h('div', 'wt-daytime-wrap', toggle, popover);
 
@@ -73,7 +72,6 @@ export function createDayClock(ctx: UIContext) {
 
   function texts(): void {
     setText(title, tr.t('daytime.title'));
-    setText(hint, tr.t('daytime.hint'));
     setText(name, part ? tr.tx(`daytime.${part}`) : '');
     const label = part ? `${tr.t('daytime.title')}: ${tr.tx(`daytime.${part}`)}` : tr.t('daytime.title');
     setAttr(toggle, 'title', label);

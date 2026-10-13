@@ -168,7 +168,6 @@ export const ko: Translations = {
   'settings.soundOff': '꺼짐',
   'settings.soundSoon': '소리는 아직 준비 중입니다.',
   'daytime.title': '시간대',
-  'daytime.hint': '화면만 바뀝니다. 게임 진행 속도는 그대로입니다.',
   'daytime.dawn': '새벽',
   'daytime.morning': '아침',
   'daytime.day': '낮',

@@ -272,7 +272,8 @@ export class Environment {
     // The light the lamps throw on the road at night.
     this.lampLights = new LampLights(
       { ...scenery.lampLight, ground: g.roadHeight + scenery.lampLight.lift - g.padHeight },
-      this.theme.glow.lamp,
+      // The same warm light as the windows of the buildings.
+      this.theme.glow.windowNight,
       this.theme.glow.lampPoolOpacity,
       lamps.map((spot) => {
         position.set(spot.x, g.padHeight, spot.z);

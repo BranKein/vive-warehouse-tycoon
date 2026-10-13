@@ -181,7 +181,6 @@ export const en = {
   'settings.soundOff': 'Off',
   'settings.soundSoon': 'Sound is not available yet.',
   'daytime.title': 'Time of day',
-  'daytime.hint': 'Only the look changes. The game keeps its own pace.',
   'daytime.dawn': 'Dawn',
   'daytime.morning': 'Morning',
   'daytime.day': 'Day',
