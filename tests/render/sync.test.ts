@@ -4,7 +4,7 @@ import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
-import { buildingKey, diffKeys, backOutPose, laneShift, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, backOutPose, laneShift, trailPoint, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -175,7 +175,7 @@ describe('vehicles on the road', () => {
 
   it('backs out straight, then round a curve, at one unit of the way per unit of distance', () => {
     // Parked facing north (-z); the road leads east (+x), a quarter turn.
-    const leaving = { heading: Math.PI, x: 0, z: 0, dist: 0, straight: 3, turn: -Math.PI / 2, radius: 2, gap: null };
+    const leaving = { heading: Math.PI, x: 0, z: 0, straight: 3, turn: -Math.PI / 2, radius: 2 };
     expect(backOutPose(leaving, 2)).toMatchObject({ x: expect.closeTo(0), z: expect.closeTo(2), heading: Math.PI, done: false });
     const end = backOutPose(leaving, 3 + Math.PI);
     expect(end.done).toBe(true);
@@ -187,6 +187,20 @@ describe('vehicles on the road', () => {
     const mid = backOutPose(leaving, 3 + Math.PI / 2);
     const before = backOutPose(leaving, 3 + Math.PI / 2 - 0.01);
     expect(Math.hypot(mid.x - before.x, mid.z - before.z)).toBeCloseTo(0.01, 4);
+  });
+
+  it('reads a place off the way a vehicle came', () => {
+    const trail = [
+      { x: 0, z: 0, d: 0 },
+      { x: 4, z: 0, d: 4 },
+      { x: 4, z: 6, d: 10 },
+    ];
+    expect(trailPoint(trail, 2)).toEqual({ x: 2, z: 0 });
+    expect(trailPoint(trail, 7)).toEqual({ x: 4, z: 3 });
+    // Before and after the trail: its ends. Before the floor: the floor.
+    expect(trailPoint(trail, -5)).toEqual({ x: 0, z: 0 });
+    expect(trailPoint(trail, 99)).toEqual({ x: 4, z: 6 });
+    expect(trailPoint(trail, 1, 4)).toEqual({ x: 4, z: 0 });
   });
 
   it('parks on the lane it came in on, further into the site', () => {

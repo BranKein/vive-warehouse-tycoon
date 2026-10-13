@@ -7,6 +7,7 @@ import type { CommandResult, GameCommands, GameEngine, SaveController, SaveData,
 import { createRenderer } from '@/render';
 import { createSaveStore, migrate } from '@/save';
 import { createGame } from '@/sim';
+import { TICKS_PER_SECOND } from '@/core/time';
 import { createUI } from '@/ui';
 import { APP_CONFIG } from './config';
 import { GameLoop } from './GameLoop';
@@ -161,6 +162,40 @@ async function start(): Promise<void> {
   });
   window.addEventListener('pagehide', autoSave);
   window.setInterval(autoSave, APP_CONFIG.autoSaveIntervalSeconds * 1000);
+
+  // Dev server only: runs the game ahead with auto mode on, to reach a later stage quickly.
+  // `?skip=90` in the address skips 90 minutes; `?skip=ship` or `?skip=plane` runs until one is on the board.
+  if (import.meta.env.DEV) {
+    const skip = (until: (snapshot: ReturnType<GameEngine['snapshot']>) => boolean, maxMinutes: number): number => {
+      const wasAuto = engine.snapshot().autoPilot.enabled;
+      engine.commands.setAutoPilot(true);
+      const step = 5 * TICKS_PER_SECOND;
+      let ticks = 0;
+      while (ticks < maxMinutes * 60 * TICKS_PER_SECOND && !until(engine.snapshot())) {
+        engine.tick(step);
+        ticks += step;
+      }
+      engine.commands.setAutoPilot(wasAuto);
+      engine.drainEvents();
+      loop.setEngine(engine);
+      autoSave();
+      return ticks / TICKS_PER_SECOND / 60;
+    };
+    const skipTo = (what: string): number => {
+      const minutes = Number(what);
+      if (Number.isFinite(minutes) && minutes > 0) return skip(() => false, minutes);
+      if (what === 'ship' || what === 'plane') return skip((snapshot) => snapshot.island.vehicles.some((vehicle) => vehicle.kind === what), 24 * 60);
+      return 0;
+    };
+    Object.assign(globalThis, { __wtSkip: skipTo });
+    const url = new URL(window.location.href);
+    const asked = url.searchParams.get('skip');
+    if (asked) {
+      console.info(`[dev] skipped ${skipTo(asked).toFixed(1)} minutes`);
+      url.searchParams.delete('skip');
+      window.history.replaceState(null, '', url);
+    }
+  }
 
   const frame = (now: number): void => {
     loop.frame(now);

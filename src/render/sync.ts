@@ -115,22 +115,50 @@ export function parkedShift(heading: number, lane: number, inset: number): { x: 
   return { x: side.x + Math.sin(heading) * inset, z: side.z + Math.cos(heading) * inset };
 }
 
-/** A vehicle backing out of the site it was parked at. */
-export interface Leaving {
+/** A point on the way a road vehicle came, and how far it had travelled when it was there. */
+export interface TrailPoint {
+  x: number;
+  z: number;
+  d: number;
+}
+
+/**
+ * Where a vehicle was when it had travelled `distance`, read off its trail.
+ * Distances before the trail (or before `floor`) and after it give its ends.
+ */
+export function trailPoint(trail: ReadonlyArray<TrailPoint>, distance: number, floor = -Infinity): { x: number; z: number } {
+  const last = trail[trail.length - 1]!;
+  const d = Math.min(last.d, Math.max(distance, floor, trail[0]!.d));
+  for (let index = trail.length - 1; index > 0; index -= 1) {
+    const from = trail[index - 1]!;
+    if (d < from.d) continue;
+    const to = trail[index]!;
+    const part = to.d > from.d ? (d - from.d) / (to.d - from.d) : 1;
+    return { x: from.x + (to.x - from.x) * part, z: from.z + (to.z - from.z) * part };
+  }
+  return { x: trail[0]!.x, z: trail[0]!.z };
+}
+
+/** The way a vehicle backs out of the site it was parked at. */
+export interface BackOut {
   /** The way it stood: into the site. */
   heading: number;
   /** Where it stood. */
   x: number;
   z: number;
-  /** How far the game has moved it since it set off. */
-  dist: number;
-  /** How far it backs straight before the curve; null until the way the road leads is known. */
-  straight: number | null;
+  /** How far it backs straight before the curve. */
+  straight: number;
   /** The curve: how far it turns (radians, signed) and on what radius. */
   turn: number;
   radius: number;
-  /** After backing: what was left to catch up with the game, and from what `dist` on. */
-  gap: { x: number; z: number; from: number } | null;
+}
+
+/** A vehicle setting off from the site it was parked at. */
+export interface Leaving extends BackOut {
+  /** The distance it had travelled when it set off. */
+  since: number;
+  /** The distance at which it began to back out; null while it waits to learn which way the road leads. */
+  from: number | null;
 }
 
 /**
@@ -138,12 +166,12 @@ export interface Leaving {
  * first, then backwards round a curve while it turns by `turn`, so it ends
  * facing the way it will drive. `done` once the curve is complete.
  */
-export function backOutPose(leaving: Leaving, distance: number): { x: number; z: number; heading: number; done: boolean } {
+export function backOutPose(leaving: BackOut, distance: number): { x: number; z: number; heading: number; done: boolean } {
   const h = leaving.heading;
-  const straight = Math.min(distance, leaving.straight ?? distance);
+  const straight = Math.min(distance, leaving.straight);
   const x = leaving.x - Math.sin(h) * straight;
   const z = leaving.z - Math.cos(h) * straight;
-  if (leaving.straight === null || distance <= leaving.straight) return { x, z, heading: h, done: false };
+  if (distance <= leaving.straight) return { x, z, heading: h, done: false };
   const length = leaving.radius * Math.abs(leaving.turn);
   const part = length > 0 ? Math.min(1, (distance - leaving.straight) / length) : 1;
   const heading = h + leaving.turn * part;

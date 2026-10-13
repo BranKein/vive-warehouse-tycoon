@@ -80,13 +80,18 @@ export const renderConfig = {
      */
     parkInset: { carrier: 2.4, truck: 1.8 },
     /**
-     * Setting off, a vehicle backs out at the speed the game moves it: straight until the game has taken
-     * it round the corner onto the road, then in a curve that leaves it facing the way it will drive.
-     * `carrier` and `truck` are the distances from where they park to the middle of the road. Backing
-     * leaves the drawing behind the game; the gap closes over the next `catchUp` of the way. A vehicle
-     * whose way leads straight on is let go `giveUp` past the road.
+     * A road vehicle is drawn on the way the game took it, steering by a point this far ahead of it and
+     * one this far behind; it is drawn that much behind where the game has it. Rounds off the corners.
      */
-    backOut: { carrier: 5.4, truck: 7.8, minRadius: 2.2, maxRadius: 4.5, giveUp: 3, catchUp: 28 },
+    steerReach: 2.6,
+    /**
+     * Setting off, a vehicle waits until the game has taken it round the corner onto the road, then backs
+     * out at the speed the game moves it: straight first, then round a curve of `radius` that ends on its
+     * lane, facing the way it will drive. All that leaves the drawing behind the game; it catches up over
+     * the next `catchUp` of the way. A vehicle whose way has not turned after `giveUp` drives off as it
+     * stands. The step from the end of the curve onto the lane is smoothed away over `settle`.
+     */
+    backOut: { radius: 3, giveUp: 12, catchUp: 40, settle: 6 },
     /** A parked vehicle belongs to the site whose centre is within this distance. */
     parkReach: 12,
     /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */

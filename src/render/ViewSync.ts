@@ -19,11 +19,11 @@ import { renderConfig } from './config';
 import { FadingModels } from './FadingModels';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
-import { bounceStretch, log10Of, smoothstep, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
+import { bounceStretch, log10Of, smoothstep, type Pose, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
 import { carrierModel } from './models/vehicles';
-import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, type Leaving, pilesToShow, vehicleFade, vehiclePoses } from './sync';
+import { backOutPose, buildingKey, diffKeys, laneShift, parkedShift, trailPoint, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
 import { itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -37,6 +37,7 @@ interface BuildingEntry {
 /** What the view remembers about a vehicle from one frame to the next. */
 interface VehicleTrack {
   model: string;
+  /** Where the game has it. */
   x: number;
   y: number;
   z: number;
@@ -45,7 +46,7 @@ interface VehicleTrack {
   vx: number;
   vy: number;
   vz: number;
-  /** Sideways shift onto its lane, eased so corners and U-turns are rounded off. */
+  /** From where the game has it to where it is drawn. */
   shiftX: number;
   shiftZ: number;
   /** Seconds on screen. */
@@ -55,15 +56,43 @@ interface VehicleTrack {
   slow: boolean;
   /** Trucks come and go through the tunnel at the gate, which hides them: they neither grow nor shrink there. */
   truck: boolean;
-  /** While parked: the way into the site it stands at, which is the way it drove in. */
-  parkHeading: number | null;
-  /** Set while it backs out of a site and catches up with the game again. */
-  leaving: Leaving | null;
+  /** Road vehicles only: the way they came, which is what they are drawn along. */
+  road: RoadTrack | null;
   /** Height of the surface it stands on (road, runway) above the board. */
   lift: number;
   /** Kinds of goods on board, for the crates on a carrier's bed. */
   cargo: string[];
   seen: boolean;
+}
+
+/**
+ * A road vehicle is drawn on the way the game has taken it, a little behind
+ * where the game has it now. That gives it a stretch of road ahead to steer
+ * by, so it swings round corners, and it lets it fall behind for a while
+ * (backing out of a site takes time the game does not spend) and catch up
+ * along the road instead of across the grass.
+ */
+interface RoadTrack {
+  trail: TrailPoint[];
+  /** How far the game has moved it in all. */
+  dist: number;
+  /** It is not drawn on the trail before this distance: that part led into the site it left. */
+  floor: number;
+  /** How far along the trail it is drawn. */
+  at: number;
+  /** Units per second the game last moved it at. */
+  speed: number;
+  /** How far it fell behind, and the distance from which it has been catching up. */
+  lag: number;
+  lagFrom: number;
+  /** A sideways step left over when it went back onto the trail, smoothed away from `from` on. */
+  slip: { x: number; z: number; from: number } | null;
+  /** True once it stands at its site; false while it is still driving in, or out on the road. */
+  parked: boolean;
+  /** The way into the site it stands at, which is the way it drove in. */
+  parkHeading: number | null;
+  /** Set while it backs out of that site. */
+  leaving: Leaving | null;
 }
 
 const ROAD_KINDS: ReadonlySet<string> = new Set(['carrier', 'inboundTruck', 'saleTruck']);
@@ -366,10 +395,10 @@ export class ViewSync {
   }
 
   /**
-   * Vehicles: interpolated between ticks and moved onto the right-hand lane.
-   * Parked ones stand on their site the way they drove in. Carriers grow in
-   * and shrink away as they come and go, ships and planes fade, and trucks
-   * are hidden by the tunnel at the gate.
+   * Vehicles: interpolated between ticks. Road vehicles keep to the right,
+   * stand on their site the way they drove in and back out of it again.
+   * Carriers grow in and shrink away as they come and go, ships and planes
+   * fade, and trucks are hidden by the tunnel at the gate.
    */
   private vehicles(prev: GameSnapshot | null, curr: GameSnapshot, alpha: number, dt: number): void {
     const rule = renderConfig.vehicle;
@@ -381,99 +410,47 @@ export class ViewSync {
     }
     for (const track of this.tracks.values()) track.seen = false;
     const drawn = vehiclePoses(prev ? prev.island.vehicles : null, list, alpha, rule.snapDistance);
-    const ease = dt > 0 ? 1 - Math.exp(-rule.laneDamping * dt) : 1;
     for (let index = 0; index < drawn.length; index += 1) {
       const vehicle = list[index]!;
       const pose = drawn[index]!.pose;
-      const road = ROAD_KINDS.has(vehicle.kind);
-      const parked = road && vehicle.state !== 'moving';
       let track = this.tracks.get(vehicle.id);
-      const parkHeading = parked ? (track?.parkHeading ?? this.headingIntoSite(pose.x, pose.z)) : null;
-      // Setting off, it backs out to the road in a curve, at the speed the game moves it, then drives on.
-      let leaveShift: { x: number; z: number } | null = null;
-      let leaveHeading: number | null = null;
-      if (track && road && !parked) {
-        if (track.parkHeading !== null) {
-          track.leaving = { heading: track.parkHeading, x: track.x + track.shiftX, z: track.z + track.shiftZ, dist: 0, straight: null, turn: 0, radius: 0, gap: null };
-        }
-        const leaving = track.leaving;
-        if (leaving) {
-          leaving.dist += Math.hypot(pose.x - track.x, pose.z - track.z);
-          const toRoad = track.truck ? rule.backOut.truck : rule.backOut.carrier;
-          if (leaving.straight === null) {
-            // Which way the road leads shows once the game has taken it round the corner.
-            const turn = Math.atan2(Math.sin(vehicle.heading - leaving.heading), Math.cos(vehicle.heading - leaving.heading));
-            if (Math.abs(Math.abs(turn) - Math.PI / 2) < 0.6) {
-              leaving.straight = leaving.dist;
-              leaving.turn = turn;
-              // The curve ends on the lane it will drive in, as far as a sensible radius allows.
-              const lane = toRoad - Math.sin(turn) * rule.laneOffset;
-              leaving.radius = Math.min(rule.backOut.maxRadius, Math.max(rule.backOut.minRadius, lane - leaving.dist));
-            } else if (leaving.dist > toRoad + rule.backOut.giveUp) {
-              track.leaving = null;
-            }
-          }
-        }
-        if (track.leaving) {
-          const at = backOutPose(track.leaving, track.leaving.dist);
-          if (!at.done) {
-            leaveShift = { x: at.x - pose.x, z: at.z - pose.z };
-            leaveHeading = at.heading;
-          } else {
-            // Facing the right way now, but behind where the game has it: the gap closes over the next stretch.
-            const lane = laneShift(pose.heading, rule.laneOffset);
-            const gap = (track.leaving.gap ??= { x: at.x - pose.x - lane.x, z: at.z - pose.z - lane.z, from: track.leaving.dist });
-            const left = 1 - smoothstep((track.leaving.dist - gap.from) / rule.backOut.catchUp);
-            if (left <= 0) track.leaving = null;
-            else leaveShift = { x: lane.x + gap.x * left, z: lane.z + gap.z * left };
-          }
-        }
-      } else if (track) {
-        track.leaving = null;
-      }
-      const shift =
-        parkHeading !== null
-          ? parkedShift(parkHeading, rule.laneOffset, TRUCK_KINDS.has(vehicle.kind) ? rule.parkInset.truck : rule.parkInset.carrier)
-          : (leaveShift ?? (road ? laneShift(pose.heading, rule.laneOffset) : ZERO_SHIFT));
-      const heading = parkHeading ?? leaveHeading ?? pose.heading;
       if (!track) {
+        const onRoad = ROAD_KINDS.has(vehicle.kind);
         track = {
           model: this.vehicleModel(vehicle),
           x: pose.x,
           y: pose.y,
           z: pose.z,
-          heading,
+          heading: pose.heading,
           vx: 0,
           vy: 0,
           vz: 0,
-          shiftX: shift.x,
-          shiftZ: shift.z,
+          shiftX: 0,
+          shiftZ: 0,
           age: this.settled ? 0 : Infinity,
           gone: -1,
           slow: SLOW_KINDS.has(vehicle.kind),
           truck: TRUCK_KINDS.has(vehicle.kind),
-          parkHeading,
-          leaving: null,
+          road: onRoad
+            ? { trail: [{ x: pose.x, z: pose.z, d: 0 }], dist: 0, floor: 0, at: 0, speed: 0, lag: 0, lagFrom: 0, slip: null, parked: false, parkHeading: null, leaving: null }
+            : null,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
           seen: true,
         };
         this.tracks.set(vehicle.id, track);
+        if (track.road) this.drive(track, track.road, vehicle, pose, 0, 0, true);
       } else {
         const moved = Math.hypot(pose.x - track.x, pose.y - track.y, pose.z - track.z);
         const steady = dt > 0 && moved < rule.snapDistance;
         track.vx = steady ? (pose.x - track.x) / dt : 0;
         track.vy = steady ? (pose.y - track.y) / dt : 0;
         track.vz = steady ? (pose.z - track.z) / dt : 0;
+        if (track.road) this.drive(track, track.road, vehicle, pose, moved < rule.snapDistance ? moved : -1, dt, false);
+        else track.heading = pose.heading;
         track.x = pose.x;
         track.y = pose.y;
         track.z = pose.z;
-        track.heading = heading;
-        // Backing out is drawn where it is, not eased towards.
-        const follow = leaveShift ? 1 : ease;
-        track.shiftX += (shift.x - track.shiftX) * follow;
-        track.shiftZ += (shift.z - track.shiftZ) * follow;
-        track.parkHeading = parkHeading;
         track.age += dt;
         track.gone = -1;
         track.seen = true;
@@ -521,6 +498,139 @@ export class ViewSync {
       if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? []);
     }
     this.fading.end();
+  }
+
+  /**
+   * Works out where a road vehicle is drawn this frame (`track.shiftX/Z` and
+   * `track.heading`). `pose` is where the game has it now, `track.x/z` where
+   * it had it last frame, `moved` the distance between the two (negative for a jump).
+   */
+  private drive(track: VehicleTrack, road: RoadTrack, vehicle: VehicleView, pose: Pose, moved: number, dt: number, fresh: boolean): void {
+    const rule = renderConfig.vehicle;
+    const back = rule.backOut;
+    const reach = rule.steerReach;
+    if (moved < 0) {
+      // A jump: forget the way it came.
+      road.trail = [{ x: pose.x, z: pose.z, d: road.dist }];
+      road.floor = road.dist;
+      road.at = road.dist;
+      road.lag = 0;
+      road.slip = null;
+      road.leaving = null;
+      road.parked = false;
+    } else if (moved > 0) {
+      road.dist += moved;
+      road.trail.push({ x: pose.x, z: pose.z, d: road.dist });
+      if (dt > 0) road.speed = moved / dt;
+      // Keep what it may still be drawn on, and a little more.
+      const keep = Math.max(road.floor, road.at - reach) - 1;
+      while (road.trail.length > 2 && road.trail[1]!.d < keep) road.trail.shift();
+    }
+    const stopped = vehicle.state !== 'moving';
+    const inset = track.truck ? rule.parkInset.truck : rule.parkInset.carrier;
+    let x: number;
+    let z: number;
+    let heading = track.heading;
+
+    if (stopped && (fresh || road.parked || road.at >= road.dist + reach - 1e-3)) {
+      // Standing at its site: on the lane it came in on, pulled in off the road.
+      if (!road.parked) {
+        road.parked = true;
+        road.parkHeading = this.headingIntoSite(pose.x, pose.z);
+        road.leaving = null;
+        road.lag = 0;
+        road.slip = null;
+      }
+      const into = road.parkHeading ?? pose.heading;
+      const target = road.parkHeading === null ? ZERO_SHIFT : parkedShift(into, rule.laneOffset, inset);
+      const ease = fresh ? 1 : 1 - Math.exp(-rule.laneDamping * dt);
+      track.shiftX += (target.x - track.shiftX) * ease;
+      track.shiftZ += (target.z - track.shiftZ) * ease;
+      track.heading = into;
+      return;
+    }
+
+    if (road.parked) {
+      // Setting off. It waits where it stands until the game has taken it round the corner onto the road,
+      // which shows which way it has to back out.
+      road.parked = false;
+      road.trail = [{ x: track.x, z: track.z, d: road.dist - Math.max(0, moved) }, { x: pose.x, z: pose.z, d: road.dist }];
+      road.floor = road.dist;
+      road.at = road.dist;
+      road.leaving =
+        road.parkHeading === null
+          ? null
+          : { heading: road.parkHeading, x: track.x + track.shiftX, z: track.z + track.shiftZ, since: road.dist, from: null, straight: 0, turn: 0, radius: 0 };
+    }
+
+    const leaving = road.leaving;
+    if (leaving) {
+      if (leaving.from === null) {
+        const turn = Math.atan2(Math.sin(vehicle.heading - leaving.heading), Math.cos(vehicle.heading - leaving.heading));
+        if (Math.abs(Math.abs(turn) - Math.PI / 2) < 0.6) {
+          // The game has it on the middle of the road now, which says how far back the road is.
+          // The curve ends on the lane it will drive in.
+          const toRoad = (leaving.x - pose.x) * Math.sin(leaving.heading) + (leaving.z - pose.z) * Math.cos(leaving.heading);
+          const lane = Math.max(0, toRoad - Math.sin(turn) * rule.laneOffset);
+          leaving.from = road.dist;
+          leaving.turn = turn;
+          leaving.radius = Math.min(back.radius, lane);
+          leaving.straight = lane - leaving.radius;
+          road.floor = road.dist;
+        } else if (road.dist - leaving.since > back.giveUp) {
+          // Its way leads straight on: nothing to back round. It drives off from where it stands.
+          this.rejoin(road, leaving.x, leaving.z, pose);
+        }
+      }
+      if (road.leaving) {
+        const at = leaving.from === null ? { x: leaving.x, z: leaving.z, heading: leaving.heading, done: false } : backOutPose(leaving, road.dist - leaving.from);
+        if (!at.done) {
+          track.shiftX = at.x - pose.x;
+          track.shiftZ = at.z - pose.z;
+          track.heading = at.heading;
+          return;
+        }
+        // Facing the right way now, but behind where the game has it.
+        this.rejoin(road, at.x, at.z, pose);
+        heading = at.heading;
+      }
+    }
+
+    // On the road: drawn on the way it came, steering by a point ahead and one behind.
+    if (stopped) road.at = Math.min(road.at + road.speed * dt, road.dist + reach);
+    else {
+      const lag = road.lag * (1 - smoothstep((road.dist - road.lagFrom) / back.catchUp));
+      road.at = Math.max(road.at, road.dist - reach - lag);
+    }
+    const rear = trailPoint(road.trail, road.at - reach, road.floor);
+    const front = trailPoint(road.trail, road.at + reach, road.floor);
+    if (Math.hypot(front.x - rear.x, front.z - rear.z) > 0.05) heading = Math.atan2(front.x - rear.x, front.z - rear.z);
+    else if (fresh) heading = pose.heading;
+    const lane = laneShift(heading, rule.laneOffset);
+    x = (rear.x + front.x) / 2 + lane.x;
+    z = (rear.z + front.z) / 2 + lane.z;
+    if (road.slip) {
+      if (road.slip.from < 0) road.slip = { x: road.slip.x - x, z: road.slip.z - z, from: road.dist };
+      const left = 1 - smoothstep((road.dist - road.slip.from) / back.settle);
+      if (left <= 0) road.slip = null;
+      else {
+        x += road.slip.x * left;
+        z += road.slip.z * left;
+      }
+    }
+    track.shiftX = x - pose.x;
+    track.shiftZ = z - pose.z;
+    track.heading = heading;
+  }
+
+  /** Puts a vehicle that stands at (x, z) back on the trail: as far behind the game as it is, with the step to the trail smoothed away. */
+  private rejoin(road: RoadTrack, x: number, z: number, pose: Pose): void {
+    road.leaving = null;
+    road.lag = Math.hypot(x - pose.x, z - pose.z);
+    road.lagFrom = road.dist;
+    road.at = road.dist - renderConfig.vehicle.steerReach - road.lag;
+    // `from` below zero: the step is measured against the trail on the first frame it is drawn there.
+    road.slip = { x, z, from: -1 };
   }
 
   /** Heading from a loading point towards the centre of the site it belongs to: the nearest plot or facility. */
