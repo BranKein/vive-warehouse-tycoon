@@ -11,10 +11,15 @@ interface OptionItem {
   full: boolean;
 }
 
+const ALL = 'all';
+const CATEGORY_ORDER = ['tier1', 'tier2', 'tier3', 'tier4', 'handmade', 'disposal'];
+
 /** The window that opens over an empty plot that was clicked: pick what to build there. */
-export function createBuildModal(ctx: UIContext) {
+export function createBuildModal(ctx: UIContext, onChange: () => void) {
   const { tr, catalog } = ctx;
   let open = false;
+  /** A building category, or `ALL`. */
+  let tab = ALL;
   const dismiss = (): void => ctx.select({ type: 'none' });
 
   const title = h('div', 'wt-menu-title');
@@ -22,7 +27,23 @@ export function createBuildModal(ctx: UIContext) {
   const close = button('wt-icon-btn', dismiss);
   setText(close, '×');
   const hint = h('p', 'wt-hint');
-  const optionList = h('div', 'wt-list');
+  const optionList = h('div', 'wt-list wt-build-grid');
+
+  // One tab per building category that the catalog has: production stages first, then the rest.
+  const used = new Set<string>(Object.values(catalog.buildings).map((building) => building.category));
+  const tabIds = [ALL, ...CATEGORY_ORDER.filter((id) => used.delete(id)), ...used];
+  const tabBar = h('div', 'wt-tabs wt-build-tabs');
+  tabBar.setAttribute('role', 'tablist');
+  const tabButtons = tabIds.map((id) => {
+    const tabButton = button('wt-tab-btn', () => {
+      tab = id;
+      optionList.scrollTop = 0;
+      onChange();
+    });
+    tabButton.setAttribute('role', 'tab');
+    tabBar.append(tabButton);
+    return { id, el: tabButton };
+  });
 
   const options = new KeyedList<OptionItem>(
     optionList,
@@ -42,8 +63,8 @@ export function createBuildModal(ctx: UIContext) {
       const row = h(
         'div',
         'wt-option',
-        h('div', 'wt-option-info', h('div', 'wt-option-head', name, category), recipe, built),
-        action,
+        h('div', 'wt-option-info', h('div', 'wt-option-head', name, category), recipe),
+        h('div', 'wt-option-foot', built, action),
       );
       return {
         el: row,
@@ -83,6 +104,7 @@ export function createBuildModal(ctx: UIContext) {
     'div',
     'wt-build-modal wt-card',
     h('div', 'wt-menu-head', h('div', 'wt-build-title', title, count), close),
+    tabBar,
     hint,
     optionList,
   );
@@ -113,7 +135,15 @@ export function createBuildModal(ctx: UIContext) {
       setAttr(close, 'title', tr.t('common.close'));
       setHidden(hint, !full);
       setText(hint, full ? tr.t('build.full') : '');
-      options.sync(island.buildOptions.map((option) => ({ option, frame, plotId: plot.id, full })));
+      for (const { id, el: tabButton } of tabButtons) {
+        setText(tabButton, id === ALL ? tr.t('build.all') : tr.tx(keys.categoryName(id)));
+        setClass(tabButton, 'is-active', id === tab);
+        setAttr(tabButton, 'aria-selected', String(id === tab));
+      }
+      const shown = island.buildOptions.filter(
+        (option) => tab === ALL || catalog.buildings[option.typeId]?.category === tab,
+      );
+      options.sync(shown.map((option) => ({ option, frame, plotId: plot.id, full })));
     },
   };
 }

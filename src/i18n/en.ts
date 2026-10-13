@@ -81,6 +81,7 @@ export const en = {
   'hover.emptyPlot': 'Empty plot',
   'hover.emptyPlotHint': 'Click to build here',
   'hover.buildingHint': 'Click to upgrade · double-click and drag to move',
+  'build.all': 'All',
   'build.title': 'Build',
   'detail.empty': 'Click a building to upgrade it here.',
   'detail.none': 'No buildings yet.',

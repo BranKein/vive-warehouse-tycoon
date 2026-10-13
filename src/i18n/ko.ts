@@ -72,6 +72,7 @@ export const ko: Translations = {
   'hover.emptyPlot': '빈 부지',
   'hover.emptyPlotHint': '누르면 건물을 짓습니다',
   'hover.buildingHint': '누르면 업그레이드 · 두 번 눌러 끌면 이동',
+  'build.all': '전체',
   'build.title': '건물 짓기',
   'detail.empty': '건물을 누르면 여기서 업그레이드합니다.',
   'detail.none': '아직 건물이 없습니다.',

@@ -92,7 +92,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     },
   );
   const panel = createSidePanel(ctx, () => render());
-  const buildModal = createBuildModal(ctx);
+  const buildModal = createBuildModal(ctx, () => render());
   const hoverCard = createHoverCard(ctx);
 
   root.classList.add('wt-ui');
