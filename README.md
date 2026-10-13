@@ -20,7 +20,7 @@ npm run dev
 | `npm run build` | 타입 검사 후 `dist/`에 빌드 |
 | `npm test` | 테스트 |
 | `npm run typecheck` | 타입 검사 |
-| `npm run sim -- --hours 10 --auto --seed 1` | 화면 없이 돌려 밸런스 보고서 출력 |
+| `npm run sim -- --hours 10 --auto --seed 1` | 화면 없이 돌려 밸런스 보고서 출력 (`--timeline`을 붙이면 새 건물·해금을 모두 나열) |
 
 ## 조작
 
@@ -34,3 +34,5 @@ npm run dev
 ## 구조
 
 `src/` 아래는 `contracts`(공용 타입) ← `core` ← `content`(품목·건물·밸런스 수치) ← `sim`(게임 로직) ← `app` 순서로 의존한다. `render`(three.js 화면)와 `ui`(패널)는 로직을 직접 부르지 않고 스냅샷만 읽는다. 설계와 밸런스 기록은 [PLAN.md](PLAN.md)와 [docs/balance-buildings.md](docs/balance-buildings.md)에 있다.
+
+개발 서버를 켠 채 `/src/render/models.html`을 열면 3D 모델을 하나씩 돌려 볼 수 있다.

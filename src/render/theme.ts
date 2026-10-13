@@ -12,6 +12,8 @@ export interface BuildingPalette {
   wall: number;
   roof: number;
   accent: number;
+  /** Second, cooler colour for doors and small fittings. Hand-drawn models use it; falls back to `accent`. */
+  trim?: number;
 }
 
 export interface Theme {
@@ -210,7 +212,7 @@ export const defaultTheme: Theme = {
   buildings: {
     fallback: { wall: 0xfff3e0, roof: 0xf4a79d, accent: 0xffd27d },
     byType: {
-      sawmill: { wall: 0xfdebd0, roof: 0xe8a98a, accent: 0xc99a74 },
+      sawmill: { wall: 0xfdebd0, roof: 0xe8a98a, accent: 0xc99a74, trim: 0x8ccdb4 },
       steelMill: { wall: 0xe6e9f5, roof: 0xa9b6dc, accent: 0xf2a79a },
       textileMill: { wall: 0xffe3ea, roof: 0xf2a2b8, accent: 0xfff3b0 },
       refinery: { wall: 0xe9e3f6, roof: 0xb7a9e0, accent: 0xffc79a },

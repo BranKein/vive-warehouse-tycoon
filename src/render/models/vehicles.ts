@@ -13,27 +13,93 @@ function wheel(kit: Kit, radius: number, width: number, x: number, z: number): M
   return [tire, hub];
 }
 
+/** Chunky wheel for the hand-drawn vehicles: tyre, pale rim and a coloured cap. Axle along x, centred at (x, radius, z). */
+function toyWheel(kit: Kit, radius: number, width: number, x: number, z: number, cap: number): Mesh[] {
+  const side = Math.sign(x) || 1;
+  const p = kit.theme.props;
+  const disc = (r: number, w: number, paint: number, shift: number): Mesh =>
+    kit.cyl(r, r, w, paint, { x: x + side * shift, y: radius - w / 2, z, rz: Math.PI / 2 }, 18);
+  return [
+    disc(radius, width, p.tire, 0),
+    disc(radius * 0.62, width * 0.5, p.sign, width * 0.3),
+    disc(radius * 0.26, width * 0.5, cap, width * 0.36),
+  ];
+}
+
+/**
+ * Box truck, drawn by hand as the style sample for vehicles (PLAN.md stage 5):
+ * short and tall like a toy, a round cab with a wind deflector, a cream cargo
+ * box with a coloured band and a crate badge, a roll-up door at the back.
+ */
 function boxTruck(kit: Kit): Object3D {
   const v = kit.theme.vehicles;
   const p = kit.theme.props;
-  return kit.group([
-    kit.box(1.9, 0.35, 5.3, p.darkMetal, { y: 0.4, r: 0.1 }),
-    // Cargo box with a coloured stripe.
-    kit.box(2.25, 2.25, 3.7, v.truckBody, { y: 0.7, z: -0.75, r: 0.28 }),
-    kit.box(2.28, 0.32, 3.4, v.truckCab, { y: 1.15, z: -0.75, r: 0.1 }),
-    kit.box(1.7, 1.75, 0.1, p.sign, { y: 0.95, z: -2.6, r: 0.05 }),
-    // Cab.
-    kit.box(2.1, 1.75, 1.55, v.truckCab, { y: 0.65, z: 1.95, r: 0.38 }),
-    kit.box(1.7, 0.72, 0.2, p.glass, { y: 1.5, z: 2.64, r: 0.09 }),
-    kit.box(2.14, 0.6, 0.7, p.glass, { y: 1.55, z: 2.05, r: 0.09 }),
-    kit.box(2.0, 0.3, 0.25, p.sign, { y: 0.45, z: 2.68, r: 0.1 }),
-    kit.box(0.34, 0.22, 0.1, kit.materials.headlight, { x: -0.68, y: 0.9, z: 2.72, r: 0.05 }),
-    kit.box(0.34, 0.22, 0.1, kit.materials.headlight, { x: 0.68, y: 0.9, z: 2.72, r: 0.05 }),
-    ...wheel(kit, 0.46, 0.4, -0.98, 1.85),
-    ...wheel(kit, 0.46, 0.4, 0.98, 1.85),
-    ...wheel(kit, 0.46, 0.4, -0.98, -1.75),
-    ...wheel(kit, 0.46, 0.4, 0.98, -1.75),
-  ]);
+  const light = kit.materials.headlight;
+  const HALF_PI = Math.PI / 2;
+  const parts: Object3D[] = [];
+
+  // Frame, fuel tanks and the step under each door.
+  parts.push(kit.box(1.6, 0.3, 5.1, p.darkMetal, { y: 0.42, z: -0.05, r: 0.1 }));
+  for (const x of [-0.92, 0.92]) {
+    parts.push(kit.cyl(0.24, 0.24, 0.85, p.metal, { x, y: 0.5 - 0.425, z: 0.25, rx: HALF_PI }, 12));
+    parts.push(kit.box(0.3, 0.1, 0.7, p.darkMetal, { x: x * 1.12, y: 0.42, z: 1.75, r: 0.04 }));
+  }
+
+  // Cargo box: cream shell, coloured band, roof ribs.
+  const BOX_Z = -0.92;
+  const BOX_LEN = 3.7;
+  const BOX_TOP = 3.05;
+  parts.push(kit.box(2.3, 2.3, BOX_LEN, v.truckBody, { y: BOX_TOP - 2.3, z: BOX_Z, r: 0.3 }));
+  parts.push(kit.box(2.34, 0.55, BOX_LEN - 0.3, v.truckCab, { y: 0.98, z: BOX_Z, r: 0.12 }));
+  parts.push(kit.box(2.1, 0.16, BOX_LEN + 0.04, p.darkMetal, { y: 0.66, z: BOX_Z, r: 0.06 }));
+  for (const dz of [-1.1, 0, 1.1]) parts.push(kit.box(1.9, 0.07, 0.22, p.sign, { y: BOX_TOP - 0.02, z: BOX_Z + dz, r: 0.03 }));
+  // Badge on both sides: a little crate on a round plate.
+  for (const side of [-1, 1]) {
+    const x = side * 1.15;
+    parts.push(kit.cyl(0.52, 0.52, 0.06, v.carrierCab, { x, y: 2.15 - 0.03, z: BOX_Z, rz: HALF_PI }, 24));
+    parts.push(kit.box(0.08, 0.46, 0.5, p.wood, { x: x + side * 0.03, y: 1.92, z: BOX_Z, r: 0.03 }));
+    parts.push(kit.box(0.1, 0.1, 0.52, p.sign, { x: x + side * 0.035, y: 2.1, z: BOX_Z, r: 0.02 }));
+  }
+  // Roll-up door, bumper and tail lights at the back.
+  const back = BOX_Z - BOX_LEN / 2;
+  parts.push(kit.box(1.75, 1.75, 0.12, p.sign, { y: 0.95, z: back - 0.01, r: 0.08 }));
+  for (const y of [1.3, 1.7, 2.1]) parts.push(kit.box(1.6, 0.06, 0.14, p.door, { y, z: back - 0.02, r: 0.02 }));
+  parts.push(kit.box(0.4, 0.1, 0.16, p.darkMetal, { y: 1.05, z: back - 0.04, r: 0.04 }));
+  parts.push(kit.box(2.2, 0.22, 0.3, p.darkMetal, { y: 0.4, z: back - 0.02, r: 0.08 }));
+  for (const x of [-0.95, 0.95]) {
+    parts.push(kit.box(0.22, 0.34, 0.1, v.truckCab, { x, y: 0.72, z: back - 0.02, r: 0.05 }));
+    parts.push(kit.box(0.5, 0.42, 0.06, p.tire, { x, y: 0.2, z: -2.25, r: 0.02 }));
+  }
+
+  // Cab: round shell, wrap-around glass, grille, bumper, mirrors.
+  const CAB_Z = 1.95;
+  parts.push(kit.box(2.2, 1.95, 1.7, v.truckCab, { y: 0.55, z: CAB_Z, r: 0.45 }));
+  parts.push(kit.box(1.8, 0.78, 0.3, p.glass, { y: 1.5, z: CAB_Z + 0.72, r: 0.12 }));
+  parts.push(kit.box(2.24, 0.72, 0.85, p.glass, { y: 1.53, z: CAB_Z + 0.12, r: 0.12 }));
+  parts.push(kit.box(2.26, 0.74, 0.12, v.truckCab, { y: 1.52, z: CAB_Z - 0.38, r: 0.04 }));
+  parts.push(kit.box(1.25, 0.36, 0.14, p.sign, { y: 0.88, z: CAB_Z + 0.82, r: 0.08 }));
+  for (const y of [0.97, 1.09]) parts.push(kit.box(1.05, 0.04, 0.16, p.door, { y, z: CAB_Z + 0.82, r: 0.01 }));
+  parts.push(kit.box(2.3, 0.3, 0.42, p.sign, { y: 0.4, z: CAB_Z + 0.72, r: 0.13 }));
+  for (const x of [-0.82, 0.82]) {
+    parts.push(kit.cyl(0.19, 0.19, 0.12, light, { x, y: 1.06 - 0.06, z: CAB_Z + 0.83, rx: HALF_PI }, 14));
+    parts.push(kit.box(0.26, 0.05, 0.05, p.darkMetal, { x: x * 1.45, y: 1.78, z: CAB_Z + 0.5 }));
+    parts.push(kit.box(0.1, 0.44, 0.26, p.darkMetal, { x: x * 1.62, y: 1.5, z: CAB_Z + 0.5, r: 0.04 }));
+    parts.push(kit.box(0.05, 0.07, 0.26, p.sign, { x: x * 1.36, y: 1.28, z: CAB_Z - 0.05, r: 0.02 }));
+  }
+  // Wind deflector up to the box roof, with three marker lights.
+  parts.push(kit.box(1.9, 0.4, 1.0, v.truckCab, { y: 2.4, z: CAB_Z - 0.42, rx: 0.5, r: 0.18 }));
+  for (const x of [-0.5, 0, 0.5]) parts.push(kit.box(0.16, 0.08, 0.12, p.hazard, { x, y: 2.48, z: CAB_Z + 0.5, r: 0.03 }));
+
+  // Wheels under arches.
+  const FRONT_Z = 1.85;
+  const REAR_Z = -1.6;
+  for (const x of [-0.98, 0.98]) {
+    parts.push(kit.barrel(0.42, 0.66, 1.42, v.truckCab, { x, y: 0.5, z: FRONT_Z }));
+    parts.push(kit.barrel(0.42, 0.66, 1.42, p.darkMetal, { x, y: 0.5, z: REAR_Z }));
+    parts.push(...toyWheel(kit, 0.5, 0.44, x, FRONT_Z, v.truckCab));
+    parts.push(...toyWheel(kit, 0.5, 0.44, x, REAR_Z, v.truckCab));
+  }
+  return kit.group(parts);
 }
 
 function carrier(kit: Kit): Object3D {

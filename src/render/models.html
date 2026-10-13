@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warehouse Tycoon 모델 보기 (dev)</title>
+    <style>
+      html, body { height: 100%; margin: 0; overflow: hidden; font: 13px system-ui, sans-serif; color: #4a4038; }
+      body { display: grid; grid-template-columns: 230px 1fr; }
+      #list { overflow-y: auto; background: #fff8ec; border-right: 1px solid #ead9c2; padding: 8px 0; }
+      #list h2 { margin: 12px 14px 4px; font-size: 11px; letter-spacing: 0.06em; color: #a08c78; }
+      #list button { display: block; width: 100%; padding: 5px 14px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+      #list button:hover { background: #f6e9d6; }
+      #list button[aria-current='true'] { background: #ffd9c9; font-weight: 600; }
+      #list button .tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: #9fdccb; font-size: 10px; font-weight: 600; }
+      #stage { position: relative; min-width: 0; }
+      #scene { display: block; width: 100%; height: 100%; }
+      #bar { position: absolute; left: 12px; top: 12px; display: flex; gap: 14px; align-items: center; padding: 6px 14px; border-radius: 999px; background: #fff8ecd9; }
+      #bar label { display: flex; gap: 6px; align-items: center; }
+      #info { position: absolute; left: 12px; bottom: 12px; padding: 4px 12px; border-radius: 999px; background: #fff8ecd9; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <nav id="list"></nav>
+    <div id="stage">
+      <canvas id="scene"></canvas>
+      <div id="bar">
+        <label>시각 <input id="time" type="range" min="0" max="1" step="0.005" /> <span id="time-name"></span></label>
+        <label><input id="spin" type="checkbox" checked /> 회전</label>
+        <label><input id="grid" type="checkbox" checked /> 눈금(1칸 = 1)</label>
+        <label><input id="pad" type="checkbox" checked /> 부지</label>
+      </div>
+      <div id="info"></div>
+    </div>
+    <script type="module" src="./models.ts"></script>
+  </body>
+</html>
