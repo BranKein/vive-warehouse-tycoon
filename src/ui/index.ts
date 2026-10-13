@@ -188,6 +188,9 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       hoverCard.set(target, clientX, clientY);
       render();
     },
+    setVehicleAnchor(anchor): void {
+      vehiclePanel.place(anchor);
+    },
     handleEvents(events: GameEvent[]): void {
       for (const event of events) {
         if (event.type === 'unlocked') {

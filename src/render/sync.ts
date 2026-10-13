@@ -120,3 +120,44 @@ export function parkedShift(heading: number, lane: number, inset: number): { x: 
   const side = laneShift(heading, lane);
   return { x: side.x + Math.sin(heading) * inset, z: side.z + Math.cos(heading) * inset };
 }
+
+/** A vehicle backing out of the site it was parked at. */
+export interface Leaving {
+  /** The way it stood: into the site. */
+  heading: number;
+  /** Where it stood. */
+  x: number;
+  z: number;
+  /** How far the game has moved it since it set off. */
+  dist: number;
+  /** How far it backs straight before the curve; null until the way the road leads is known. */
+  straight: number | null;
+  /** The curve: how far it turns (radians, signed) and on what radius. */
+  turn: number;
+  radius: number;
+  /** After backing: what was left to catch up with the game, and from what `dist` on. */
+  gap: { x: number; z: number; from: number } | null;
+}
+
+/**
+ * Where a vehicle that is backing out is after `distance`: straight back
+ * first, then backwards round a curve while it turns by `turn`, so it ends
+ * facing the way it will drive. `done` once the curve is complete.
+ */
+export function backOutPose(leaving: Leaving, distance: number): { x: number; z: number; heading: number; done: boolean } {
+  const h = leaving.heading;
+  const straight = Math.min(distance, leaving.straight ?? distance);
+  const x = leaving.x - Math.sin(h) * straight;
+  const z = leaving.z - Math.cos(h) * straight;
+  if (leaving.straight === null || distance <= leaving.straight) return { x, z, heading: h, done: false };
+  const length = leaving.radius * Math.abs(leaving.turn);
+  const part = length > 0 ? Math.min(1, (distance - leaving.straight) / length) : 1;
+  const heading = h + leaving.turn * part;
+  const side = Math.sign(leaving.turn) * leaving.radius;
+  return {
+    x: x - side * (Math.cos(h) - Math.cos(heading)),
+    z: z - side * (Math.sin(heading) - Math.sin(h)),
+    heading,
+    done: part >= 1,
+  };
+}

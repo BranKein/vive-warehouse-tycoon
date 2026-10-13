@@ -1,5 +1,5 @@
 import { ACESFilmicToneMapping, PCFShadowMap, Scene, Vector3, WebGLRenderer } from 'three';
-import type { GameEvent, GameRenderer, GameSnapshot, PickTarget, RendererOptions, Selection } from '@/contracts';
+import type { GameEvent, GameRenderer, GameSnapshot, PickTarget, RendererOptions, ScreenPoint, Selection } from '@/contracts';
 import { BLOCK_MODEL, registerBoxModels } from './boxModels';
 import { registerGameModels } from './models/index';
 import { CameraRig } from './CameraRig';
@@ -64,6 +64,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
   const listeners: Array<(target: PickTarget) => void> = [];
   const pickPoint = new Vector3();
+  const anchorPoint = new Vector3();
+  const anchorListeners: Array<(anchor: ScreenPoint | null) => void> = [];
+  let anchored = false;
   const pickAt = (clientX: number, clientY: number): PickTarget => {
     const ndc = pointerToNdc(clientX, clientY, canvas.getBoundingClientRect());
     const origin = rig.camera.position;
@@ -200,7 +203,18 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha, dt);
       latest = curr;
       // A selected vehicle is followed; when it is gone the camera goes back by itself.
-      rig.follow(chosen.type === 'vehicle' ? view.vehiclePoint(chosen.vehicleId) : null);
+      const followed = chosen.type === 'vehicle' ? view.vehiclePoint(chosen.vehicleId) : null;
+      rig.follow(followed);
+      // Its card hangs beside it: tell where on the page that is.
+      if (followed) {
+        const rect = canvas.getBoundingClientRect();
+        anchorPoint.set(followed.x, followed.y + renderConfig.vehicle.cardHeight, followed.z).project(rig.camera);
+        const anchor = { clientX: rect.left + (anchorPoint.x * 0.5 + 0.5) * rect.width, clientY: rect.top + (-anchorPoint.y * 0.5 + 0.5) * rect.height };
+        for (const listener of [...anchorListeners]) listener(anchor);
+      } else if (anchored) {
+        for (const listener of [...anchorListeners]) listener(null);
+      }
+      anchored = followed !== null;
       effects.update(dt, rig.camera);
       refreshPointer();
       renderer.render(scene, rig.camera);
@@ -218,6 +232,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     },
     onDrop(listener): void {
       dropListeners.push(listener);
+    },
+    onVehicleAnchor(listener): void {
+      anchorListeners.push(listener);
     },
     handleEvents(events: GameEvent[]): void {
       const layout = islandId === null ? null : (catalog.islands[islandId]?.layout ?? null);

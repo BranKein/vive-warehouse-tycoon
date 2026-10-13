@@ -48,8 +48,19 @@ export interface GameRenderer {
   onHover(listener: (target: PickTarget | null, clientX: number, clientY: number) => void): void;
   /** Called when a building that was picked up (double-click and hold) is dropped on a plot or another building. */
   onDrop(listener: (buildingId: BuildingId, target: PickTarget) => void): void;
+  /**
+   * Called every frame while a vehicle is selected with the point on the page just above it,
+   * and once with `null` when there is no such point any more.
+   */
+  onVehicleAnchor(listener: (anchor: ScreenPoint | null) => void): void;
   handleEvents(events: GameEvent[]): void;
   dispose(): void;
+}
+
+/** A point on the page, in client pixels. */
+export interface ScreenPoint {
+  clientX: number;
+  clientY: number;
 }
 
 export interface RendererOptions {
@@ -70,6 +81,8 @@ export interface GameUI {
   setSelection(selection: Selection): void;
   /** What the pointer is over in the 3D view, and where on the page; `null` hides the hover card. */
   setHover(target: PickTarget | null, clientX: number, clientY: number): void;
+  /** Where the selected vehicle is on the page; its card stays beside that point. */
+  setVehicleAnchor(anchor: ScreenPoint | null): void;
   handleEvents(events: GameEvent[]): void;
   /** Shown when the tab was hidden for a long time. */
   showAwayNotice(earned: BigNum, awaySeconds: number): void;

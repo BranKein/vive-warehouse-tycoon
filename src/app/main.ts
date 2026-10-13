@@ -125,6 +125,7 @@ async function start(): Promise<void> {
   });
 
   renderer.onHover((target, clientX, clientY) => ui.setHover(target, clientX, clientY));
+  renderer.onVehicleAnchor((anchor) => ui.setVehicleAnchor(anchor));
   renderer.onDrop((buildingId, target) => {
     // Dropping on a building means its plot: the two swap places.
     const plotId =

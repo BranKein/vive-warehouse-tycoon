@@ -1264,11 +1264,11 @@
   background: var(--wt-ink-soft);
 }
 
-/* The selected vehicle: a card on the right edge, under the top bar. */
+/* The selected vehicle: a card that hangs beside it (placed by vehiclePanel.ts). */
 .wt-vehicle {
   position: absolute;
   top: 84px;
-  right: 14px;
+  left: 0;
   width: 232px;
   display: flex;
   flex-direction: column;

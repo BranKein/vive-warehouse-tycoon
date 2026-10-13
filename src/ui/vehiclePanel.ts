@@ -1,4 +1,4 @@
-import type { StockView, VehicleView } from '@/contracts';
+import type { ScreenPoint, StockView, VehicleView } from '@/contracts';
 import { BigNum } from '@/core/BigNum';
 import type { Frame, UIContext } from './context';
 import { button, h, KeyedList, setAttr, setFill, setHidden, setText, type Row } from './dom';
@@ -6,11 +6,18 @@ import { formatAmount, formatStock, itemName, vehicleDestinationName, vehicleHom
 
 type CargoItem = Pick<StockView, 'item' | 'amount'>;
 
+/** The card's bottom left corner sits this far right of and above the vehicle. */
+const OFFSET_X = 34;
+const OFFSET_Y = 18;
+/** The card keeps this far from the window's edges, and below the top bar. */
+const MARGIN = 10;
+const TOP = 76;
+
 /**
- * The card for the selected vehicle, on the right edge under the top bar:
- * what it is, who it works for, where it is going and what it carries.
- * The 3D view follows the vehicle for as long as it is selected; closing the
- * card lets it go.
+ * The card for the selected vehicle: what it is, who it works for, where it
+ * is going and what it carries. It hangs up and to the right of the vehicle
+ * and moves with it. The 3D view follows the vehicle for as long as it is
+ * selected; closing the card lets it go.
  */
 export function createVehiclePanel(ctx: UIContext) {
   const { tr } = ctx;
@@ -92,14 +99,33 @@ export function createVehiclePanel(ctx: UIContext) {
     cargo.sync(vehicle.cargo);
   }
 
+  let anchor: ScreenPoint | null = null;
+  /** Beside the vehicle and inside the window; in the top right corner until the view says where the vehicle is. */
+  function position(): void {
+    if (el.hidden) return;
+    const maxLeft = window.innerWidth - el.offsetWidth - MARGIN;
+    const maxTop = window.innerHeight - el.offsetHeight - MARGIN;
+    const left = anchor ? anchor.clientX + OFFSET_X : maxLeft;
+    const top = anchor ? anchor.clientY - OFFSET_Y - el.offsetHeight : TOP;
+    el.style.left = `${Math.round(Math.max(MARGIN, Math.min(left, maxLeft)))}px`;
+    el.style.top = `${Math.round(Math.max(TOP, Math.min(top, maxTop)))}px`;
+  }
+
   return {
     el,
+    /** Called every frame while a vehicle is selected. */
+    place(next: ScreenPoint | null): void {
+      anchor = next;
+      position();
+    },
     update(frame: Frame): void {
       const selection = frame.selection;
       const vehicle =
         selection.type === 'vehicle' ? frame.snapshot.island.vehicles.find((entry) => entry.id === selection.vehicleId) : undefined;
       setHidden(el, vehicle === undefined);
       if (vehicle) show(vehicle, frame);
+      else anchor = null;
+      position();
     },
   };
 }

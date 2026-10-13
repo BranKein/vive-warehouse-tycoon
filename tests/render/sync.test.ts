@@ -4,7 +4,7 @@ import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
-import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleFade, turnToward, parkedShift, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, backOutPose, laneShift, pilesToShow, vehiclePoses, vehicleFade, turnToward, parkedShift, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -178,6 +178,22 @@ describe('vehicles on the road', () => {
     expect(turnToward(0, 0.1, 0.25)).toBeCloseTo(0.1);
     // From just short of half a turn one way to just short of it the other: across the back, not all the way round.
     expect(turnToward(3, -3, 0.1)).toBeCloseTo(3.1);
+  });
+
+  it('backs out straight, then round a curve, at one unit of the way per unit of distance', () => {
+    // Parked facing north (-z); the road leads east (+x), a quarter turn.
+    const leaving = { heading: Math.PI, x: 0, z: 0, dist: 0, straight: 3, turn: -Math.PI / 2, radius: 2, gap: null };
+    expect(backOutPose(leaving, 2)).toMatchObject({ x: expect.closeTo(0), z: expect.closeTo(2), heading: Math.PI, done: false });
+    const end = backOutPose(leaving, 3 + Math.PI);
+    expect(end.done).toBe(true);
+    expect(end.heading).toBeCloseTo(Math.PI / 2);
+    // It backed south and swung its tail west, so it now faces east from west of where it stood.
+    expect(end.x).toBeCloseTo(-2);
+    expect(end.z).toBeCloseTo(5);
+    // Half way round the curve it has moved half the curve's length.
+    const mid = backOutPose(leaving, 3 + Math.PI / 2);
+    const before = backOutPose(leaving, 3 + Math.PI / 2 - 0.01);
+    expect(Math.hypot(mid.x - before.x, mid.z - before.z)).toBeCloseTo(0.01, 4);
   });
 
   it('parks on the lane it came in on, further into the site', () => {
