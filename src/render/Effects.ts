@@ -1,4 +1,4 @@
-import { Group, Matrix4, Quaternion, Vector3, type Camera } from 'three';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Vector3, type Camera } from 'three';
 import type { BigNum } from '@/core/BigNum';
 import { formatNumber } from '@/core/format';
 import { renderConfig } from './config';
@@ -32,6 +32,12 @@ interface Label {
   age: number;
 }
 
+/** A ring of light spreading over the ground under something that was just upgraded. */
+interface Glow {
+  mesh: Mesh<BufferGeometry, MeshBasicMaterial>;
+  age: number;
+}
+
 /** A sale that is waiting for its facility's turn to show an effect; money earned meanwhile adds up. */
 interface Earning {
   x: number;
@@ -55,6 +61,8 @@ export class Effects {
   readonly group = new Group();
   private readonly particles: Particle[] = [];
   private readonly labels: Label[] = [];
+  private readonly glows: Glow[] = [];
+  private glowGeometry: BufferGeometry | null = null;
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly earnings = new Map<string, Earning>();
   /** Seconds since each source's last upgrade effect. */
@@ -89,6 +97,7 @@ export class Effects {
     if (this.sinceUpgrade < rule.minGapSec || (this.upgraded.get(key) ?? Infinity) < rule.minGapPerTargetSec) return false;
     this.sinceUpgrade = 0;
     this.upgraded.set(key, 0);
+    this.glow(at.x, at.z);
     for (let index = 0; index < rule.sparks; index += 1) {
       const angle = (index / rule.sparks) * Math.PI * 2 + Math.random();
       const radius = rule.radius * (0.7 + Math.random() * 0.5);
@@ -130,6 +139,23 @@ export class Effects {
         earning.amount = null;
         earning.quiet = 0;
       }
+    }
+
+    const glowRule = renderConfig.effects.upgrade.glow;
+    for (let index = this.glows.length - 1; index >= 0; index -= 1) {
+      const glow = this.glows[index]!;
+      glow.age += dt;
+      const t = glow.age / glowRule.lifeSec;
+      if (t >= 1) {
+        this.group.remove(glow.mesh);
+        glow.mesh.material.dispose();
+        this.glows.splice(index, 1);
+        continue;
+      }
+      // Spreads out quickly and slows down; lights up at once and dims over the rest of its life.
+      const size = glowRule.radius * (glowRule.startSize + (1 - glowRule.startSize) * (1 - (1 - t) * (1 - t)));
+      glow.mesh.scale.set(size, 1, size);
+      glow.mesh.material.opacity = glowRule.opacity * smoothstep(t * 8) * (1 - smoothstep((t - 0.25) / 0.75));
     }
 
     for (const model of this.instanced.values()) model.begin();
@@ -182,6 +208,11 @@ export class Effects {
     this.particles.length = 0;
     for (const label of this.labels) label.el.remove();
     this.labels.length = 0;
+    for (const glow of this.glows) {
+      this.group.remove(glow.mesh);
+      glow.mesh.material.dispose();
+    }
+    this.glows.length = 0;
     this.earnings.clear();
     this.upgraded.clear();
     for (const model of this.instanced.values()) {
@@ -193,6 +224,8 @@ export class Effects {
 
   dispose(): void {
     this.clear();
+    this.glowGeometry?.dispose();
+    this.glowGeometry = null;
     this.layer?.remove();
   }
 
@@ -229,6 +262,26 @@ export class Effects {
     this.labels.push({ el, x, y: rule.height + 2.5, z, age: 0 });
   }
 
+  /** A soft ring of light on the ground around (x, z). */
+  private glow(x: number, z: number): void {
+    const rule = renderConfig.effects.upgrade.glow;
+    this.glowGeometry ??= glowRingGeometry();
+    // Each ring fades on its own, so each has a material of its own.
+    const material = new MeshBasicMaterial({
+      color: this.theme.effects.upgradeGlow,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const mesh = new Mesh(this.glowGeometry, material);
+    mesh.position.set(x, rule.height, z);
+    mesh.renderOrder = 1;
+    this.group.add(mesh);
+    this.glows.push({ mesh, age: 0 });
+  }
+
   private spawn(particle: Particle): void {
     if (this.particles.length < renderConfig.effects.maxParticles) this.particles.push(particle);
   }
@@ -243,4 +296,42 @@ export class Effects {
     }
     return model;
   }
+}
+
+/**
+ * Flat disc one unit in radius, lying on y = 0. Its opacity is painted on
+ * the vertices: faint in the middle, brightest in a band towards the rim and
+ * gone at the rim itself, so it reads as a soft ring of light.
+ */
+function glowRingGeometry(): BufferGeometry {
+  const bands: ReadonlyArray<readonly [radius: number, alpha: number]> = [
+    [0, 0.2],
+    [0.5, 0.3],
+    [0.8, 1],
+    [1, 0],
+  ];
+  const segments = 48;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const corner = (band: number, step: number): void => {
+    const [radius, alpha] = bands[band]!;
+    const angle = (step / segments) * Math.PI * 2;
+    positions.push(Math.sin(angle) * radius, 0, Math.cos(angle) * radius);
+    colors.push(1, 1, 1, alpha);
+  };
+  for (let band = 1; band < bands.length; band += 1) {
+    for (let step = 0; step < segments; step += 1) {
+      corner(band - 1, step);
+      corner(band, step);
+      corner(band, step + 1);
+      if (band === 1) continue;
+      corner(band - 1, step);
+      corner(band, step + 1);
+      corner(band - 1, step + 1);
+    }
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new Float32BufferAttribute(colors, 4));
+  return geometry;
 }
