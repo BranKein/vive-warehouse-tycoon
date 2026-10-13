@@ -6,7 +6,7 @@ import { Stat, type UpgradeTrackDef } from '@/contracts';
  */
 export const UPGRADE_TRACKS: UpgradeTrackDef[] = [
   // Buildings (base cost is multiplied by the building's upgradeCostScale)
-  { id: 'building.level', scope: 'building', stat: Stat.batchSize, effect: { kind: 'multiply', perLevel: 1.5 }, baseCost: 20, costGrowth: 1.75, maxLevel: null, unit: 'multiplier' },
+  { id: 'building.level', scope: 'building', stat: Stat.batchSize, effect: { kind: 'multiply', perLevel: 1.5 }, baseCost: 20, costGrowth: 1.8, maxLevel: null, unit: 'multiplier' },
   { id: 'building.speed', scope: 'building', stat: Stat.cycleSpeed, effect: { kind: 'add', perLevel: 0.1 }, baseCost: 60, costGrowth: 2.4, maxLevel: 10, unit: 'multiplier' },
   { id: 'building.carriers', scope: 'building', stat: Stat.carrierCount, effect: { kind: 'add', perLevel: 1 }, baseCost: 80, costGrowth: 6, maxLevel: 2, unit: 'count' },
   { id: 'building.carrierLoad', scope: 'building', stat: Stat.carrierLoad, effect: { kind: 'multiply', perLevel: 2 }, baseCost: 25, costGrowth: 1.75, maxLevel: null, unit: 'amount' },

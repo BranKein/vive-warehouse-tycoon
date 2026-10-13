@@ -50,9 +50,9 @@ const ROWS: Row[] = [
   { id: 'packagingPlant', category: 'tier3', buildCost: 3.6e6, unlockCost: 6e6, maxCount: 2, upgradeCostScale: 1e6 },
   { id: 'eBikeFactory', category: 'tier3', buildCost: 1.2e7, unlockCost: 2e7, maxCount: 2, upgradeCostScale: 5e6 },
   { id: 'applianceFactory', category: 'tier3', buildCost: 3.6e7, unlockCost: 6e7, maxCount: 2, upgradeCostScale: 1.5e7 },
-  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 1.8e8, unlockCost: 3e8, maxCount: 2, upgradeCostScale: 3.5e8 },
-  { id: 'smartHomeFactory', category: 'tier4', buildCost: 1.2e9, unlockCost: 2e9, maxCount: 2, upgradeCostScale: 5e9 },
-  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 2.4e10, unlockCost: 4e10, maxCount: 2, upgradeCostScale: 1e11 },
+  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 1.2e8, unlockCost: 2e8, maxCount: 2, upgradeCostScale: 2.3e8 },
+  { id: 'smartHomeFactory', category: 'tier4', buildCost: 4.8e8, unlockCost: 8e8, maxCount: 2, upgradeCostScale: 2e9 },
+  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 6e9, unlockCost: 1e10, maxCount: 2, upgradeCostScale: 2.5e10 },
 ];
 
 export const buildingUnlockId = (buildingType: string): string => `unlock.building.${buildingType}`;
