@@ -3,6 +3,7 @@ import { catalog } from '@/content';
 import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
+import { gapTreeSpots, outskirts } from '@/render/scenery';
 import { buildingKey, diffKeys, laneShift, pilesToShow, vehiclePoses, vehicleSize, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
@@ -170,5 +171,40 @@ describe('vehicles on the road', () => {
     expect(vehicleSize(5, 0.5, 1, 1)).toBeCloseTo(0.5);
     expect(vehicleSize(5, 1, 1, 1)).toBe(0);
     expect(vehicleSize(Infinity, -1, 1, 1)).toBe(1);
+  });
+});
+
+describe('scenery', () => {
+  const layout = catalog.islands[catalog.startIsland]!.layout;
+  const rule = renderConfig.scenery;
+
+  it('plants small trees only in the strips between neighbouring plots', () => {
+    const trees = gapTreeSpots(layout, { ...rule.gapTrees, seed: rule.seed });
+    expect(trees.length).toBeGreaterThan(20);
+    expect(gapTreeSpots(layout, { ...rule.gapTrees, seed: rule.seed })).toEqual(trees);
+    const halfWidth = layout.plotSize.width / 2;
+    for (const tree of trees) {
+      // Off every plot: at least the gap's half width away from each plot's side edges.
+      for (const plot of layout.plots) {
+        const local = siteToWorld({ x: 0, z: 0, facing: -plot.facing }, tree.x - plot.x, tree.z - plot.z);
+        const inside = Math.abs(local.x) < halfWidth && Math.abs(local.z) < layout.plotSize.depth / 2;
+        expect(inside, `tree at ${tree.x}, ${tree.z}`).toBe(false);
+      }
+    }
+  });
+
+  it('keeps the countryside off the board and out of the corridors', () => {
+    const b = layout.bounds;
+    const corridor = { minX: -2000, maxX: 2000, minZ: layout.river.minZ - 5, maxZ: layout.river.maxZ + 5 };
+    const land = outskirts(b, [corridor], { ...rule.outskirts, seed: rule.seed });
+    expect(land.hills).toHaveLength(rule.outskirts.hills);
+    expect(land.houses.length).toBe(rule.outskirts.villages * rule.outskirts.housesPerVillage);
+    expect(land.trees.length).toBeGreaterThan(rule.outskirts.trees / 2);
+    for (const spot of [...land.trees, ...land.houses]) {
+      const onBoard = spot.x > b.minX && spot.x < b.maxX && spot.z > b.minZ && spot.z < b.maxZ;
+      expect(onBoard).toBe(false);
+    }
+    for (const tree of land.trees) expect(tree.z > corridor.minZ && tree.z < corridor.maxZ).toBe(false);
+    for (const hill of land.hills) expect(Math.abs(hill.z - (corridor.minZ + corridor.maxZ) / 2)).toBeGreaterThan(hill.radius);
   });
 });

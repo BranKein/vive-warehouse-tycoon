@@ -143,10 +143,26 @@ export const renderConfig = {
     treeSpacing: 3.4,
     /** Street lamps stand this far from the centre of their road. */
     lampOffset: 3.75,
-    villageHouses: 46,
-    villageTrees: 260,
-    hills: 16,
-    clouds: 12,
+    /** Small trees in the strips between neighbouring plots: about half of the possible places get one. */
+    gapTrees: {
+      share: 0.5,
+      /** Along the strip, from the plots' centre line: at the back edge, behind the middle, just in front of it. */
+      offsets: [-7, -2.5, 1.5],
+      maxGap: 4,
+      scale: 0.55,
+    },
+    /** The countryside around the board. */
+    outskirts: {
+      hills: 16,
+      villages: 3,
+      housesPerVillage: 10,
+      trees: 260,
+      clouds: 12,
+      margin: 8,
+      reach: 260,
+      /** How far the river and the gate road run on beyond the board. */
+      runOn: 900,
+    },
     fenceSegment: 3.2,
   },
   maxPixelRatio: 2,

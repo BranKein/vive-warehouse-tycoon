@@ -192,7 +192,19 @@ export function registerStreetModels(registry: ModelRegistry, kit: Kit): void {
     registry.register(TREE_MODEL(index), (k) => tree(k, color, index));
   });
   registry.register(LAMP_MODEL, lamp);
+  registerHouseModels(registry, kit);
 }
+
+/** The village houses that stand around the board. */
+function registerHouseModels(registry: ModelRegistry, kit: Kit): void {
+  const theme = kit.theme;
+  theme.props.houseWalls.forEach((wall, index) => {
+    const roofs = theme.props.houseRoofs;
+    registry.register(HOUSE_MODEL(index), (k) => house(k, wall, roofs[index % roofs.length] ?? wall, index));
+  });
+}
+
+export const houseModelNames = (kit: Kit): string[] => kit.theme.props.houseWalls.map((_, index) => HOUSE_MODEL(index));
 
 export const LAMP_MODEL = 'prop.lamp';
 
@@ -201,10 +213,7 @@ export function registerPropModels(registry: ModelRegistry, kit: Kit): void {
   theme.props.foliage.forEach((color, index) => {
     registry.register(TREE_MODEL(index), (k) => tree(k, color, index));
   });
-  theme.props.houseWalls.forEach((wall, index) => {
-    const roofs = theme.props.houseRoofs;
-    registry.register(HOUSE_MODEL(index), (k) => house(k, wall, roofs[index % roofs.length] ?? wall, index));
-  });
+  registerHouseModels(registry, kit);
   registry.register('prop.fence', fence);
   registry.register('prop.lamp', lamp);
   registry.register('prop.specialCargo', specialCargo);

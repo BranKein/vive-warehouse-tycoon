@@ -4,7 +4,8 @@ import { registerFacilityModels } from './facilities';
 import { registerEffectModels } from './effects';
 import { registerGoodsModels } from './goods';
 import type { Kit } from './kit';
-import { registerPropModels, registerStreetModels } from './props';
+import { houseModelNames, registerPropModels, registerStreetModels } from './props';
+import { registerSceneryModels } from './scenery';
 import { registerSawmillModel } from './sawmill';
 import { registerGroup1Models } from './tier1/index';
 import { registerGroup2Models } from './tier2/index';
@@ -32,6 +33,7 @@ export function registerGameModels(registry: ModelRegistry, kit: Kit): void {
   registerFacilityModels(registry);
   registerGoodsModels(registry);
   registerEffectModels(registry);
+  registerSceneryModels(registry);
 }
 
 /** Vehicles redrawn by hand. */
@@ -59,6 +61,8 @@ export function registerDefaultModels(registry: ModelRegistry, kit: Kit): string
   registerFacilityModels(registry);
   registerGoodsModels(registry);
   registerEffectModels(registry);
+  registerSceneryModels(registry);
   const redrawn = registry.names().filter((name) => drafts.get(name) !== registry.get(name) && !name.endsWith('.default'));
-  return [...redrawn, ...HAND_DRAWN_VEHICLES];
+  // The village houses are the old drafts, but the game now shows them around the board: they are reviewed too.
+  return [...redrawn, ...HAND_DRAWN_VEHICLES, ...houseModelNames(kit)];
 }
