@@ -123,15 +123,17 @@ export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   roadEdges: roads.edges,
   facilities: FACILITIES,
   roadGate: 'gate',
+  // Ships and planes come in from the west, so they are seen travelling the length of the board.
   shipLane: [
-    { x: EAST_X + 70, y: 0, z: SOUTH_ROAD_Z + 33 },
-    { x: EAST_X + 20, y: 0, z: SOUTH_ROAD_Z + 33 },
+    { x: GATE_X - 30, y: 0, z: SOUTH_ROAD_Z + 33 },
+    { x: EAST_X - 22, y: 0, z: SOUTH_ROAD_Z + 33 },
     { x: EAST_X + 2, y: 0, z: SOUTH_ROAD_Z + 29 },
   ],
   flightLane: [
-    { x: EAST_X + 120, y: 46, z: NORTH_ROAD_Z - 35 },
-    { x: EAST_X + 32, y: 8, z: NORTH_ROAD_Z - 35 },
-    { x: EAST_X - 20, y: 0, z: NORTH_ROAD_Z - 35 },
+    { x: EAST_X - 200, y: 46, z: NORTH_ROAD_Z - 35 },
+    { x: EAST_X - 100, y: 9, z: NORTH_ROAD_Z - 35 },
+    { x: EAST_X - 58, y: 0, z: NORTH_ROAD_Z - 35 },
+    { x: EAST_X + 8, y: 0, z: NORTH_ROAD_Z - 35 },
     { x: EAST_X, y: 0, z: NORTH_ROAD_Z - 28 },
   ],
   river: { minX: GATE_X, maxX: EAST_X + 35, minZ: SOUTH_ROAD_Z + 25, maxZ: SOUTH_ROAD_Z + 41 },

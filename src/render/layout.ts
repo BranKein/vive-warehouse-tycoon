@@ -158,7 +158,9 @@ export function treeSpots(
     const x = b.minX + 2 + random() * (b.maxX - b.minX - 4);
     const z = b.minZ + 2 + random() * (b.maxZ - b.minZ - 4);
     const heading = random() * Math.PI * 2;
-    if (inArea(x, z, layout.river, rule.clearance) || inArea(x, z, layout.runway, rule.clearance + 3)) continue;
+    // The strip west of the runway stays clear too: planes come in low over it.
+    const flightStrip = { ...layout.runway, minX: layout.runway.minX - 50 };
+    if (inArea(x, z, layout.river, rule.clearance) || inArea(x, z, flightStrip, rule.clearance + 3)) continue;
     if (layout.plots.some((plot) => onSite(x, z, plot, layout.plotSize.width, layout.plotSize.depth))) continue;
     if (layout.facilities.some((site) => onSite(x, z, site, rule.facilityPad[0] + 4, rule.facilityPad[1] + 10))) continue;
     if (nearRoad(x, z)) continue;
