@@ -284,6 +284,23 @@ describe('saving', () => {
     expect(largestStep).toBeLessThan(0.03);
   });
 
+  it('auto mode builds near the truck yard first', () => {
+    const game = createGame({ catalog, seed: 8 });
+    game.grant(1e4);
+    game.setAutoPilot(true);
+    game.tick(seconds(120));
+    const island = game.snapshot().island;
+    const layout = catalog.islands[catalog.startIsland]!.layout;
+    const yard = layout.facilities.find((facility) => facility.kind === 'truckYard')!;
+    const built = island.buildings.slice(1);
+    expect(built.length).toBeGreaterThan(3);
+    // West end of the island, where the yards are.
+    for (const building of built) {
+      const plot = layout.plots.find((candidate) => candidate.id === building.plotId)!;
+      expect(Math.abs(plot.x - yard.x), building.plotId).toBeLessThan(80);
+    }
+  });
+
   it('restores an equivalent game that then plays on identically', () => {
     const balance = balanceWith({ specialCargo: { minIntervalSec: 20, maxIntervalSec: 60, lifetimeSec: 30 } });
     const original = createGame({ catalog, seed: 11, balance });

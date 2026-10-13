@@ -30,6 +30,9 @@ export interface AutoPilotHost {
  * Plays the game on its own: always saves up for the cheapest thing that can
  * be bought and buys it. Only acts on the watched island.
  */
+/** Auto mode builds on one of this many empty plots nearest the truck yard. */
+const NEAREST_PLOTS = 3;
+
 export class AutoPilot {
   enabled = false;
   private goal: Goal | null = null;
@@ -87,7 +90,8 @@ export class AutoPilot {
         view: { key: 'auto.target.build', params: { building: typeId } },
         cost: () => (island.isFull ? null : island.costOf(def)),
         buy: () => {
-          const plots = island.emptyPlots();
+          // Close to the truck yard first, so sales stay quick; a little choice keeps layouts from being identical.
+          const plots = island.emptyPlotsNearSales().slice(0, NEAREST_PLOTS);
           return plots.length > 0 ? commands.build(rng.pick(plots), typeId) : { ok: false, reason: 'islandFull' };
         },
       });

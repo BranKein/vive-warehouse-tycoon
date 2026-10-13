@@ -291,6 +291,15 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     return this.layout.plots.filter((plot) => !this.byPlot.has(plot.id)).map((plot) => plot.id);
   }
 
+  /** Empty plots, nearest first by road to the sale channel that is open from the start (the truck yard). */
+  emptyPlotsNearSales(): PlotId[] {
+    const home = (this.sales.find((channel) => channel.def.unlock === null) ?? this.sales[0])?.site;
+    const empty = this.emptyPlots();
+    if (!home) return empty;
+    const far = (plot: PlotId): number => this.graph.distance(this.plotSites.get(plot)!.road, home.road);
+    return empty.map((plot) => ({ plot, far: far(plot) })).sort((a, b) => a.far - b.far).map((entry) => entry.plot);
+  }
+
   /** Puts a building on a free plot. The caller has checked the rules and taken the money. */
   build(plotId: PlotId, typeId: BuildingTypeId, paid: BigNum, id?: string): Building {
     const site = this.plotSites.get(plotId);
