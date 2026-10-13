@@ -6,6 +6,7 @@ import { CameraRig } from './CameraRig';
 import { Effects } from './Effects';
 import { siteToWorld } from './layout';
 import { renderConfig } from './config';
+import { hexToRgb, lerpRgb, rgbToHex } from './dayNight';
 import { Environment } from './Environment';
 import { applyLook, DEFAULT_LOOK, isLook, LOOK_NAMES, LOOK_STORAGE_KEY, LOOKS, type LookName } from './looks';
 import { MaterialLibrary } from './materials';
@@ -188,6 +189,15 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
   return {
     models,
+    dayTime: {
+      parts: theme.dayNight.keyframes.map((keyframe) => ({
+        at: keyframe.at,
+        name: keyframe.name,
+        color: `#${rgbToHex(lerpRgb(hexToRgb(keyframe.skyHorizon), hexToRgb(keyframe.skyTop), 0.5)).toString(16).padStart(6, '0')}`,
+      })),
+      phase: () => environment.phase,
+      setPhase: (phase: number) => environment.setPhase(phase),
+    },
     looks: {
       names: LOOK_NAMES,
       current: () => lookName,

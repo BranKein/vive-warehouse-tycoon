@@ -114,6 +114,7 @@ async function start(): Promise<void> {
     commands,
     saves,
     looks: renderer.looks,
+    dayTime: renderer.dayTime,
     onSelectionChange: setSelection,
   });
 

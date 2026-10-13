@@ -65,6 +65,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     commands: deps.commands,
     saves: deps.saves,
     ...(deps.looks ? { looks: deps.looks } : {}),
+    ...(deps.dayTime ? { dayTime: deps.dayTime } : {}),
     tr,
     select(next) {
       if (sameSelection(selection, next)) return;
@@ -218,6 +219,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       menu.dispose();
       settings.dispose();
       toasts.dispose();
+      topBar.dispose();
       topBar.el.remove();
       panel.el.remove();
       buildModal.el.remove();

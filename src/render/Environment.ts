@@ -19,7 +19,7 @@ import { LampLights } from './LampLight';
 import { DEFAULT_LOOK, LOOKS, type Look } from './looks';
 import { BLOCK_MODEL } from './boxModels';
 import { renderConfig } from './config';
-import { celestialState, dayPhase, lerpRgb, sampleDayNight, type Rgb } from './dayNight';
+import { celestialState, dayPhase, lerpRgb, sampleDayNight, wrapPhase, type Rgb } from './dayNight';
 import { InstancedModel } from './InstancedModel';
 import { lampSpots, roadStrips, treeSpots, type PropSpot } from './layout';
 import { HOUSE_MODEL, LAMP_MODEL, TREE_MODEL } from './models/props';
@@ -54,6 +54,16 @@ export class Environment {
   private layout: IslandLayoutDef | null = null;
   private centre = new Vector3();
   private lightDistance = 300;
+
+  /** Where in the day cycle the picture is, 0..1, as of the last update. */
+  phase = 0;
+  private phaseShift = 0;
+
+  /** Jumps to a point of the day cycle; the day runs on from there. */
+  setPhase(phase: number): void {
+    this.phaseShift = wrapPhase(this.phaseShift + phase - this.phase);
+    this.phase = wrapPhase(phase);
+  }
 
   /** The light scales of `look` apply from the next frame. */
   setLook(look: Look): void {
@@ -346,7 +356,8 @@ export class Environment {
    */
   update(realTimeSec: number): number {
     const settings = this.theme.dayNight;
-    const phase = dayPhase(realTimeSec, settings);
+    this.phase = wrapPhase(dayPhase(realTimeSec, settings) + this.phaseShift);
+    const phase = this.phase;
     const sample = sampleDayNight(settings.keyframes, phase);
     const sky = celestialState(phase, settings);
     this.sun.position.set(

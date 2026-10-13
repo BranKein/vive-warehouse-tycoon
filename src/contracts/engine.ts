@@ -41,6 +41,16 @@ export interface LookControl {
   set(name: string): void;
 }
 
+/** The time of day the picture shows. Visual only: the game's clock is something else. */
+export interface DayTimeControl {
+  /** The parts of the day in order: where in the cycle (0..1) each begins, its name and the colour of its sky (CSS). */
+  readonly parts: ReadonlyArray<{ at: number; name: string; color: string }>;
+  /** Where in the cycle the picture is now, 0..1. */
+  phase(): number;
+  /** Jumps to a point of the cycle; the day runs on from there. */
+  setPhase(phase: number): void;
+}
+
 export interface GameRenderer {
   /**
    * Draws one frame. `prev` and `curr` are the snapshots of the last two
@@ -62,6 +72,7 @@ export interface GameRenderer {
   onVehicleAnchor(listener: (anchor: ScreenPoint | null) => void): void;
   handleEvents(events: GameEvent[]): void;
   readonly looks: LookControl;
+  readonly dayTime: DayTimeControl;
   dispose(): void;
 }
 
@@ -83,6 +94,8 @@ export interface UIDeps {
   onSelectionChange(selection: Selection): void;
   /** Lets the settings offer the looks; left out where there is no 3D view. */
   looks?: LookControl;
+  /** Lets the top bar show and set the time of day; left out where there is no 3D view. */
+  dayTime?: DayTimeControl;
 }
 
 /** The HTML overlay. Implemented in `src/ui`. */

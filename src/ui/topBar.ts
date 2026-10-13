@@ -1,6 +1,7 @@
 import type { GameSnapshot, GameSpeed, IslandSummaryView } from '@/contracts';
 import { getLanguage, keys, LANGUAGES, setLanguage, type Language } from '@/i18n';
 import type { UIContext } from './context';
+import { createDayClock } from './dayClock';
 import { button, h, KeyedList, setAttr, setClass, setFill, setHidden, setText, type Row } from './dom';
 import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text';
 
@@ -60,10 +61,13 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
   const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
 
+  // The time of day stands where a plain coin used to, when there is a 3D view to tell it.
+  const clock = createDayClock(ctx);
+
   const el = h(
     'div',
     'wt-topbar wt-card',
-    h('div', 'wt-stat wt-stat-money', h('span', 'wt-coin'), h('div', 'wt-stat-text', moneyLabel, moneyValue)),
+    h('div', 'wt-stat wt-stat-money', ctx.dayTime ? clock.el : h('span', 'wt-coin'), h('div', 'wt-stat-text', moneyLabel, moneyValue)),
     h('div', 'wt-stat', h('div', 'wt-stat-text', incomeLabel, incomeValue)),
     speedGroup,
     h('div', 'wt-auto', autoButton, autoStatus),
@@ -75,9 +79,12 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
 
   return {
     el,
+    dispose: clock.dispose,
     savesButton,
     settingsButton,
     update(snapshot: GameSnapshot, savesOpen: boolean, settingsOpen: boolean): void {
+      clock.rerender();
+      clock.update();
       setText(moneyLabel, tr.t('top.money'));
       setText(moneyValue, formatAmount(snapshot.money));
       setText(incomeLabel, tr.t('top.incomeLabel'));
