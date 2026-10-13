@@ -1,6 +1,7 @@
 import type { ModelRegistry } from '../ModelRegistry';
 import { registerBuildingModels } from './buildings';
 import { registerFacilityModels } from './facilities';
+import { registerGoodsModels } from './goods';
 import type { Kit } from './kit';
 import { registerPropModels, registerStreetModels } from './props';
 import { registerSawmillModel } from './sawmill';
@@ -22,12 +23,13 @@ function registerBuildings(registry: ModelRegistry): void {
   registerHandDrawnBuildings(registry);
 }
 
-/** What the game draws with shaped models so far: buildings, vehicles, facilities, trees and street lamps. Everything else is still a box. */
+/** What the game draws with shaped models so far: buildings, vehicles, facilities, stock piles, trees and street lamps. Everything else is still a box. */
 export function registerGameModels(registry: ModelRegistry, kit: Kit): void {
   registerBuildings(registry);
   registerStreetModels(registry, kit);
   registerVehicleModels(registry);
   registerFacilityModels(registry);
+  registerGoodsModels(registry);
 }
 
 /** Vehicles redrawn by hand. */
@@ -46,6 +48,7 @@ export function registerDefaultModels(registry: ModelRegistry, kit: Kit): string
   registerHandDrawnBuildings(registry);
   // After the props, whose facility drafts these replace.
   registerFacilityModels(registry);
+  registerGoodsModels(registry);
   const redrawn = registry.names().filter((name) => drafts.get(name) !== registry.get(name) && !name.endsWith('.default'));
   return [...redrawn, ...HAND_DRAWN_VEHICLES];
 }

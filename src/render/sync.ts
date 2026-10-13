@@ -66,3 +66,21 @@ export function vehiclePoses(
     pose: interpolatePose(before.get(vehicle.id), vehicle, alpha, snapDistance),
   }));
 }
+
+/**
+ * Which stocks of a transport facility get a pile, given their sizes
+ * (log10 of the amount, -Infinity for none) and the number of places.
+ * Each stock keeps the place of its index while they all fit, so piles do not
+ * shuffle around as goods come and go; when there are more kinds than places
+ * the largest are shown, in their usual order.
+ */
+export function pilesToShow(sizes: ReadonlyArray<number>, places: number): number[] {
+  const all = sizes.map((_, index) => index);
+  if (all.length <= places) return all;
+  const held = all.filter((index) => sizes[index]! > -Infinity);
+  if (held.length <= places) return held;
+  return held
+    .sort((a, b) => sizes[b]! - sizes[a]! || a - b)
+    .slice(0, places)
+    .sort((a, b) => a - b);
+}

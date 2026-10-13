@@ -7,36 +7,6 @@ import type { ModelRegistry } from '../ModelRegistry';
 import { renderConfig } from '../config';
 import type { Anchors, Kit } from './kit';
 
-function pallet(kit: Kit): Object3D {
-  const size = renderConfig.pile.crateSize * renderConfig.pile.side + 0.22;
-  const h = renderConfig.pile.palletHeight;
-  const wood = kit.theme.goods.pallet;
-  return kit.group([
-    kit.box(size, h * 0.4, size, wood, { y: h * 0.6, r: 0.03 }),
-    kit.box(size, h * 0.6, 0.22, wood, { z: -size / 2 + 0.11, r: 0.03 }),
-    kit.box(size, h * 0.6, 0.22, wood, { r: 0.03 }),
-    kit.box(size, h * 0.6, 0.22, wood, { z: size / 2 - 0.11, r: 0.03 }),
-  ]);
-}
-
-/** A cardboard box, one crate size big. White so it can be tinted per item. */
-function crate(kit: Kit): Object3D {
-  const s = renderConfig.pile.crateSize;
-  const body = s * 0.94;
-  return kit.group([
-    kit.box(body, body, body, kit.materials.tintable, { y: 0.01, r: 0.09 }),
-    kit.box(body * 0.22, 0.03, body * 0.96, kit.materials.tintableDark, { y: body - 0.015, r: 0.01 }),
-  ]);
-}
-
-function wasteBlob(kit: Kit): Object3D {
-  const g = kit.theme.goods;
-  return kit.group([
-    kit.blob(0.62, 0.42, 0.58, g.waste, { y: -0.08 }),
-    kit.blob(0.34, 0.28, 0.34, g.wasteDark, { x: 0.3, y: 0.2, z: 0.12 }),
-  ]);
-}
-
 function tree(kit: Kit, foliage: number, variant: number): Object3D {
   const p = kit.theme.props;
   const tall = variant % 2 === 1;
@@ -228,9 +198,6 @@ export const LAMP_MODEL = 'prop.lamp';
 
 export function registerPropModels(registry: ModelRegistry, kit: Kit): void {
   const theme = kit.theme;
-  registry.register('prop.pallet', pallet);
-  registry.register('prop.crate', crate);
-  registry.register('prop.waste', wasteBlob);
   theme.props.foliage.forEach((color, index) => {
     registry.register(TREE_MODEL(index), (k) => tree(k, color, index));
   });

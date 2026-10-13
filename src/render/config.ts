@@ -40,16 +40,22 @@ export const renderConfig = {
   pile: {
     /** Crates per layer side: a pile is `side x side` crates per layer. */
     side: 2,
-    maxCrates: 16,
+    /** Three layers of four: low enough to leave the building behind it in view. */
+    maxCrates: 12,
     /** Crates added for every tenfold increase of the amount. */
-    cratesPerDecade: 2.5,
-    crateSize: 0.82,
-    palletHeight: 0.18,
+    cratesPerDecade: 2,
+    crateSize: 0.56,
+    /** Distance from one crate to the next on a pallet. */
+    cratePitch: 0.6,
+    palletSize: 1.3,
+    palletHeight: 0.16,
   },
+  /** Size of the waste heap: its scale grows with the amount on a log scale. */
   waste: {
-    maxBlobs: 8,
-    /** Waste ratio at which the heap reaches its full size. */
-    fullRatio: 1.5,
+    footprint: 1.9,
+    minHeight: 0.5,
+    heightPerDecade: 0.12,
+    maxHeight: 1,
   },
   vehicle: {
     /** A jump longer than this between two ticks is a teleport, not a move. */
@@ -127,15 +133,6 @@ export const renderConfig = {
     specialCargo: [3, 3, 3],
     /** Radius of the click target around special cargo. */
     specialPickRadius: 3.2,
-    /** Stock and waste boxes: fixed footprint, height from the amount (log scale). */
-    pile: {
-      footprint: 1.3,
-      wasteFootprint: 1.9,
-      /** Height of a pile holding one unit or less. */
-      minHeight: 0.4,
-      heightPerDecade: 1.1,
-      maxHeight: 6,
-    },
     /** Where piles stand on a site, in the site's local frame. */
     yard: {
       /** z of the row of input and output piles in front of the box. */
@@ -147,6 +144,19 @@ export const renderConfig = {
       wasteX: 7,
       wasteZ: 0.7,
       wasteStep: 2.3,
+      /**
+       * Transport facilities hold many kinds of goods: their piles are smaller
+       * and wrap into rows that run from the front of the pad towards the model.
+       */
+      facility: {
+        scale: 0.8,
+        perRow: 11,
+        rows: 3,
+        edgeX: 6.5,
+        step: 1.3,
+        frontZ: 5.6,
+        rowStep: 1.3,
+      },
     },
     ground: {
       /** Half size of the grass plane around the board. */

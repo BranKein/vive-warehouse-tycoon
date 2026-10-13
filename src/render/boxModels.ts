@@ -24,8 +24,6 @@ const unitCube =
     kit.box(1, 1, 1, paint(kit), { r: 0.04 });
 
 export const BLOCK_MODEL = 'prop.block';
-export const CRATE_MODEL = 'prop.crate';
-export const WASTE_MODEL = 'prop.waste';
 export const SPECIAL_CARGO_MODEL = 'prop.specialCargo';
 export const SELECTION_MODEL = 'prop.selection';
 export const buildingModel = (typeId: string): string => `building.${typeId}`;
@@ -56,8 +54,6 @@ export function registerBoxModels(registry: ModelRegistry, buildingTypes: Iterab
   registry.register('vehicle.default', (kit) => box(kit, sizes.vehicles.fallback, kit.theme.vehicles.truckBody));
 
   registry.register(BLOCK_MODEL, unitCube((kit) => kit.materials.tintable));
-  registry.register(CRATE_MODEL, unitCube((kit) => kit.materials.tintable));
-  registry.register(WASTE_MODEL, unitCube((kit) => kit.theme.goods.waste));
   registry.register(SELECTION_MODEL, unitCube((kit) => kit.theme.effects.selection));
   registry.register(SPECIAL_CARGO_MODEL, (kit) => box(kit, sizes.specialCargo, kit.theme.effects.special));
 }

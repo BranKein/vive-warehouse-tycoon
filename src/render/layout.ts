@@ -59,14 +59,38 @@ export interface YardRule {
 export type PileGroup = 'inputs' | 'outputs' | 'waste';
 
 /**
- * World position of the n-th pile of a group on a site. Inputs line up along
- * the front from the left edge inwards, outputs from the right edge inwards,
- * and waste stands beside the box running towards the back.
+ * Where the n-th pile of a group stands in its site's own frame. Inputs line
+ * up along the front from the left edge inwards, outputs from the right edge
+ * inwards, and waste stands beside the box running towards the back.
  */
+export function pileLocal(group: PileGroup, index: number, rule: YardRule): GroundPoint {
+  if (group === 'inputs') return { x: -rule.edgeX + index * rule.step, z: rule.frontZ };
+  if (group === 'outputs') return { x: rule.edgeX - index * rule.step, z: rule.frontZ };
+  return { x: rule.wasteX, z: rule.wasteZ - index * rule.wasteStep };
+}
+
+/** World position of the n-th pile of a group on a site. */
 export function pilePosition(site: Site, group: PileGroup, index: number, rule: YardRule): GroundPoint {
-  if (group === 'inputs') return siteToWorld(site, -rule.edgeX + index * rule.step, rule.frontZ);
-  if (group === 'outputs') return siteToWorld(site, rule.edgeX - index * rule.step, rule.frontZ);
-  return siteToWorld(site, rule.wasteX, rule.wasteZ - index * rule.wasteStep);
+  const local = pileLocal(group, index, rule);
+  return siteToWorld(site, local.x, local.z);
+}
+
+export interface FacilityYardRule {
+  perRow: number;
+  rows: number;
+  edgeX: number;
+  step: number;
+  frontZ: number;
+  rowStep: number;
+}
+
+/**
+ * Where the n-th pile of a transport facility stands in its own frame: rows
+ * of `perRow` from the left edge, the first along the front of the pad and
+ * each next one a step closer to the model.
+ */
+export function facilityPileLocal(slot: number, rule: FacilityYardRule): GroundPoint {
+  return { x: -rule.edgeX + (slot % rule.perRow) * rule.step, z: rule.frontZ - Math.floor(slot / rule.perRow) * rule.rowStep };
 }
 
 export interface PropSpot {

@@ -5,7 +5,7 @@
  */
 import { Box3, Vector3, type Mesh } from 'three';
 import { renderConfig } from '../config';
-import { pilePosition, type PileGroup } from '../layout';
+import { facilityPileLocal, pileLocal, type PileGroup } from '../layout';
 import { MaterialLibrary } from '../materials';
 import { ModelRegistry } from '../ModelRegistry';
 import { defaultTheme } from '../theme';
@@ -20,22 +20,30 @@ registerDefaultModels(registry, kit);
 /** Where the game stacks stock on a site, as boxes of the tallest pile: a model must stay out of them. */
 function pileBoxes(facility: boolean): Array<{ label: string; box: Box3 }> {
   const rule = renderConfig.boxes;
+  const pile = renderConfig.pile;
   // Piles are placed in the plot frame; a building model stands `buildingOffsetZ` in front of it.
   const shift = facility ? 0 : rule.buildingOffsetZ;
-  const site = { x: 0, z: 0, facing: 0 };
-  const counts: Array<[PileGroup, number]> = facility ? [['inputs', 9]] : [['inputs', 3], ['outputs', 2], ['waste', 2]];
+  const stackHeight = pile.palletHeight + (pile.maxCrates / (pile.side * pile.side)) * pile.crateSize;
   const boxes: Array<{ label: string; box: Box3 }> = [];
+  const add = (label: string, at: { x: number; z: number }, half: number, height: number): void => {
+    boxes.push({
+      label,
+      box: new Box3(new Vector3(at.x - half, 0.35, at.z - shift - half), new Vector3(at.x + half, height, at.z - shift + half)),
+    });
+  };
+  if (facility) {
+    const yard = rule.yard.facility;
+    for (let slot = 0; slot < yard.perRow * yard.rows; slot += 1) {
+      add(`pile ${slot + 1}`, facilityPileLocal(slot, yard), (pile.palletSize * yard.scale) / 2, stackHeight * yard.scale);
+    }
+    return boxes;
+  }
+  const counts: Array<[PileGroup, number]> = [['inputs', 3], ['outputs', 2], ['waste', 2]];
   for (const [group, count] of counts) {
-    const half = (group === 'waste' ? rule.pile.wasteFootprint : rule.pile.footprint) / 2;
+    const waste = group === 'waste';
     for (let index = 0; index < count; index += 1) {
-      const at = pilePosition(site, group, index, rule.yard);
-      boxes.push({
-        label: `${group} pile ${index + 1}`,
-        box: new Box3(
-          new Vector3(at.x - half, 0.35, at.z - shift - half),
-          new Vector3(at.x + half, rule.pile.maxHeight, at.z - shift + half),
-        ),
-      });
+      const half = (waste ? renderConfig.waste.footprint : pile.palletSize) / 2;
+      add(`${group} pile ${index + 1}`, pileLocal(group, index, rule.yard), half, waste ? 0.7 : stackHeight);
     }
   }
   return boxes;

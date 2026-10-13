@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '@/content';
 import { renderConfig } from '@/render/config';
-import { pilePosition, roadStrips, siteToWorld } from '@/render/layout';
+import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
-import { buildingKey, diffKeys, vehiclePoses, type VehicleLike } from '@/render/sync';
+import { buildingKey, diffKeys, pilesToShow, vehiclePoses, type VehicleLike } from '@/render/sync';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -113,14 +113,14 @@ describe('site positions', () => {
     for (const group of ['inputs', 'outputs'] as const) {
       for (let index = 0; index < 3; index += 1) {
         const at = pilePosition(site, group, index, yard);
-        expect(Math.abs(at.x) + boxes.pile.footprint / 2).toBeLessThanOrEqual(halfWidth);
-        expect(at.z + boxes.pile.footprint / 2).toBeLessThanOrEqual(halfDepth);
-        expect(at.z - boxes.pile.footprint / 2).toBeGreaterThanOrEqual(boxFront);
+        expect(Math.abs(at.x) + renderConfig.pile.palletSize / 2).toBeLessThanOrEqual(halfWidth);
+        expect(at.z + renderConfig.pile.palletSize / 2).toBeLessThanOrEqual(halfDepth);
+        expect(at.z - renderConfig.pile.palletSize / 2).toBeGreaterThanOrEqual(boxFront);
       }
     }
     const waste = pilePosition(site, 'waste', 0, yard);
-    expect(waste.x - boxes.pile.wasteFootprint / 2).toBeGreaterThanOrEqual(boxes.building[0] / 2);
-    expect(waste.x + boxes.pile.wasteFootprint / 2).toBeLessThanOrEqual(halfWidth);
+    expect(waste.x - renderConfig.waste.footprint / 2).toBeGreaterThanOrEqual(boxes.building[0] / 2);
+    expect(waste.x + renderConfig.waste.footprint / 2).toBeLessThanOrEqual(halfWidth);
   });
 });
 
@@ -128,5 +128,26 @@ describe('model names', () => {
   it('falls back to the default of the same family', () => {
     expect(fallbackName('building.sawmill')).toBe('building.default');
     expect(fallbackName('vehicle.unknownThing')).toBe('vehicle.default');
+  });
+});
+
+describe('facility piles', () => {
+  const rule = renderConfig.boxes.yard.facility;
+
+  it('wraps into rows that stay on the pad', () => {
+    const pad = renderConfig.boxes.ground.facilityPad;
+    const half = (renderConfig.pile.palletSize * rule.scale) / 2;
+    for (let slot = 0; slot < rule.perRow * rule.rows; slot += 1) {
+      const at = facilityPileLocal(slot, rule);
+      expect(Math.abs(at.x) + half).toBeLessThanOrEqual(pad[0] / 2);
+      expect(at.z + half).toBeLessThanOrEqual(pad[1] / 2);
+    }
+    expect(facilityPileLocal(rule.perRow, rule)).toEqual({ x: -rule.edgeX, z: rule.frontZ - rule.rowStep });
+  });
+
+  it('keeps every stock in place while they fit and shows the largest when they do not', () => {
+    expect(pilesToShow([1, -Infinity, 3], 3)).toEqual([0, 1, 2]);
+    expect(pilesToShow([1, -Infinity, 3, 2], 3)).toEqual([0, 2, 3]);
+    expect(pilesToShow([1, 5, 3, 2, -Infinity], 2)).toEqual([1, 2]);
   });
 });

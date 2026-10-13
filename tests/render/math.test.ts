@@ -41,7 +41,7 @@ describe('pileHeight', () => {
       last = height;
     }
     expect(pileHeight(bn('1e300'), rule)).toBe(5);
-    expect(pileHeight(bn('1e5000'), renderConfig.boxes.pile)).toBe(renderConfig.boxes.pile.maxHeight);
+    expect(pileHeight(bn('1e5000'), renderConfig.waste)).toBe(renderConfig.waste.maxHeight);
   });
 });
 

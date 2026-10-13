@@ -10,18 +10,17 @@ import type {
 } from '@/contracts';
 import {
   buildingModel,
-  CRATE_MODEL,
   facilityModel,
   SELECTION_MODEL,
   SPECIAL_CARGO_MODEL,
-  WASTE_MODEL,
 } from './boxModels';
 import { renderConfig } from './config';
 import { InstancedModel } from './InstancedModel';
-import { pilePosition, siteToWorld, type PileGroup, type Site } from './layout';
-import { pileHeight, type PickProxy } from './math';
+import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
+import { log10Of, pileCrateCount, pileHeight, pileSlot, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
-import { buildingKey, diffKeys, vehiclePoses } from './sync';
+import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
+import { buildingKey, diffKeys, pilesToShow, vehiclePoses } from './sync';
 import { itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -150,7 +149,7 @@ export class ViewSync {
     }
     for (const facility of island.facilities) {
       const def = this.facilityDefs.get(facility.id);
-      if (def && facility.unlocked) this.piles(def, 'inputs', facility.stock);
+      if (def && facility.unlocked) this.facilityPiles(def, facility.stock);
     }
 
     for (const model of this.instanced.values()) model.end();
@@ -261,21 +260,50 @@ export class ViewSync {
   }
 
   private piles(site: Site, group: PileGroup, stocks: ReadonlyArray<StockView>): void {
-    const rule = renderConfig.boxes.pile;
-    const waste = group === 'waste';
-    const footprint = waste ? rule.wasteFootprint : rule.footprint;
     for (let index = 0; index < stocks.length; index += 1) {
       const stock = stocks[index]!;
-      const height = pileHeight(stock.amount, rule);
-      if (height <= 0) continue;
-      const at = pilePosition(site, group, index, renderConfig.boxes.yard);
-      this.position.set(at.x, 0, at.z);
-      this.rotation.setFromAxisAngle(UP, site.facing);
-      this.scale.set(footprint, height, footprint);
-      this.matrix.compose(this.position, this.rotation, this.scale);
-      if (waste) this.model(WASTE_MODEL, 64).add(this.matrix);
-      else this.model(CRATE_MODEL, 256).add(this.matrix, this.colorOf(stock.item));
+      const at = pileLocal(group, index, renderConfig.boxes.yard);
+      if (group === 'waste') this.wasteHeap(site, at, stock);
+      else this.pile(site, at, stock, 1);
     }
+  }
+
+  private facilityPiles(site: Site, stocks: ReadonlyArray<StockView>): void {
+    const rule = renderConfig.boxes.yard.facility;
+    const shown = pilesToShow(stocks.map((stock) => log10Of(stock.amount)), rule.perRow * rule.rows);
+    // While everything fits a stock stands at the place of its index; otherwise the shown ones close ranks.
+    const fits = stocks.length <= rule.perRow * rule.rows;
+    shown.forEach((index, order) => this.pile(site, facilityPileLocal(fits ? index : order, rule), stocks[index]!, rule.scale));
+  }
+
+  /** One stock: a pallet with crates in the item's colour, more of them the more there is. */
+  private pile(site: Site, local: GroundPoint, stock: StockView, size: number): void {
+    const rule = renderConfig.pile;
+    const count = pileCrateCount(stock.amount, rule);
+    if (count <= 0) return;
+    const centre = siteToWorld(site, local.x, local.z);
+    this.rotation.setFromAxisAngle(UP, site.facing);
+    this.scale.set(size, size, size);
+    this.position.set(centre.x, 0, centre.z);
+    this.model(PALLET_MODEL, 256).add(this.matrix.compose(this.position, this.rotation, this.scale));
+    const crates = this.model(CRATE_MODEL, 1024);
+    const color = this.colorOf(stock.item);
+    for (let index = 0; index < count; index += 1) {
+      const slot = pileSlot(index, rule.side);
+      const at = siteToWorld(site, local.x + slot.col * rule.cratePitch * size, local.z + slot.row * rule.cratePitch * size);
+      this.position.set(at.x, (rule.palletHeight + slot.layer * rule.crateSize) * size, at.z);
+      crates.add(this.matrix.compose(this.position, this.rotation, this.scale), color);
+    }
+  }
+
+  private wasteHeap(site: Site, local: GroundPoint, stock: StockView): void {
+    const size = pileHeight(stock.amount, renderConfig.waste);
+    if (size <= 0) return;
+    const at = siteToWorld(site, local.x, local.z);
+    this.position.set(at.x, 0, at.z);
+    this.rotation.setFromAxisAngle(UP, site.facing);
+    this.scale.set(size, size, size);
+    this.model(WASTE_HEAP_MODEL, 64).add(this.matrix.compose(this.position, this.rotation, this.scale));
   }
 
   private colorOf(item: string): Color {

@@ -71,6 +71,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     for (const listener of [...listeners]) listener(target);
   });
 
+  // Dev server only: lets a test session point the camera from the console.
+  if (import.meta.env.DEV) (globalThis as { __wtRig?: CameraRig }).__wtRig = rig;
+
   // Hovering and carrying. The pointer position is kept and picked again every
   // frame, so what is under a still pointer stays right while the scene moves.
   const hoverListeners: Array<(target: PickTarget | null, clientX: number, clientY: number) => void> = [];
