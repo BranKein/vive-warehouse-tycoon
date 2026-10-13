@@ -32,6 +32,24 @@ describe('auto mode', () => {
     expect(game.totalEarned.toNumber()).toBeGreaterThan(0);
   });
 
+  it('always goes for the cheapest thing on offer', () => {
+    const game = newGame();
+    game.setAutoPilot(true);
+    for (let second = 0; second < 600; second += 1) {
+      game.tick(seconds(1));
+      const snapshot = game.snapshot();
+      const target = snapshot.autoPilot.targetCost;
+      if (!target) continue;
+      // Nothing the player could buy is cheaper than what auto mode is saving for.
+      const offers = [
+        ...snapshot.unlocks.filter((unlock) => !unlock.unlocked && unlock.available).map((unlock) => unlock.cost),
+        ...snapshot.island.buildings.flatMap((building) => building.upgrades.map((upgrade) => upgrade.cost)),
+        ...snapshot.globalUpgrades.map((upgrade) => upgrade.cost),
+      ];
+      for (const cost of offers) if (cost) expect(cost.gte(target)).toBe(true);
+    }
+  });
+
   it('does nothing while switched off', () => {
     const game = newGame({ money: 1e9 });
     game.tick(seconds(120));

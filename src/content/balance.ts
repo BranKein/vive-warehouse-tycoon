@@ -62,17 +62,6 @@ export interface Balance {
   baseStats: { batchSize: number; cycleSpeed: number; priceMultiplier: number };
   autoPilot: {
     checkEverySec: number;
-    /** Only goals affordable within this many seconds of current income are considered. */
-    horizonSec: number;
-    /** A goal that still is not affordable after this long is dropped and redrawn. */
-    retargetSec: number;
-    weights: {
-      unlock: number;
-      build: number;
-      buildingUpgrade: number;
-      channelUpgrade: number;
-      globalUpgrade: number;
-    };
   };
   specialCargo: {
     minIntervalSec: number;
@@ -109,9 +98,6 @@ export const BALANCE: Balance = {
   baseStats: { batchSize: 1, cycleSpeed: 1, priceMultiplier: 1 },
   autoPilot: {
     checkEverySec: 1,
-    horizonSec: 600,
-    retargetSec: 900,
-    weights: { unlock: 3, build: 3, buildingUpgrade: 4, channelUpgrade: 2, globalUpgrade: 1 },
   },
   specialCargo: { minIntervalSec: 180, maxIntervalSec: 420, lifetimeSec: 40, rewardSeconds: 45, minReward: 10 },
   islands: { estimateSec: 600 },
