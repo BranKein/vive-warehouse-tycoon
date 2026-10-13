@@ -29,9 +29,10 @@ export function createBuildModal(ctx: UIContext, onChange: () => void) {
   const hint = h('p', 'wt-hint');
   const optionList = h('div', 'wt-list wt-build-grid');
 
-  // One tab per building category that the catalog has: production stages first, then the rest.
+  // One tab per building category that the catalog has: production stages first, then the rest, then everything.
   const used = new Set<string>(Object.values(catalog.buildings).map((building) => building.category));
-  const tabIds = [ALL, ...CATEGORY_ORDER.filter((id) => used.delete(id)), ...used];
+  const tabIds = [...CATEGORY_ORDER.filter((id) => used.delete(id)), ...used, ALL];
+  tab = tabIds[0] ?? ALL;
   const tabBar = h('div', 'wt-tabs wt-build-tabs');
   tabBar.setAttribute('role', 'tablist');
   const tabButtons = tabIds.map((id) => {
