@@ -19,6 +19,7 @@ import { createStatsPanel } from './statsPanel';
 import { formatAmount, unlockName } from './text';
 import { createToasts } from './toasts';
 import { createTopBar } from './topBar';
+import { createVehiclePanel } from './vehiclePanel';
 import './styles.css';
 
 const AWAY_NOTICE_TTL_MS = 20000;
@@ -28,6 +29,7 @@ export const sameSelection = (a: Selection, b: Selection): boolean => {
   if (a.type === 'plot' && b.type === 'plot') return a.plotId === b.plotId;
   if (a.type === 'building' && b.type === 'building') return a.buildingId === b.buildingId;
   if (a.type === 'facility' && b.type === 'facility') return a.facilityId === b.facilityId;
+  if (a.type === 'vehicle' && b.type === 'vehicle') return a.vehicleId === b.vehicleId;
   return true;
 };
 
@@ -98,9 +100,10 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   const statsPanel = createStatsPanel(ctx, () => statsModal.open(), () => render());
 
   const islandPanel = createIslandPanel(ctx);
+  const vehiclePanel = createVehiclePanel(ctx);
 
   root.classList.add('wt-ui');
-  root.append(topBar.el, menu.el, settings.el, statsPanel.el, islandPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
+  root.append(topBar.el, vehiclePanel.el, menu.el, settings.el, statsPanel.el, islandPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
 
   // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
@@ -114,6 +117,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     if (event.key !== 'Escape') return;
     if (statsModal.isOpen()) statsModal.close();
     else if (buildModal.isOpen()) buildModal.dismiss();
+    else if (selection.type === 'vehicle') ctx.select({ type: 'none' });
   };
   document.addEventListener('keydown', onKeyDown);
 
@@ -132,6 +136,10 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     } else if (selection.type === 'building') {
       const buildingId = selection.buildingId;
       if (!snapshot.island.buildings.some((building) => building.id === buildingId)) next = { type: 'none' };
+    } else if (selection.type === 'vehicle') {
+      // Trucks, ships and planes leave; a carrier goes when its building does.
+      const vehicleId = selection.vehicleId;
+      if (!snapshot.island.vehicles.some((vehicle) => vehicle.id === vehicleId)) next = { type: 'none' };
     }
     if (sameSelection(selection, next)) return;
     setCurrent(next);
@@ -149,6 +157,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     buildModal.update(frame);
     statsPanel.update(frame);
     islandPanel.update();
+    vehiclePanel.update(frame);
     statsModal.update(frame);
     hoverCard.update(frame);
   }
@@ -210,6 +219,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       buildModal.el.remove();
       statsPanel.el.remove();
       islandPanel.el.remove();
+      vehiclePanel.el.remove();
       statsModal.el.remove();
       hoverCard.el.remove();
       root.classList.remove('wt-ui');

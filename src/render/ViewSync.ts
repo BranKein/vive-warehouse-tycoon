@@ -68,6 +68,12 @@ const ROAD_KINDS: ReadonlySet<string> = new Set(['carrier', 'inboundTruck', 'sal
 const SLOW_KINDS: ReadonlySet<string> = new Set(['ship', 'plane']);
 const TRUCK_KINDS: ReadonlySet<string> = new Set(['inboundTruck', 'saleTruck']);
 
+/** Rough size of a vehicle, [width, height, length], by the second part of its model name (`vehicle.carrier.tier2` -> carrier). */
+function vehicleBox(model: string): readonly [number, number, number] {
+  const sizes: Record<string, readonly [number, number, number]> = renderConfig.boxes.vehicles;
+  return sizes[model.split('.')[1] ?? ''] ?? sizes.fallback!;
+}
+
 /** Wheels stand on the road or the runway, which lie a little above the board. */
 function surfaceLift(kind: string): number {
   const ground = renderConfig.boxes.ground;
@@ -75,10 +81,11 @@ function surfaceLift(kind: string): number {
   return kind === 'plane' ? ground.runwayHeight : 0;
 }
 
-/** Pick priorities: flat ground < things standing on it < special cargo. */
+/** Pick priorities: flat ground < things standing on it < vehicles < special cargo. */
 const PRIORITY_GROUND = 0;
 const PRIORITY_BOX = 1;
-const PRIORITY_SPECIAL = 2;
+const PRIORITY_VEHICLE = 2;
+const PRIORITY_SPECIAL = 3;
 
 /**
  * Keeps the scene in step with the snapshot. Facilities and the special cargo
@@ -273,6 +280,26 @@ export class ViewSync {
       flat(facility, sizes.ground.facilityPad[0], sizes.ground.facilityPad[1], target);
       standing(facility, sizes.facility, target);
     }
+    const grow = renderConfig.vehicle.pickScale;
+    for (const [id, track] of this.tracks) {
+      // Not those that have left the game and are only fading away, nor trucks hidden in the tunnel.
+      if (!track.seen || this.inTunnel(track)) continue;
+      const size = vehicleBox(track.model);
+      proxies.push({
+        target: { type: 'vehicle', vehicleId: id },
+        priority: PRIORITY_VEHICLE,
+        volume: {
+          shape: 'box',
+          cx: track.x + track.shiftX,
+          cy: track.y + track.lift + size[1] / 2,
+          cz: track.z + track.shiftZ,
+          hx: (size[0] * grow) / 2,
+          hy: (size[1] * grow) / 2,
+          hz: (size[2] * grow) / 2,
+          yaw: track.heading,
+        },
+      });
+    }
     if (this.special) {
       const radius = sizes.specialPickRadius;
       proxies.push({
@@ -411,7 +438,7 @@ export class ViewSync {
     this.settled = true;
     this.fading.begin();
     for (const [id, track] of this.tracks) {
-      const inTunnel = track.truck && this.gate !== null && Math.hypot(track.x - this.gate.x, track.z - this.gate.z) < rule.tunnelCover;
+      const inTunnel = this.inTunnel(track);
       if (!track.seen) {
         // Gone from the game: it rolls on for a moment, slowing down, while it shrinks or fades away.
         const disappearSec = track.slow ? rule.slowDisappearSec : rule.disappearSec;
@@ -477,6 +504,17 @@ export class ViewSync {
     }
   }
 
+  /** Where a vehicle is drawn right now; null once it has left the game or is hidden in the tunnel. */
+  vehiclePoint(id: string): { x: number; y: number; z: number } | null {
+    const track = this.tracks.get(id);
+    if (!track || !track.seen || this.inTunnel(track)) return null;
+    return { x: track.x + track.shiftX, y: track.y + track.lift, z: track.z + track.shiftZ };
+  }
+
+  private inTunnel(track: VehicleTrack): boolean {
+    return track.truck && this.gate !== null && Math.hypot(track.x - this.gate.x, track.z - this.gate.z) < renderConfig.vehicle.tunnelCover;
+  }
+
   /** Carriers are painted by who they work for, where the registry has a model for that owner. */
   private vehicleModel(vehicle: VehicleView): string {
     if (vehicle.kind !== 'carrier' || !vehicle.owner) return vehicle.model;
@@ -540,10 +578,10 @@ export class ViewSync {
     return color;
   }
 
-  private selectedSite(): { site: Site; width: number; depth: number } | null {
+  private selectedSite(): { site: Site; width: number; depth: number; y?: number } | null {
     const layout = this.layout;
     const selection = this.selection;
-    if (!layout || selection.type === 'none') return null;
+    if (!layout || selection.type === 'none' || selection.type === 'vehicle') return null;
     if (selection.type === 'facility') {
       const site = this.facilityDefs.get(selection.facilityId);
       const pad = renderConfig.boxes.ground.facilityPad;
@@ -556,9 +594,25 @@ export class ViewSync {
     return site ? { site, width: layout.plotSize.width, depth: layout.plotSize.depth } : null;
   }
 
+  /** The selected vehicle as a site of its own size that moves with it. */
+  private selectedVehicle(): { site: Site; width: number; depth: number; y: number } | null {
+    if (this.selection.type !== 'vehicle') return null;
+    const track = this.tracks.get(this.selection.vehicleId);
+    if (!track || !track.seen || this.inTunnel(track)) return null;
+    const size = vehicleBox(track.model);
+    const grow = renderConfig.vehicle.markerScale;
+    return {
+      site: { x: track.x + track.shiftX, z: track.z + track.shiftZ, facing: track.heading },
+      width: size[0] * grow,
+      depth: size[2] * grow,
+      // Over the road it stands on; in the air under a plane.
+      y: track.y + track.lift,
+    };
+  }
+
   /** A flat coloured pad under whatever is selected. */
   private updateMarker(): void {
-    const selected = this.selectedSite();
+    const selected = this.selectedSite() ?? this.selectedVehicle();
     if (!selected) {
       if (this.marker) this.marker.visible = false;
       return;
@@ -571,7 +625,7 @@ export class ViewSync {
       this.group.add(this.marker);
     }
     this.marker.visible = true;
-    this.marker.position.set(selected.site.x, 0, selected.site.z);
+    this.marker.position.set(selected.site.x, selected.y ?? 0, selected.site.z);
     this.marker.rotation.y = selected.site.facing;
     this.marker.scale.set(selected.width, renderConfig.boxes.ground.selectionHeight, selected.depth);
   }

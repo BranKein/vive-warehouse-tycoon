@@ -79,7 +79,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
 
 
   // Dev server only: lets a test session point the camera and watch the effects from the console.
-  if (import.meta.env.DEV) Object.assign(globalThis, { __wtRig: rig, __wtEffects: effects });
+  if (import.meta.env.DEV) Object.assign(globalThis, { __wtRig: rig, __wtEffects: effects, __wtView: view });
 
   // Hovering and carrying. The pointer position is kept and picked again every
   // frame, so what is under a still pointer stays right while the scene moves.
@@ -199,6 +199,8 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       materials.setNight(environment.update(realTimeSec));
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha, dt);
       latest = curr;
+      // A selected vehicle is followed; when it is gone the camera goes back by itself.
+      rig.follow(chosen.type === 'vehicle' ? view.vehiclePoint(chosen.vehicleId) : null);
       effects.update(dt, rig.camera);
       refreshPointer();
       renderer.render(scene, rig.camera);

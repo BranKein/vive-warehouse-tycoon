@@ -272,7 +272,7 @@ export class InboundChannel extends ChannelBase implements PickupSource {
   }
 
   vehicleViews(tick: number, out: VehicleView[]): void {
-    for (const truck of this.trucks) out.push(truck.view(tick, this.parked()));
+    for (const truck of this.trucks) out.push({ ...truck.view(tick, this.parked()), home: this.id });
   }
 
   facilityView(tick: number, money: BigNum, carrierHandling: number): FacilityView {
@@ -468,7 +468,7 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
   }
 
   vehicleViews(tick: number, out: VehicleView[]): void {
-    if (this.vehicle) out.push(this.vehicle.view(tick, this.parked()));
+    if (this.vehicle) out.push({ ...this.vehicle.view(tick, this.parked()), home: this.id });
   }
 
   facilityView(tick: number, money: BigNum, carrierHandling: number): FacilityView {

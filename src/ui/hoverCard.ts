@@ -6,6 +6,7 @@ import {
   type PickTarget,
   type StockView,
   type UpgradeView,
+  type VehicleView,
 } from '@/contracts';
 import { formatDuration, formatNumber } from '@/core/format';
 import { keys } from '@/i18n';
@@ -23,6 +24,10 @@ import {
   formatWaste,
   itemName,
   wasteLevel,
+  vehicleHomeName,
+  vehicleKindName,
+  vehicleStateName,
+  vehicleStatus,
 } from './text';
 
 /** Gap between the pointer and the card, and between the card and the window edge. */
@@ -219,6 +224,18 @@ export function createHoverCard(ctx: UIContext) {
     setText(more, tr.t('hover.more', { count: held.length - shown.length }));
   }
 
+  function showVehicle(vehicle: VehicleView, frame: Frame): void {
+    setText(title, vehicleKindName(tr, vehicle.kind));
+    setHidden(status, false);
+    setAttr(statusDot, 'data-status', vehicleStatus(vehicle.state));
+    setText(statusText, vehicleStateName(tr, vehicle.state));
+    const home = vehicleHomeName(tr, frame.snapshot.island, vehicle);
+    setHidden(line, home === null);
+    setText(line, home ?? '');
+    setHidden(hint, false);
+    setText(hint, tr.t('vehicle.hint'));
+  }
+
   /** Keeps the card beside the pointer and inside the window. */
   function place(): void {
     const width = el.offsetWidth;
@@ -245,13 +262,15 @@ export function createHoverCard(ctx: UIContext) {
       const over = target;
       const building = over?.type === 'building' ? island.buildings.find((entry) => entry.id === over.buildingId) : undefined;
       const facility = over?.type === 'facility' ? island.facilities.find((entry) => entry.id === over.facilityId) : undefined;
-      const visible = building !== undefined || (facility !== undefined && facility.channelId !== '');
+      const vehicle = over?.type === 'vehicle' ? island.vehicles.find((entry) => entry.id === over.vehicleId) : undefined;
+      const visible = building !== undefined || vehicle !== undefined || (facility !== undefined && facility.channelId !== '');
       setHidden(el, !visible);
       if (!visible) return;
 
       for (const part of optional) setHidden(part, true);
       if (building) showBuilding(building);
       else if (facility) showFacility(facility);
+      else if (vehicle) showVehicle(vehicle, frame);
       place();
     },
   };

@@ -1263,3 +1263,54 @@
   border-radius: 6px;
   background: var(--wt-ink-soft);
 }
+
+/* The selected vehicle: a card on the right edge, under the top bar. */
+.wt-vehicle {
+  position: absolute;
+  top: 84px;
+  right: 14px;
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.wt-vehicle[hidden] {
+  display: none;
+}
+
+.wt-vehicle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wt-vehicle-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.wt-vehicle-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.wt-vehicle-label {
+  color: var(--wt-ink-soft);
+}
+
+.wt-vehicle-value {
+  font-weight: 700;
+  text-align: right;
+}
+
+.wt-vehicle-cargo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}

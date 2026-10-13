@@ -185,7 +185,12 @@ export class Carrier extends Vehicle {
 
   viewAt(tick: number, ctx: CarrierContext): VehicleView {
     const site = ctx.sites[this.at]!;
-    return this.view(tick, { x: site.dock.x, y: site.dock.y, z: site.dock.z, heading: site.heading });
+    const view = this.view(tick, { x: site.dock.x, y: site.dock.y, z: site.dock.z, heading: site.heading });
+    view.home = this.home.id;
+    // On the way out or at a stop; on the way back the destination is its home.
+    const stop = this.phase === 'travel' ? this.to : this.phase === 'handle' ? this.at : -1;
+    if (stop >= 0) view.destination = ctx.sites[stop]!.id;
+    return view;
   }
 
   toJSON(): JsonValue {

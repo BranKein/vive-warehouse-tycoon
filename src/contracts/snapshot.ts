@@ -109,8 +109,14 @@ export interface VehicleView {
   cargo: Array<{ item: ItemId; amount: BigNum }>;
   /** 0 (empty) .. 1 (full). */
   loadRatio: number;
+  /** How much it can carry. */
+  capacity: BigNum;
   /** Set for carriers only; the view paints them by it. */
   owner?: VehicleOwner;
+  /** What it works for: a building id for a building's carrier, otherwise a channel id. */
+  home?: string;
+  /** Carriers only, while they are out: the plot or facility they are driving to or handling goods at. */
+  destination?: string;
 }
 
 export interface SpecialCargoView {

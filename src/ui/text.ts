@@ -3,6 +3,8 @@
  * No DOM here, so everything in this file is unit tested.
  */
 import type {
+  IslandSnapshot,
+  VehicleView,
   AutoPilotView,
   BuildingStatus,
   ContentCatalog,
@@ -182,4 +184,28 @@ export function missingRequirements(
   isUnlocked: (id: string) => boolean,
 ): string[] {
   return (catalog.unlocks[unlockId]?.requires ?? []).filter((id) => !isUnlocked(id));
+}
+
+export const vehicleKindName = (tr: Translator, kind: VehicleView['kind']): string => tr.tx(`vehicle.kind.${kind}`);
+export const vehicleStateName = (tr: Translator, state: VehicleView['state']): string => tr.tx(`vehicle.state.${state}`);
+
+/** Colour of the status dot: the ones buildings use, by what the vehicle is doing. */
+export const vehicleStatus = (state: VehicleView['state']): string | null =>
+  state === 'moving' ? 'working' : state === 'waiting' ? null : 'starved';
+
+/** Who a vehicle works for: the building its home id names, otherwise the channel. */
+export function vehicleHomeName(tr: Translator, island: IslandSnapshot, vehicle: VehicleView): string | null {
+  if (!vehicle.home) return null;
+  const building = island.buildings.find((entry) => entry.id === vehicle.home);
+  return building ? buildingName(tr, building.typeId) : channelName(tr, vehicle.home);
+}
+
+/** Where a carrier is going: the building on the plot, or the facility, its destination names. */
+export function vehicleDestinationName(tr: Translator, island: IslandSnapshot, vehicle: VehicleView): string | null {
+  if (!vehicle.destination) return null;
+  const buildingId = island.plots.find((plot) => plot.id === vehicle.destination)?.buildingId;
+  const building = buildingId ? island.buildings.find((entry) => entry.id === buildingId) : undefined;
+  if (building) return buildingName(tr, building.typeId);
+  const facility = island.facilities.find((entry) => entry.id === vehicle.destination);
+  return facility && facility.channelId !== '' ? channelName(tr, facility.channelId) : null;
 }

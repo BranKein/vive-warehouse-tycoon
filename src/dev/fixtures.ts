@@ -172,6 +172,7 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
       state: t < 0.02 ? 'loading' : t > 0.98 ? 'unloading' : 'moving',
       cargo: outbound ? [{ item, amount: bn(8) }] : [],
       loadRatio: outbound ? 0.8 : 0,
+      capacity: bn(10),
     };
   };
 

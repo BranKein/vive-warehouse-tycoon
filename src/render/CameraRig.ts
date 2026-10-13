@@ -45,7 +45,13 @@ export class CameraRig {
   private idleYaw = 0;
   private sinceInput = 0;
   private centre = { x: 0, z: 0 };
-  private target = { x: 0, y: renderConfig.camera.targetHeight, z: 0 };
+  private target: { x: number; y: number; z: number } = { x: 0, y: renderConfig.camera.targetHeight, z: 0 };
+  /** The point the camera keeps to while something is being followed. */
+  private following: { x: number; y: number; z: number } | null = null;
+  /** The view before following began: where it looked and from how far. */
+  private resume: { x: number; z: number; distance: number } | null = null;
+  /** True while the camera is on its way back to that view. */
+  private returning = false;
   private dragging = false;
   private panning = false;
   private lastX = 0;
@@ -75,6 +81,27 @@ export class CameraRig {
     this.centre = { x, z };
   }
 
+  /**
+   * Keeps the camera on a moving point, zoomed in on it. Call every frame with
+   * where the point is now; `null` lets go and returns to the view before.
+   * Turning and zooming stay with the player meanwhile, moving the view does not.
+   */
+  follow(point: { x: number; y: number; z: number } | null): void {
+    if (point) {
+      if (!this.following) {
+        if (!this.returning) this.resume = { x: this.target.x, z: this.target.z, distance: this.user.distance };
+        this.wake();
+        this.user = { ...this.user, distance: Math.min(this.user.distance, renderConfig.camera.follow.distance) };
+      }
+      this.following = point;
+      this.returning = false;
+    } else if (this.following) {
+      this.following = null;
+      this.returning = this.resume !== null;
+      if (this.resume) this.user = { ...this.user, distance: this.resume.distance };
+    }
+  }
+
   setAspect(aspect: number): void {
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
@@ -83,6 +110,21 @@ export class CameraRig {
   update(dt: number): void {
     const c = renderConfig.camera;
     this.sinceInput += dt;
+    if (this.following) {
+      // Watching something is not being idle.
+      this.sinceInput = 0;
+      this.target.x = damp(this.target.x, this.following.x, c.follow.damping, dt);
+      this.target.y = damp(this.target.y, c.targetHeight + this.following.y, c.follow.damping, dt);
+      this.target.z = damp(this.target.z, this.following.z, c.follow.damping, dt);
+    } else if (this.returning && this.resume) {
+      this.target.x = damp(this.target.x, this.resume.x, c.follow.damping, dt);
+      this.target.y = damp(this.target.y, c.targetHeight, c.follow.damping, dt);
+      this.target.z = damp(this.target.z, this.resume.z, c.follow.damping, dt);
+      if (Math.hypot(this.target.x - this.resume.x, this.target.z - this.resume.z) < 0.05) {
+        this.target.y = c.targetHeight;
+        this.returning = false;
+      }
+    }
     const blend = this.dragging || this.panning ? 0 : idleBlend(this.sinceInput, c.idle.delaySec, c.idle.rampSec);
     this.idleYaw += c.idle.yawSpeed * blend * dt;
     const goal = orbitGoal(this.user, this.idleYaw, blend, c.idle, this.limits);
@@ -137,7 +179,14 @@ export class CameraRig {
     listen(el, 'pointerdown', (event) => {
       this.wake();
       if (event.button === 1 || event.button === 2) {
-        if (event.button === 1) this.panning = true;
+        // The view cannot be moved off what it follows; moving it on the way back stops the return.
+        if (event.button === 1) {
+          this.panning = !this.following;
+          if (this.panning && this.returning) {
+            this.returning = false;
+            this.target.y = c.targetHeight;
+          }
+        }
         else this.dragging = true;
         this.lastX = event.clientX;
         this.lastY = event.clientY;

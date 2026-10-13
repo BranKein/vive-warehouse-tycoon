@@ -19,6 +19,8 @@ export const renderConfig = {
     rotateSpeed: 0.0055,
     /** How far the middle-button drag may move the view away from the board centre, per axis. */
     panLimit: 70,
+    /** While a vehicle is selected the camera stays on it, no further away than `distance`. */
+    follow: { distance: 62, damping: 5 },
     /** Distance factor per wheel "line" (100 px of deltaY). */
     zoomStep: 1.12,
     /** Higher is snappier. Used for exponential smoothing of yaw, pitch and distance. */
@@ -81,6 +83,10 @@ export const renderConfig = {
     parkReach: 12,
     /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */
     tunnelCover: 3,
+    /** Click targets are this much bigger than the vehicle, which is small and moving. */
+    pickScale: 1.4,
+    /** The pad under a selected vehicle is this much bigger than the vehicle. */
+    markerScale: 1.5,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },

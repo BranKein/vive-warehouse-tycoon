@@ -2,7 +2,7 @@ import type { BigNum } from '@/core/BigNum';
 import type { GameCommands, GameEvent } from './commands';
 import type { ContentCatalog, FacilityId, PlotId } from './defs';
 import type { SaveController, SaveData } from './save';
-import type { BuildingId, GameSnapshot } from './snapshot';
+import type { BuildingId, GameSnapshot, VehicleId } from './snapshot';
 
 /** The simulation as seen by the app. Implemented in `src/sim`. */
 export interface GameEngine {
@@ -28,7 +28,8 @@ export type Selection =
   | { type: 'none' }
   | { type: 'plot'; plotId: PlotId }
   | { type: 'building'; buildingId: BuildingId }
-  | { type: 'facility'; facilityId: FacilityId };
+  | { type: 'facility'; facilityId: FacilityId }
+  | { type: 'vehicle'; vehicleId: VehicleId };
 
 export type PickTarget = Selection | { type: 'specialCargo'; id: string };
 

@@ -132,6 +132,7 @@ export class Vehicle {
       state: this.state,
       cargo: this.cargo.view(),
       loadRatio,
+      capacity: this.capacity,
       ...(this.owner ? { owner: this.owner } : {}),
     };
   }
