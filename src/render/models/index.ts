@@ -29,8 +29,8 @@ export function registerGameModels(registry: ModelRegistry): void {
   registerFacilityModels(registry);
 }
 
-/** Vehicles already redrawn by hand; the others are still the first drafts. */
-const HAND_DRAWN_VEHICLES = ['vehicle.boxTruck', 'vehicle.carrier'];
+/** Vehicles redrawn by hand. */
+const HAND_DRAWN_VEHICLES = ['vehicle.boxTruck', 'vehicle.carrier', 'vehicle.forklift', 'vehicle.cargoShip', 'vehicle.cargoPlane'];
 
 /**
  * Registers every primitive-built model under its default name. Returns the

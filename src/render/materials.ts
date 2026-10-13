@@ -35,7 +35,7 @@ export class MaterialLibrary {
       roughness: 0.6,
     });
     this.headlight = new MeshStandardMaterial({
-      color: 0xffffff,
+      color: theme.glow.headlightDay,
       emissive: theme.glow.headlight,
       emissiveIntensity: 0,
       roughness: 0.6,

@@ -9,7 +9,7 @@
     "approved": "112-1b5c4b02"
   },
   "building.flourMill": {
-    "note": "풍차의 아랫부분이 건물과 겹침"
+    "approved": "127-60647cb3"
   },
   "building.furnitureFactory": {
     "approved": "113-b29e6595"
@@ -20,7 +20,65 @@
   "building.handmadeWorkshop": {
     "approved": "119-8601d0f9"
   },
+  "building.luxuryPackingCenter": {
+    "approved": "111-d344b06c"
+  },
+  "building.motorFactory": {
+    "approved": "129-a1813f"
+  },
+  "building.packagingPlant": {
+    "approved": "119-832b199e"
+  },
+  "building.partsFactory": {
+    "approved": "124-67fc6e6d"
+  },
+  "building.refinery": {
+    "approved": "103-2c238385"
+  },
+  "building.sawmill": {
+    "approved": "134-a499debe"
+  },
+  "building.smartHomeFactory": {
+    "approved": "103-26fd915c"
+  },
+  "building.snackFactory": {
+    "approved": "104-9f11dd15"
+  },
+  "building.sofaWorkshop": {
+    "approved": "97-348d1315"
+  },
+  "building.steelMill": {
+    "approved": "92-6c840f3"
+  },
+  "building.textileMill": {
+    "approved": "110-4a83c69"
+  },
+  "building.toolFactory": {
+    "approved": "109-3ffaeb9"
+  },
+  "building.wasteDisposal": {
+    "approved": "91-e42cfa7"
+  },
+  "building.wireMill": {
+    "approved": "92-286b2f2b"
+  },
+  "facility.airport": {
+    "approved": "45-f690e4c8"
+  },
+  "facility.dock": {
+    "approved": "69-5dc34211"
+  },
+  "facility.inboundYard": {
+    "approved": "68-4810ca30"
+  },
+  "facility.truckYard": {
+    "approved": "77-dcc3329f"
+  },
+  "vehicle.boxTruck": {
+    "note": "백라이트도 노란색으로."
+  },
   "vehicle.carrier": {
-    "note": "헤드라이트 노란색?"
+    "approved": "48-7b06b861",
+    "note": "백라이트도 노란색으로"
   }
 }

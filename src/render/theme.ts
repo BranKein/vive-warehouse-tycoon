@@ -95,6 +95,8 @@ export interface Theme {
     /** Opacity of the pool of light under a street lamp at full night. */
     lampPoolOpacity: number;
     headlight: number;
+    /** Colour of the headlight lens when it is not lit. */
+    headlightDay: number;
   };
   effects: {
     selection: number;
@@ -252,6 +254,7 @@ export const defaultTheme: Theme = {
     lampIntensity: 2.2,
     lampPoolOpacity: 0.32,
     headlight: 0xfff3c4,
+    headlightDay: 0xffdf7e,
   },
   effects: {
     selection: 0xff8fb0,
