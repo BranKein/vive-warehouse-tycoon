@@ -33,9 +33,9 @@
       #bar label { display: flex; gap: 6px; align-items: center; }
       #to-game { padding: 4px 12px; border-radius: 999px; background: #ffd9c9; color: inherit; font-weight: 600; text-decoration: none; }
       #to-game:hover { background: #ffc4ae; }
-      #swatches { position: absolute; left: 12px; right: 12px; bottom: 44px; padding: 8px 14px; border-radius: 14px; background: #fff8ecf2; display: grid; gap: 6px; }
+      #swatches { position: absolute; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); box-sizing: border-box; bottom: 44px; justify-items: center; padding: 8px 14px; border-radius: 14px; background: #fff8ecf2; display: grid; gap: 6px; }
       #swatches[hidden] { display: none; }
-      #swatch-list { display: flex; flex-wrap: wrap; gap: 6px; }
+      #swatch-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
       #swatch-list button { width: 26px; height: 26px; padding: 0; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #d8c6ae; cursor: pointer; }
       #swatch-list button[aria-pressed='true'] { box-shadow: 0 0 0 2px #4a4038; }
       #info { position: absolute; left: 12px; bottom: 12px; padding: 4px 12px; border-radius: 999px; background: #fff8ecd9; pointer-events: none; }
