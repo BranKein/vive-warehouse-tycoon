@@ -74,6 +74,39 @@
   "facility.truckYard": {
     "approved": "77-dcc3329f"
   },
+  "prop.coin": {
+    "approved": "2-8831d36b"
+  },
+  "prop.crate": {
+    "approved": "3-f63179ff"
+  },
+  "prop.hill": {
+    "approved": "1-ddd9e876"
+  },
+  "prop.house0": {
+    "approved": "8-6c1fe451"
+  },
+  "prop.house1": {
+    "approved": "8-aa8000b1"
+  },
+  "prop.house2": {
+    "approved": "8-6c93e573"
+  },
+  "prop.house3": {
+    "approved": "8-4f5f7da8"
+  },
+  "prop.house4": {
+    "approved": "8-623d7d5a"
+  },
+  "prop.pallet": {
+    "approved": "8-76e9484d"
+  },
+  "prop.spark": {
+    "approved": "2-d7aed0a1"
+  },
+  "prop.wasteHeap": {
+    "approved": "5-ce5fb6d1"
+  },
   "vehicle.boxTruck": {
     "approved": "63-4a3e0ea7"
   },
@@ -85,6 +118,24 @@
   },
   "vehicle.carrier": {
     "approved": "48-18e1e535"
+  },
+  "vehicle.carrier.disposal": {
+    "approved": "48-4cf4da1e"
+  },
+  "vehicle.carrier.facility": {
+    "approved": "48-30bd2982"
+  },
+  "vehicle.carrier.handmade": {
+    "approved": "48-31163e34"
+  },
+  "vehicle.carrier.tier2": {
+    "approved": "48-84a2ff50"
+  },
+  "vehicle.carrier.tier3": {
+    "approved": "48-1ce05414"
+  },
+  "vehicle.carrier.tier4": {
+    "approved": "48-53b09d8"
   },
   "vehicle.forklift": {
     "approved": "36-4194c59e"
