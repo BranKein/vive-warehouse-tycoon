@@ -3,6 +3,8 @@ import { Stat, type UpgradeTrackDef } from '@/contracts';
 /**
  * Counts and speeds are capped; amounts grow forever. Every capped track has
  * an uncapped partner so no part of the chain becomes a permanent bottleneck.
+ * The exception is the inbound load, capped at 20 levels: each level
+ * quadruples it, so the cap lies beyond what a 20-hour run needs (level 17).
  */
 export const UPGRADE_TRACKS: UpgradeTrackDef[] = [
   // Buildings (base cost is multiplied by the building's upgradeCostScale)

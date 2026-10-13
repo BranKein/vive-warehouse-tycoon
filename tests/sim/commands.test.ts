@@ -71,8 +71,11 @@ describe('building and upgrading', () => {
     expect(levelView.next!.gt(levelView.current)).toBe(true);
   });
 
-  it('pairs every capped track with an uncapped one', () => {
-    for (const scope of ['building', 'inbound', 'sale'] as const) {
+  it('pairs every capped track with an uncapped one, except for inbound', () => {
+    // Inbound is capped on both tracks on purpose; its last level has to cover a whole run.
+    const inbound = Object.values(catalog.upgradeTracks).filter((track) => track.scope === 'inbound');
+    expect(inbound.every((track) => track.maxLevel !== null)).toBe(true);
+    for (const scope of ['building', 'sale'] as const) {
       const tracks = Object.values(catalog.upgradeTracks).filter((track) => track.scope === scope);
       expect(tracks.some((track) => track.maxLevel !== null), scope).toBe(true);
       expect(tracks.some((track) => track.maxLevel === null), scope).toBe(true);
