@@ -18,7 +18,7 @@ export const renderConfig = {
     /** Radians per pixel of right-button drag. */
     rotateSpeed: 0.0055,
     /** How far the middle-button drag may move the view away from the board centre, per axis. */
-    panLimit: 130,
+    panLimit: 70,
     /** Distance factor per wheel "line" (100 px of deltaY). */
     zoomStep: 1.12,
     /** Higher is snappier. Used for exponential smoothing of yaw, pitch and distance. */
