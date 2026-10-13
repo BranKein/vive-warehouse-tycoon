@@ -58,5 +58,5 @@ export const SALE_CHANNELS: SaleChannelDef[] = [
 
 export const CHANNEL_UNLOCKS: UnlockDef[] = [
   { id: 'unlock.channel.ship', cost: 1e6, requires: [], grants: { type: 'saleChannel', channel: 'sale.ship' } },
-  { id: 'unlock.channel.plane', cost: 2.5e9, requires: ['unlock.channel.ship'], grants: { type: 'saleChannel', channel: 'sale.plane' } },
+  { id: 'unlock.channel.plane', cost: 1.1e10, requires: ['unlock.channel.ship'], grants: { type: 'saleChannel', channel: 'sale.plane' } },
 ];

@@ -3,8 +3,8 @@ import { formatReport, parseArgs, runHeadless } from '@/headless/run';
 
 describe('headless runner', () => {
   it('parses its arguments', () => {
-    expect(parseArgs([])).toEqual({ hours: 1, auto: false, seed: 1 });
-    expect(parseArgs(['--hours', '10', '--auto', '--seed', '7'])).toEqual({ hours: 10, auto: true, seed: 7 });
+    expect(parseArgs([])).toEqual({ hours: 1, auto: false, seed: 1, timeline: false });
+    expect(parseArgs(['--hours', '10', '--auto', '--seed', '7'])).toEqual({ hours: 10, auto: true, seed: 7, timeline: false });
     expect(() => parseArgs(['--hours'])).toThrow(/--hours/);
     expect(() => parseArgs(['--hours', '-1'])).toThrow();
     expect(() => parseArgs(['--fast'])).toThrow(/Unknown argument/);

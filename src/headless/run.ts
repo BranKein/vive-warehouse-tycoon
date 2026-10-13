@@ -14,6 +14,8 @@ export interface HeadlessOptions {
   hours: number;
   auto: boolean;
   seed: number;
+  /** Also list every new building and unlock in the report. */
+  timeline?: boolean;
   catalog?: ContentCatalog;
   balance?: Balance;
 }
@@ -29,8 +31,10 @@ export interface HourRow {
 }
 
 export interface HeadlessReport {
-  options: { hours: number; auto: boolean; seed: number };
+  options: { hours: number; auto: boolean; seed: number; timeline: boolean };
   hours: HourRow[];
+  /** Every new building and unlock in the order it happened, in simulated seconds. */
+  changes: Array<{ atSec: number; kind: 'build' | 'unlock'; id: string }>;
   /** Every unlock in the order it happened, in simulated seconds. */
   unlocks: Array<{ id: string; atSec: number }>;
   firstTier2UnlockSec: number | null;
@@ -60,8 +64,9 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
 
   const totalSeconds = Math.max(0, Math.round(options.hours * 3600));
   const report: HeadlessReport = {
-    options: { hours: options.hours, auto: options.auto, seed: options.seed },
+    options: { hours: options.hours, auto: options.auto, seed: options.seed, timeline: options.timeline ?? false },
     hours: [],
+    changes: [],
     unlocks: [],
     firstTier2UnlockSec: null,
     allPlotsFilledSec: null,
@@ -100,11 +105,13 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
       if (VISIBLE_EVENTS.has(event.type)) closeGap(second);
       if (event.type === 'buildingBuilt') {
         report.buildingsBuilt += 1;
+        report.changes.push({ atSec: second, kind: 'build', id: event.typeId });
         if (report.allPlotsFilledSec === null && game.island.isFull) report.allPlotsFilledSec = second;
       } else if (event.type === 'upgraded') {
         report.upgradesBought += 1;
       } else if (event.type === 'unlocked') {
         report.unlocks.push({ id: event.unlockId, atSec: second });
+        report.changes.push({ atSec: second, kind: 'unlock', id: event.unlockId });
         const grants = catalog.unlocks[event.unlockId]?.grants;
         if (
           report.firstTier2UnlockSec === null &&
@@ -133,14 +140,18 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
   return report;
 }
 
-const USAGE = 'Usage: npm run sim -- --hours <n> [--auto] [--seed <n>]';
+const USAGE = 'Usage: npm run sim -- --hours <n> [--auto] [--seed <n>] [--timeline]';
 
-export function parseArgs(argv: readonly string[]): Required<Pick<HeadlessOptions, 'hours' | 'auto' | 'seed'>> {
-  const options = { hours: 1, auto: false, seed: 1 };
+export function parseArgs(
+  argv: readonly string[],
+): Required<Pick<HeadlessOptions, 'hours' | 'auto' | 'seed' | 'timeline'>> {
+  const options = { hours: 1, auto: false, seed: 1, timeline: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--auto') {
       options.auto = true;
+    } else if (arg === '--timeline') {
+      options.timeline = true;
     } else if (arg === '--hours' || arg === '--seed') {
       const value = Number(argv[(i += 1)]);
       if (!Number.isFinite(value) || value < 0) throw new Error(`${arg} needs a non-negative number\n${USAGE}`);
@@ -152,6 +163,9 @@ export function parseArgs(argv: readonly string[]): Required<Pick<HeadlessOption
   }
   return options;
 }
+
+/** Stretches without a visible change longer than this are listed in the report. */
+const LONG_GAP_SEC = 30 * 60;
 
 const time = (seconds: number | null): string => (seconds === null ? 'not reached' : formatDuration(seconds));
 
@@ -189,6 +203,22 @@ export function formatReport(report: HeadlessReport): string {
     `Longest gap between visible changes (new building or unlock): ${time(report.longestGapSec)}` +
       ` (from ${time(report.longestGapStartSec)})`,
   );
+  // Only up to the last change: what follows it is the end of the content, not a lull.
+  const lulls: string[] = [];
+  let previous = 0;
+  for (const change of report.changes) {
+    if (change.atSec - previous > LONG_GAP_SEC) {
+      lulls.push(`${time(change.atSec - previous)} (from ${time(previous)})`);
+    }
+    previous = change.atSec;
+  }
+  lines.push(`Gaps over ${time(LONG_GAP_SEC)} before the last change (${time(previous)}): ${lulls.join(', ') || 'none'}`);
+  if (options.timeline) {
+    lines.push('');
+    lines.push('Timeline:');
+    for (const change of report.changes) lines.push(`  ${time(change.atSec).padStart(10)}  ${change.kind.padEnd(6)}  ${change.id}`);
+    lines.push('');
+  }
   const total = Object.values(report.statusSeconds).reduce((sum, value) => sum + value, 0) || 1;
   const share = (value: number): string => `${Math.round((value / total) * 100)}%`;
   const { working, starved, outputFull, idle } = report.statusSeconds;
