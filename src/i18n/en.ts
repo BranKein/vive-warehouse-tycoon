@@ -130,6 +130,14 @@ export const en = {
   'logistics.priceBonus': 'Sells at ×{value}',
 
   // Save menu
+  'settings.menu': 'Settings',
+  'settings.sound': 'Sound',
+  'settings.soundOff': 'Off',
+  'settings.soundSoon': 'Sound is not available yet.',
+  'settings.github': 'GitHub',
+  'settings.kofi': 'Support on Ko-fi',
+  'settings.kofiSoon': 'Coming soon',
+
   'save.menu': 'Saves',
   'save.saveNow': 'Save now',
   'save.loadAuto': 'Load auto save',

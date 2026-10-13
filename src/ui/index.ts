@@ -9,6 +9,7 @@ import type { CommandResult, GameEvent, GameSnapshot, GameUI, Selection, UIDeps,
 import { i18n, keys } from '@/i18n';
 import type { Frame, ToastKind, UIContext } from './context';
 import { createSaveMenu } from './saveMenu';
+import { createSettingsMenu } from './settingsMenu';
 import { createSidePanel } from './sidePanel';
 import { formatAmount, unlockName } from './text';
 import { createToasts } from './toasts';
@@ -76,17 +77,30 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   };
 
   const menu = createSaveMenu(ctx, () => render());
-  const topBar = createTopBar(ctx, () => menu.toggle());
+  const settings = createSettingsMenu(ctx, () => render());
+  // Both popovers share one spot, so opening one closes the other.
+  const topBar = createTopBar(
+    ctx,
+    () => {
+      settings.close();
+      menu.toggle();
+    },
+    () => {
+      menu.close();
+      settings.toggle();
+    },
+  );
   const panel = createSidePanel(ctx, () => render());
 
   root.classList.add('wt-ui');
-  root.append(topBar.el, menu.el, panel.el, toasts.el);
+  root.append(topBar.el, menu.el, settings.el, panel.el, toasts.el);
 
-  // Clicking anywhere outside the save menu closes it.
+  // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
-    if (!menu.isOpen() || !(event.target instanceof Node)) return;
-    if (menu.el.contains(event.target) || topBar.savesButton.contains(event.target)) return;
-    menu.close();
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (menu.isOpen() && !menu.el.contains(target) && !topBar.savesButton.contains(target)) menu.close();
+    if (settings.isOpen() && !settings.el.contains(target) && !topBar.settingsButton.contains(target)) settings.close();
   };
   document.addEventListener('pointerdown', onPointerDown);
 
@@ -116,7 +130,8 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     if (disposed || !last) return;
     const unlocks = new Map<string, UnlockView>(last.unlocks.map((unlock) => [unlock.id, unlock]));
     const frame: Frame = { snapshot: last, unlocks, selection };
-    topBar.update(last, menu.isOpen());
+    topBar.update(last, menu.isOpen(), settings.isOpen());
+    settings.update(last);
     panel.update(frame);
   }
 
@@ -124,6 +139,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     root.lang = language;
     render();
     menu.rerender();
+    settings.rerender();
     toasts.rerender();
   });
   root.lang = i18n.language;
@@ -164,6 +180,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       stopListening();
       document.removeEventListener('pointerdown', onPointerDown);
       menu.dispose();
+      settings.dispose();
       toasts.dispose();
       topBar.el.remove();
       panel.el.remove();

@@ -6,7 +6,7 @@ import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text'
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
 
-export function createTopBar(ctx: UIContext, onToggleSaves: () => void) {
+export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggleSettings: () => void) {
   const { tr } = ctx;
   let autoEnabled = false;
 
@@ -58,6 +58,7 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void) {
   });
 
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
+  const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
 
   const el = h(
     'div',
@@ -69,12 +70,14 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void) {
     islandGroup,
     langGroup,
     savesButton,
+    settingsButton,
   );
 
   return {
     el,
     savesButton,
-    update(snapshot: GameSnapshot, savesOpen: boolean): void {
+    settingsButton,
+    update(snapshot: GameSnapshot, savesOpen: boolean, settingsOpen: boolean): void {
       setText(moneyLabel, tr.t('top.money'));
       setText(moneyValue, formatAmount(snapshot.money));
       setText(incomeLabel, tr.t('top.incomeLabel'));
@@ -116,6 +119,10 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void) {
       setText(savesButton, tr.t('save.menu'));
       setClass(savesButton, 'is-active', savesOpen);
       setAttr(savesButton, 'aria-expanded', String(savesOpen));
+
+      setText(settingsButton, tr.t('settings.menu'));
+      setClass(settingsButton, 'is-active', settingsOpen);
+      setAttr(settingsButton, 'aria-expanded', String(settingsOpen));
     },
   };
 }

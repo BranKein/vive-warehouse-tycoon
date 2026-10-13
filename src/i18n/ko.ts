@@ -117,6 +117,14 @@ export const ko: Translations = {
   'logistics.nextArrival': '다음 차량까지 {time}',
   'logistics.priceBonus': '판매가 ×{value}',
 
+  'settings.menu': '설정',
+  'settings.sound': '소리',
+  'settings.soundOff': '꺼짐',
+  'settings.soundSoon': '소리는 아직 준비 중입니다.',
+  'settings.github': 'GitHub',
+  'settings.kofi': 'Ko-fi로 후원하기',
+  'settings.kofiSoon': '준비 중',
+
   'save.menu': '저장',
   'save.saveNow': '지금 저장',
   'save.loadAuto': '자동 저장 불러오기',
