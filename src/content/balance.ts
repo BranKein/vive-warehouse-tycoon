@@ -40,15 +40,8 @@ export interface Balance {
     /** Delivery stops per trip, not counting the final sale stop. */
     maxStops: number;
   };
-  /** Carriers of the inbound yard are not upgraded on their own; they follow the inbound tracks. */
-  yard: {
-    baseCarriers: number;
-    /** One more yard carrier per this many levels of the inbound interval track. */
-    intervalLevelsPerCarrier: number;
-    maxCarriers: number;
-    /** Yard carrier load as a multiple of the inbound truck load. */
-    loadFactor: number;
-  };
+  /** Carriers of a sale channel before any upgrade. They fetch from every building, so they start bigger than a building's. */
+  saleCarriers: { baseCount: number; baseLoad: number };
   channels: {
     /** A sale channel counts as backed up once this many vehicle loads are waiting ahead of an item. */
     backlogLoads: number;
@@ -88,7 +81,7 @@ export const BALANCE: Balance = {
   waste: { limitSec: 120, minLimitCycles: 4, slowdown: 0.5, source: 'wasteClogged' },
   weight: { slowPerWeight: 0.15, minFactor: 0.3, carrierSensitivity: 0.5, inboundSensitivity: 0.5 },
   carriers: { model: 'vehicle.carrier', speed: 10, baseCount: 1, baseLoad: 6, handlingSec: 1, maxStops: 4 },
-  yard: { baseCarriers: 1, intervalLevelsPerCarrier: 3, maxCarriers: 4, loadFactor: 1 },
+  saleCarriers: { baseCount: 1, baseLoad: 12 },
   channels: {
     backlogLoads: 2,
     handlingSec: 2,

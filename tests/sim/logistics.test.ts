@@ -3,30 +3,32 @@ import type { GameEvent, ItemDef, ItemId } from '@/contracts';
 import { BigNum, bn } from '@/core/BigNum';
 import { catalog } from '@/content';
 import { BALANCE } from '@/content/balance';
-import { Dispatcher, type DispatchContext, type SaleTarget } from '@/sim/Dispatcher';
+import { Dispatcher, type DispatchContext, type SaleHome } from '@/sim/Dispatcher';
 import { Slot } from '@/sim/Inventory';
-import type { CarrierHome, Consumer, Site } from '@/sim/nodes';
+import type { CarrierHome, Consumer, PickupSource, Site } from '@/sim/nodes';
 import { Cargo, travelTicks, weightFactor } from '@/sim/Vehicle';
 import { EXPORT_CHANNEL, newGame, SECOND_ISLAND, seconds, tickUntil, twoIslandCatalog } from './helpers';
 
 const site = (index: number): Site => ({ index, id: `s${index}`, x: 0, z: 0, dock: { x: 0, y: 0, z: 0 }, heading: 0, road: index });
 
+/** A node whose carriers fetch: a building with input slots, or (with `unlocked`) a sale channel. */
 class FakeHome implements CarrierHome {
-  readonly id = 'home';
   readonly site = site(0);
   readonly carriers = [];
   readonly slots: Slot[] = [];
-  constructor(private readonly capacity: number) {}
-  stock(item: ItemId, amount: number): this {
+  constructor(
+    private readonly capacity: number,
+    readonly id = 'home',
+  ) {}
+  /** An input slot with room for `missing` more. */
+  wants(item: ItemId, missing: number): this {
     const slot = new Slot(item);
-    slot.add(bn(amount));
+    slot.capacity = bn(missing);
     this.slots.push(slot);
     return this;
   }
   carrierCapacity = (): BigNum => bn(this.capacity);
-  pushSlots = (): readonly Slot[] => this.slots;
-  pullSlots = (): readonly Slot[] => [];
-  stockTaken(): void {}
+  pullSlots = (): readonly Slot[] => this.slots;
   returnCargo(): void {}
   deliver(): void {}
   cancelDelivery(): void {}
@@ -34,119 +36,142 @@ class FakeHome implements CarrierHome {
   cancelPickup(): void {}
 }
 
-class FakeConsumer implements Consumer {
+class FakeSaleHome extends FakeHome implements SaleHome {
+  readonly unlocked = true;
   readonly reserved = new Map<ItemId, number>();
-  constructor(
-    readonly id: string,
-    readonly site: Site,
-    private readonly wants: number,
-    private readonly ready: boolean,
-    readonly productValue: number,
-  ) {}
-  demand = (item: ItemId): BigNum => bn(Math.max(0, this.wants - (this.reserved.get(item) ?? 0)));
+  constructor(capacity: number) {
+    super(capacity, 'sale');
+  }
   reserveDelivery(item: ItemId, amount: BigNum): void {
     this.reserved.set(item, (this.reserved.get(item) ?? 0) + amount.toNumber());
   }
-  readyExcept = (): boolean => this.ready;
+}
+
+class FakeSource implements PickupSource {
+  readonly stock = new Map<ItemId, number>();
+  pickupUrgency = 0;
+  constructor(
+    readonly id: string,
+    readonly site: Site,
+  ) {}
+  has(item: ItemId, amount: number): this {
+    this.stock.set(item, amount);
+    return this;
+  }
+  availableForPickup = (item: ItemId): BigNum => bn(this.stock.get(item) ?? 0);
+  reservePickup(item: ItemId, amount: BigNum): void {
+    this.stock.set(item, (this.stock.get(item) ?? 0) - amount.toNumber());
+  }
   deliver(): void {}
   cancelDelivery(): void {}
   pickup = (): BigNum => BigNum.ZERO;
   cancelPickup(): void {}
 }
 
-function dispatcher(home: FakeHome, consumers: FakeConsumer[], distances: Record<string, number>, sale: FakeConsumer | null = null) {
+/** A building still waiting for `wants` of every item. */
+const consumer = (wants: number): Consumer => ({
+  id: 'consumer',
+  site: site(8),
+  demand: () => bn(wants),
+  reserveDelivery() {},
+  readyExcept: () => true,
+  productValue: 1,
+  deliver() {},
+  cancelDelivery() {},
+  pickup: () => BigNum.ZERO,
+  cancelPickup() {},
+});
+
+function dispatcher(sources: FakeSource[], options: { sale?: SaleHome; consumers?: Consumer[] } = {}) {
   const ctx: DispatchContext = {
     balance: BALANCE,
     items: catalog.items,
-    homes: [home],
-    consumersOf: () => consumers,
-    sourcesOf: () => [],
-    chooseSale: (_item: ItemDef) => sale as SaleTarget | null,
-    distance: (_from, to) => distances[`s${to}`] ?? 0,
+    homes: [],
+    consumersOf: () => options.consumers ?? [],
+    sourcesOf: (item) => sources.filter((source) => source.stock.has(item)),
+    chooseSale: (_item: ItemDef) => options.sale ?? null,
+    distance: (_from, to) => to,
   };
   return new Dispatcher(ctx);
 }
 
-const unloads = (stops: ReturnType<Dispatcher['plan']>): Array<[string, number]> =>
-  (stops ?? []).filter((stop) => stop.action === 'unload').map((stop) => [stop.node, stop.items[0]!.amount.toNumber()]);
+/** The pickups of a round as [node, item, amount], in the order they are visited. */
+const loads = (stops: ReturnType<Dispatcher['plan']>): Array<[string, string, number]> =>
+  (stops ?? [])
+    .filter((stop) => stop.action === 'load')
+    .flatMap((stop) => stop.items.map((entry): [string, string, number] => [stop.node, entry.item, entry.amount.toNumber()]));
 
 describe('demand-based dispatch', () => {
-  it('shares one load between the requests, so a low-priority building is not starved', () => {
-    const home = new FakeHome(10).stock('lumber', 10);
-    const rich = new FakeConsumer('rich', site(1), 10, true, 500);
-    const cheap = new FakeConsumer('cheap', site(2), 10, true, 5);
-    const stops = dispatcher(home, [rich, cheap], { s1: 1, s2: 2 }).plan(home);
-    expect(unloads(stops)).toEqual([
-      ['rich', 5],
-      ['cheap', 5],
+  it('fetches what a building is missing and brings it home', () => {
+    const home = new FakeHome(10).wants('lumber', 6);
+    const mill = new FakeSource('mill', site(1)).has('lumber', 50);
+    const stops = dispatcher([mill]).plan(home);
+    expect(loads(stops)).toEqual([['mill', 'lumber', 6]]);
+    expect(stops!.at(-1)).toMatchObject({ node: 'home', action: 'unload' });
+    // Both ends know about the trip: the stock is spoken for and the slot expects it.
+    expect(mill.stock.get('lumber')).toBe(44);
+    expect(home.slots[0]!.incoming.toNumber()).toBe(6);
+    expect(home.slots[0]!.demand().isZero).toBe(true);
+  });
+
+  it('splits the load between ingredients in proportion to what is missing', () => {
+    const home = new FakeHome(10).wants('lumber', 30).wants('fabric', 10);
+    const yard = new FakeSource('yard', site(1)).has('lumber', 99).has('fabric', 99);
+    const drops = loads(dispatcher([yard]).plan(home));
+    expect(drops[0]![2]).toBeCloseTo(7.5);
+    expect(drops[1]![2]).toBeCloseTo(2.5);
+  });
+
+  it('gives room an ingredient cannot use to the others', () => {
+    const home = new FakeHome(10).wants('lumber', 30).wants('fabric', 10);
+    const yard = new FakeSource('yard', site(1)).has('lumber', 99);
+    expect(loads(dispatcher([yard]).plan(home))).toEqual([['yard', 'lumber', 10]]);
+  });
+
+  it('goes to the nearest source first, and on to the next when that is not enough', () => {
+    const home = new FakeHome(10).wants('lumber', 10);
+    const far = new FakeSource('far', site(5)).has('lumber', 50);
+    const near = new FakeSource('near', site(2)).has('lumber', 4);
+    const drops = loads(dispatcher([far, near]).plan(home));
+    expect(drops.map((drop) => drop[0])).toEqual(['near', 'far']);
+    expect(drops[0]![2]).toBeCloseTo(4);
+    expect(drops[1]![2]).toBeCloseTo(6);
+  });
+
+  it('empties the source that most needs it before a nearer one', () => {
+    const home = new FakeHome(10).wants('slag', 10);
+    const near = new FakeSource('near', site(1)).has('slag', 50);
+    const clogged = new FakeSource('clogged', site(6)).has('slag', 50);
+    clogged.pickupUrgency = 0.9;
+    expect(loads(dispatcher([near, clogged]).plan(home))).toEqual([['clogged', 'slag', 10]]);
+  });
+
+  it('lets a sale channel fetch only what no building is waiting for, dearest first', () => {
+    const sale = new FakeSaleHome(10);
+    const mill = new FakeSource('mill', site(1)).has('lumber', 9).has('sawdust', 9);
+    // A building still wants 5 of each, so 4 of each is left to sell.
+    const stops = dispatcher([mill], { sale, consumers: [consumer(5)] }).plan(sale);
+    expect(loads(stops)).toEqual([
+      ['mill', 'lumber', 4],
+      ['mill', 'sawdust', 4],
     ]);
-    expect(cheap.reserved.get('lumber')).toBe(5);
-    // The goods left the home stock when the trip was planned.
-    expect(home.slots[0]!.amount.isZero).toBe(true);
-    expect(stops![0]).toMatchObject({ node: 'home', action: 'load', preloaded: true });
+    expect(catalog.items.lumber!.basePrice).toBeGreaterThan(catalog.items.sawdust!.basePrice);
+    expect(sale.reserved.get('lumber')).toBe(4);
+    expect(stops!.at(-1)).toMatchObject({ node: 'sale', action: 'unload' });
   });
 
-  /** `small` leaves part of its share unused; the test checks who gets that rest. */
-  const restGoesTo = (a: FakeConsumer, b: FakeConsumer, distances: Record<string, number>): string => {
-    const home = new FakeHome(9).stock('lumber', 30);
-    const small = new FakeConsumer('small', site(9), 1, true, 0);
-    const drops = new Map(unloads(dispatcher(home, [a, b, small], distances).plan(home)));
-    expect(drops.get('small')).toBe(1);
-    return drops.get(a.id)! > drops.get(b.id)! ? a.id : b.id;
-  };
-
-  it('gives the rest to a building that can start at once before a more valuable or nearer one', () => {
-    const waiting = new FakeConsumer('waiting', site(1), 10, false, 500);
-    const ready = new FakeConsumer('ready', site(2), 10, true, 5);
-    expect(restGoesTo(waiting, ready, { s1: 1, s2: 99 })).toBe('ready');
-  });
-
-  it('then prefers the more valuable product, then the nearer building', () => {
-    const cheapNear = new FakeConsumer('cheapNear', site(1), 10, true, 5);
-    const rich = new FakeConsumer('rich', site(2), 10, true, 50);
-    expect(restGoesTo(cheapNear, rich, { s1: 1, s2: 99 })).toBe('rich');
-
-    const far = new FakeConsumer('far', site(3), 10, true, 5);
-    const near = new FakeConsumer('near', site(4), 10, true, 5);
-    expect(restGoesTo(far, near, { s3: 80, s4: 10 })).toBe('near');
-  });
-
-  it('takes turns when more buildings ask than one round can visit', () => {
-    const home = new FakeHome(8).stock('lumber', 1000);
-    const consumers = Array.from(
-      { length: BALANCE.carriers.maxStops + 2 },
-      (_, index) => new FakeConsumer(`c${index}`, site(index + 1), 1000, true, 100 - index),
-    );
-    const planner = dispatcher(home, consumers, {});
-    planner.plan(home);
-    planner.plan(home);
-    for (const consumer of consumers) expect(consumer.reserved.get('lumber') ?? 0, consumer.id).toBeGreaterThan(0);
-  });
-
-  it('splits one load over several requests and sells what nobody asked for', () => {
-    const home = new FakeHome(10).stock('lumber', 10);
-    const first = new FakeConsumer('first', site(1), 3, true, 50);
-    const second = new FakeConsumer('second', site(2), 4, true, 20);
-    const sale = new FakeConsumer('sale', site(3), 0, false, 0);
-    const stops = dispatcher(home, [first, second], { s1: 5, s2: 10, s3: 20 }, sale).plan(home);
-    const drops = unloads(stops);
-    expect(drops.map((drop) => drop[0])).toEqual(['first', 'second', 'sale']);
-    expect(drops[0]![1]).toBeCloseTo(3);
-    expect(drops[1]![1]).toBeCloseTo(4);
-    expect(drops[2]![1]).toBeCloseTo(3);
-    expect(sale.reserved.get('lumber')).toBeCloseTo(3);
-  });
-
-  it('never sends waste or raw material to a sale channel', () => {
-    const sale = new FakeConsumer('sale', site(3), 0, false, 0);
-    const home = new FakeHome(10).stock('slag', 10).stock('wood', 10);
-    expect(dispatcher(home, [], {}, sale).plan(home)).toBeNull();
-    expect(home.slots[0]!.amount.toNumber()).toBe(10);
+  it('never sells waste or raw material, and leaves goods alone that go to another channel', () => {
+    const sale = new FakeSaleHome(10);
+    const yard = new FakeSource('yard', site(1)).has('slag', 10).has('wood', 10);
+    expect(dispatcher([yard], { sale }).plan(sale)).toBeNull();
+    const mill = new FakeSource('mill', site(1)).has('lumber', 10);
+    expect(dispatcher([mill], { sale: new FakeSaleHome(10) }).plan(sale)).toBeNull();
+    expect(mill.stock.get('lumber')).toBe(10);
   });
 
   it('does nothing when there is no stock', () => {
-    const home = new FakeHome(10);
-    expect(dispatcher(home, [], {}).plan(home)).toBeNull();
+    expect(dispatcher([]).plan(new FakeHome(10).wants('lumber', 10))).toBeNull();
+    expect(dispatcher([new FakeSource('mill', site(1))]).plan(new FakeHome(10))).toBeNull();
   });
 
   it('sends goods to the best paying open channel until it backs up', () => {
@@ -168,7 +193,8 @@ describe('vehicles', () => {
     const game = newGame();
     const island = game.island;
     const sawmill = island.buildings[0]!;
-    const carrier = island.inbound.carriers[0]!;
+    // The sawmill's own carrier goes to the inbound yard for the wood.
+    const carrier = sawmill.carriers[0]!;
     const wood = (): number => sawmill.inputs.amount('wood').toNumber();
     const seen = { travelWithCargo: 0, handlingAtDock: 0 };
     let previous = { phase: carrier.phase, at: carrier.at, cargo: 0 };
@@ -180,8 +206,8 @@ describe('vehicles', () => {
         const cargo = carrier.cargo.amount('wood').toNumber();
         if (carrier.phase === 'travel' && cargo > 0) {
           seen.travelWithCargo += 1;
-          // On the road: gone from the yard, not yet in the building.
-          expect(island.inbound.stock.amount('wood').toNumber()).toBe(0);
+          // On the road: not yet in the building.
+          expect(wood()).toBe(0);
         }
         if (carrier.phase === 'handle' && carrier.at === sawmill.site.index) seen.handlingAtDock += 1;
         previous = { phase: carrier.phase, at: carrier.at, cargo };
@@ -198,8 +224,6 @@ describe('vehicles', () => {
     expect(previous.cargo).toBeGreaterThan(0);
     expect(wood()).toBeCloseTo(previous.cargo);
     expect(carrier.cargo.amount('wood').isZero).toBe(true);
-    // Its reservation is settled.
-    expect(sawmill.inputs.get('wood')!.incoming.isZero).toBe(true);
   });
 
   it('pays only when the sale vehicle has left the island', () => {
@@ -305,7 +329,7 @@ describe('vehicles', () => {
           },
         },
       });
-      const carrier = game.island.inbound.carriers[0]!;
+      const carrier = game.island.buildings[0]!.carriers[0]!;
       tickUntil(game, () => carrier.phase === 'travel' && !carrier.cargo.amount(raw).isZero, seconds(120));
       return carrier.legEnd - carrier.legStart;
     };

@@ -19,7 +19,7 @@ import { BigNum } from '@/core/BigNum';
 import type { Balance } from '@/content/balance';
 import { Building, type BuildingContext } from './Building';
 import { createSaleChannel, InboundChannel, type ChannelContext, type SaleChannel } from './channels';
-import { Dispatcher, type DispatchContext, type SaleTarget } from './Dispatcher';
+import { Dispatcher, type DispatchContext, type SaleHome } from './Dispatcher';
 import { parseAmount } from './Inventory';
 import { ModifierRegistry } from './modifiers';
 import type { CarrierHome, Consumer, LogisticsNode, PickupSource, Site } from './nodes';
@@ -215,7 +215,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
   }
 
   /** Best paying open channel that is not backed up; null leaves the goods where they are. */
-  chooseSale(_item: ItemDef): SaleTarget | null {
+  chooseSale(_item: ItemDef): SaleHome | null {
     for (const channel of this.salesByPrice) {
       if (channel.unlocked && !channel.isBackedUp) return channel;
     }
@@ -315,16 +315,18 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
 
   /** Rebuilds the lookup tables the dispatcher uses. */
   private reindex(): void {
-    this.homes = [this.inbound, ...this.buildings];
+    this.homes = [...this.buildings, ...this.sales];
     this.consumers.clear();
     this.sources.clear();
+    // Raw materials wait in the inbound yard until a building's carrier comes for them.
+    for (const item of this.rawItems) this.sources.set(item, [this.inbound]);
     for (const building of this.buildings) {
-      for (const item of building.deliveredInputs()) {
+      for (const item of building.inputItems()) {
         const list = this.consumers.get(item) ?? [];
         list.push(building);
         this.consumers.set(item, list);
       }
-      for (const item of building.wasteItems()) {
+      for (const item of building.pickupItems()) {
         const list = this.sources.get(item) ?? [];
         list.push(building);
         this.sources.set(item, list);
@@ -401,7 +403,6 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       nextBuilding: this.nextBuildingSeq,
       estimated: this.estimatedIncome.toString(),
       dirty: this.dirty,
-      dispatch: this.dispatcher.toJSON(),
       buildings: this.buildings.map((building) => building.toJSON()),
       inbound: this.inbound.toJSON(),
       sales: Object.fromEntries(this.sales.map((channel) => [channel.id, channel.toJSON()])),
@@ -436,7 +437,6 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     this.reindex();
     // Keep the dispatch flag as it was, so a loaded game continues exactly like the original.
     if (data.dirty === false) this.dirty = false;
-    this.dispatcher.restore(data.dispatch);
   }
 
   /**

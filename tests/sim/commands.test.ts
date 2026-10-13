@@ -103,12 +103,17 @@ describe('building and upgrading', () => {
     expect(game.upgradeChannel('sale.truck', load.id)).toEqual({ ok: true });
     expect(truck.stats.value(Stat.load).toNumber()).toBeCloseTo(before.toNumber() * load.effect.perLevel);
 
+    // A sale channel has carriers of its own, with their own upgrades.
+    const fleet = island.sales[0]!;
+    expect(fleet.carriers).toHaveLength(BALANCE.saleCarriers.baseCount);
+    expect(game.upgradeChannel('sale.truck', 'sale.carriers')).toEqual({ ok: true });
+    expect(fleet.carriers).toHaveLength(BALANCE.saleCarriers.baseCount + 1);
+    const carrierLoad = catalog.upgradeTracks['sale.carrierLoad']!;
+    expect(game.upgradeChannel('sale.truck', carrierLoad.id)).toEqual({ ok: true });
+    expect(fleet.carrierCapacity().toNumber()).toBeCloseTo(BALANCE.saleCarriers.baseLoad * carrierLoad.effect.perLevel);
+
     const interval = catalog.upgradeTracks['inbound.interval']!;
-    expect(island.inbound.carriers).toHaveLength(BALANCE.yard.baseCarriers);
-    for (let i = 0; i < BALANCE.yard.intervalLevelsPerCarrier; i += 1) {
-      expect(game.upgradeChannel('inbound.truck', interval.id)).toEqual({ ok: true });
-    }
-    expect(island.inbound.carriers).toHaveLength(BALANCE.yard.baseCarriers + 1);
+    expect(game.upgradeChannel('inbound.truck', interval.id)).toEqual({ ok: true });
     expect(island.inbound.stats.number(Stat.interval)).toBeLessThan(catalog.inboundChannels['inbound.truck']!.baseIntervalSec);
     while (game.upgradeChannel('inbound.truck', interval.id).ok);
     expect(island.inbound.levels.get(interval.id)).toBe(interval.maxLevel);

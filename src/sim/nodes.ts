@@ -45,7 +45,7 @@ export interface Consumer extends LogisticsNode {
   readonly productValue: number;
 }
 
-/** A node that hands over goods to vehicles of another node (waste collection). */
+/** A node that hands over goods to the carriers that come to fetch them. */
 export interface PickupSource extends LogisticsNode {
   availableForPickup(item: ItemId): BigNum;
   reservePickup(item: ItemId, amount: BigNum): void;
@@ -57,12 +57,8 @@ export interface PickupSource extends LogisticsNode {
 export interface CarrierHome extends LogisticsNode {
   readonly carriers: Carrier[];
   carrierCapacity(): BigNum;
-  /** Stock its carriers take to whoever asks for it (or to a sale channel). */
-  pushSlots(): readonly Slot[];
   /** Inputs its carriers go and fetch from other nodes. */
   pullSlots(): readonly Slot[];
-  /** Called after the dispatcher removed stock from a push slot. */
-  stockTaken(): void;
   /** Cargo that could not be delivered comes back. */
   returnCargo(item: ItemId, amount: BigNum): void;
 }

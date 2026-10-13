@@ -34,7 +34,6 @@ interface Cycle {
 }
 
 const RETRY_TICKS = TICKS_PER_SECOND;
-const NO_SLOTS: readonly Slot[] = [];
 
 /**
  * A plot with a production line on it. All building types share this class;
@@ -54,9 +53,6 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
   readonly recipe: RecipeDef;
   readonly productValue: number;
   readonly carriers: Carrier[] = [];
-  /** Input slots its own carriers fetch (waste for a disposal plant). */
-  private readonly fetched: Slot[] = [];
-  private readonly pushed: Slot[] = [];
 
   invested = BigNum.ZERO;
   cycle: Cycle | null = null;
@@ -94,13 +90,10 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
       this.levels,
       ctx.modifiers,
     );
-    for (const io of recipe.inputs) {
-      const slot = this.inputs.slot(io.item);
-      if (catalog.items[io.item]?.kind === 'waste') this.fetched.push(slot);
-    }
+    for (const io of recipe.inputs) this.inputs.slot(io.item);
     for (const io of recipe.outputs) {
       if (catalog.items[io.item]?.kind === 'waste') this.waste.slot(io.item);
-      else this.pushed.push(this.outputs.slot(io.item));
+      else this.outputs.slot(io.item);
     }
     this.refresh();
   }
@@ -223,13 +216,18 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
     if (slot) slot.incoming = subClamp(slot.incoming, planned);
   }
 
+  /** Products and waste both wait here until some carrier comes for them. */
+  private pickupSlot(item: ItemId): Slot | undefined {
+    return this.waste.get(item) ?? this.outputs.get(item);
+  }
+
   availableForPickup(item: ItemId): BigNum {
-    return this.waste.get(item)?.available() ?? BigNum.ZERO;
+    return this.pickupSlot(item)?.available() ?? BigNum.ZERO;
   }
 
   reservePickup(item: ItemId, amount: BigNum): void {
-    const slot = this.waste.slot(item);
-    slot.reserved = slot.reserved.add(amount);
+    const slot = this.pickupSlot(item);
+    if (slot) slot.reserved = slot.reserved.add(amount);
   }
 
   get pickupUrgency(): number {
@@ -237,7 +235,7 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
   }
 
   pickup(item: ItemId, planned: BigNum): BigNum {
-    const slot = this.waste.get(item);
+    const slot = this.pickupSlot(item);
     if (!slot) return BigNum.ZERO;
     slot.reserved = subClamp(slot.reserved, planned);
     const taken = slot.take(planned);
@@ -247,7 +245,7 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
   }
 
   cancelPickup(item: ItemId, planned: BigNum): void {
-    const slot = this.waste.get(item);
+    const slot = this.pickupSlot(item);
     if (slot) slot.reserved = subClamp(slot.reserved, planned);
   }
 
@@ -255,16 +253,8 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
     return this.stats.value(Stat.carrierLoad);
   }
 
-  pushSlots(): readonly Slot[] {
-    return this.pushed;
-  }
-
   pullSlots(): readonly Slot[] {
-    return this.fetched.length > 0 ? this.fetched : NO_SLOTS;
-  }
-
-  stockTaken(): void {
-    this.wake = 0;
+    return this.inputs.list;
   }
 
   returnCargo(item: ItemId, amount: BigNum): void {
@@ -273,14 +263,13 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
     this.wake = 0;
   }
 
-  /** Waste slots that other nodes may collect from. */
-  wasteItems(): ItemId[] {
-    return this.waste.list.map((slot) => slot.item);
+  /** Everything other nodes' carriers may collect here: products, byproducts and waste. */
+  pickupItems(): ItemId[] {
+    return [...this.outputs.list, ...this.waste.list].map((slot) => slot.item);
   }
 
-  /** Inputs that are brought by other nodes' carriers (everything its own carriers do not fetch). */
-  deliveredInputs(): ItemId[] {
-    return this.inputs.list.filter((slot) => !this.fetched.includes(slot)).map((slot) => slot.item);
+  inputItems(): ItemId[] {
+    return this.inputs.list.map((slot) => slot.item);
   }
 
   // --- money ----------------------------------------------------------------

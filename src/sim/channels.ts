@@ -21,11 +21,11 @@ import {
 import { BigNum } from '@/core/BigNum';
 import { secondsToTicks, TICKS_PER_SECOND } from '@/core/time';
 import { Carrier, type CarrierContext } from './Carrier';
-import type { SaleTarget } from './Dispatcher';
+import type { SaleHome } from './Dispatcher';
 import { Inventory, type Slot } from './Inventory';
 import { isPositive, ratio, subClamp } from './math';
 import { StatResolver, type ModifierRegistry } from './modifiers';
-import type { CarrierHome, Consumer, Site } from './nodes';
+import type { Consumer, PickupSource, Site } from './nodes';
 import { makePath, reversePath, type Path } from './RoadGraph';
 import { restoreLevels, serializeLevels, upgradeViews, type Upgradable } from './upgrades';
 import { Vehicle, weightFactor } from './Vehicle';
@@ -109,12 +109,13 @@ abstract class ChannelBase implements Upgradable {
     readonly site: Site,
     protected readonly ctx: ChannelContext,
     base: { baseIntervalSec: number; baseLoad: number; upgradeTracks: UpgradeTrackId[] },
+    extraStats: Record<string, number> = {},
   ) {
     this.tracks = base.upgradeTracks.flatMap((trackId) => ctx.catalog.upgradeTracks[trackId] ?? []);
     this.upgradeCostScale = ctx.balance.channels.upgradeCostScale[id] ?? 1;
     this.stats = new StatResolver(
       id,
-      { [Stat.interval]: base.baseIntervalSec, [Stat.load]: base.baseLoad },
+      { [Stat.interval]: base.baseIntervalSec, [Stat.load]: base.baseLoad, ...extraStats },
       this.tracks,
       this.levels,
       ctx.modifiers,
@@ -152,11 +153,12 @@ abstract class ChannelBase implements Upgradable {
 
 /**
  * Raw material trucks. Each truck brings what the buildings are asking for,
- * split in proportion to their requests, and the yard's own carriers hand it
- * out. Nothing is brought that nobody wants.
+ * split in proportion to their requests, and leaves it in the yard, where
+ * the buildings' carriers come to fetch it. Nothing is brought that nobody
+ * wants.
  */
-export class InboundChannel extends ChannelBase implements CarrierHome {
-  readonly carriers: Carrier[] = [];
+export class InboundChannel extends ChannelBase implements PickupSource {
+  readonly pickupUrgency = 0;
   readonly trucks: Visitor[] = [];
   private readonly inPath: Path;
   private readonly outPath: Path;
@@ -170,22 +172,6 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
     this.inPath = ctx.gatePath(site);
     this.outPath = reversePath(this.inPath);
     this.refresh();
-  }
-
-  override refresh(): void {
-    super.refresh();
-    const { yard, carriers } = this.ctx.balance;
-    let intervalLevel = 0;
-    for (const track of this.tracks) {
-      if (track.stat === Stat.interval) intervalLevel += this.levels.get(track.id) ?? 0;
-    }
-    const wanted = Math.min(
-      yard.maxCarriers,
-      yard.baseCarriers + Math.floor(intervalLevel / Math.max(1, yard.intervalLevelsPerCarrier)),
-    );
-    while (this.carriers.length < wanted) {
-      this.carriers.push(new Carrier(`${this.id}.c${this.carriers.length + 1}`, this, carriers.model));
-    }
   }
 
   update(tick: number): void {
@@ -208,7 +194,8 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
       let wanted = BigNum.ZERO;
       for (const consumer of consumers) wanted = wanted.add(consumer.demand(item));
       const slot = this.stock.slot(item);
-      const need = subClamp(wanted, slot.amount.add(slot.incoming));
+      // Stock a carrier has already claimed is no longer counted in the buildings' demand.
+      const need = subClamp(wanted, slot.available().add(slot.incoming));
       if (!isPositive(need)) continue;
       needs.push({ slot, need });
       total = total.add(need);
@@ -251,19 +238,23 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
     }
   }
 
-  // CarrierHome
-  carrierCapacity(): BigNum {
-    return this.load.mul(this.ctx.balance.yard.loadFactor);
+  // PickupSource
+  availableForPickup(item: ItemId): BigNum {
+    return this.stock.get(item)?.available() ?? BigNum.ZERO;
   }
-  pushSlots(): readonly Slot[] {
-    return this.stock.list;
+  reservePickup(item: ItemId, amount: BigNum): void {
+    const slot = this.stock.get(item);
+    if (slot) slot.reserved = slot.reserved.add(amount);
   }
-  pullSlots(): readonly Slot[] {
-    return NO_SLOTS;
+  override pickup(item: ItemId, planned: BigNum): BigNum {
+    const slot = this.stock.get(item);
+    if (!slot) return BigNum.ZERO;
+    slot.reserved = subClamp(slot.reserved, planned);
+    return slot.take(planned);
   }
-  stockTaken(): void {}
-  returnCargo(item: ItemId, amount: BigNum): void {
-    this.stock.slot(item).add(amount);
+  override cancelPickup(item: ItemId, planned: BigNum): void {
+    const slot = this.stock.get(item);
+    if (slot) slot.reserved = subClamp(slot.reserved, planned);
   }
   deliver(item: ItemId, delivered: BigNum, _planned: BigNum): void {
     this.stock.slot(item).add(delivered);
@@ -299,7 +290,6 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
       nextDispatch: this.nextDispatch,
       seq: this.seq,
       trucks: this.trucks.map((truck) => truck.toJSON()),
-      carriers: this.carriers.map((carrier) => carrier.toJSON()),
     };
   }
 
@@ -318,21 +308,21 @@ export class InboundChannel extends ChannelBase implements CarrierHome {
       if (truck.phase === 'handle') truck.state = 'unloading';
       this.trucks.push(truck);
     }
-    const carriers = Array.isArray(data.carriers) ? data.carriers : [];
-    this.carriers.forEach((carrier, index) => carrier.restore(carriers[index], this.ctx));
   }
 }
 
 // --- sale --------------------------------------------------------------------
 
 /**
- * Takes goods nobody on the island asked for. One vehicle at a time comes
+ * Takes goods nobody on the island asked for. Its own carriers fetch them
+ * from the buildings. One vehicle at a time comes
  * in, loads a share of everything waiting and leaves; the money arrives the
  * moment it is off the island. Heavy cargo slows the trip, which delays the
  * next visit.
  */
-export abstract class SaleChannel extends ChannelBase implements SaleTarget {
+export abstract class SaleChannel extends ChannelBase implements SaleHome {
   abstract readonly vehicleKind: VehicleKind;
+  readonly carriers: Carrier[] = [];
   vehicle: Visitor | null = null;
   private spawnTick = 0;
   private paths: { in: Path; out: Path } | null = null;
@@ -342,7 +332,20 @@ export abstract class SaleChannel extends ChannelBase implements SaleTarget {
     site: Site,
     ctx: ChannelContext,
   ) {
-    super(def.id, site, ctx, def);
+    const { saleCarriers } = ctx.balance;
+    super(def.id, site, ctx, def, {
+      [Stat.carrierCount]: saleCarriers.baseCount,
+      [Stat.carrierLoad]: saleCarriers.baseLoad,
+    });
+    this.refresh();
+  }
+
+  override refresh(): void {
+    super.refresh();
+    const wanted = Math.max(0, Math.round(this.stats.number(Stat.carrierCount)));
+    while (this.carriers.length < wanted) {
+      this.carriers.push(new Carrier(`${this.id}.c${this.carriers.length + 1}`, this, this.ctx.balance.carriers.model));
+    }
   }
 
   /** Path a vehicle takes onto the island; its last point is where it loads. */
@@ -427,7 +430,16 @@ export abstract class SaleChannel extends ChannelBase implements SaleTarget {
     }
   }
 
-  // SaleTarget
+  // SaleHome
+  carrierCapacity(): BigNum {
+    return this.stats.value(Stat.carrierLoad);
+  }
+  pullSlots(): readonly Slot[] {
+    return NO_SLOTS;
+  }
+  returnCargo(item: ItemId, amount: BigNum): void {
+    this.stock.slot(item).add(amount);
+  }
   reserveDelivery(item: ItemId, amount: BigNum): void {
     const slot = this.stock.slot(item);
     slot.incoming = slot.incoming.add(amount);
@@ -472,6 +484,7 @@ export abstract class SaleChannel extends ChannelBase implements SaleTarget {
       spawnTick: this.spawnTick,
       seq: this.seq,
       vehicle: this.vehicle ? this.vehicle.toJSON() : null,
+      carriers: this.carriers.map((carrier) => carrier.toJSON()),
     };
   }
 
@@ -485,6 +498,8 @@ export abstract class SaleChannel extends ChannelBase implements SaleTarget {
     this.spawnTick = Number(data.spawnTick) || 0;
     this.seq = Number(data.seq) || 0;
     this.vehicle = restoreVisitor(data.vehicle, this.vehicleKind, this.def.vehicleModel, this.lanes.in, this.lanes.out, this.known);
+    const carriers = Array.isArray(data.carriers) ? data.carriers : [];
+    this.carriers.forEach((carrier, index) => carrier.restore(carriers[index], this.ctx));
   }
 }
 
