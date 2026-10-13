@@ -10,8 +10,7 @@ import type { ModelRegistry } from '../ModelRegistry';
 import { buildingPalette, itemColor } from '../theme';
 import { BUILDING_ANCHORS } from './buildings';
 import type { Kit, Paint } from './kit';
-
-const HALF_PI = Math.PI / 2;
+import { HALF_PI, barnDoor, bush, framedWindow, gableRoof, log as partLog } from './parts';
 
 /** Saw blade with teeth, standing upright; its axis points along x (`axis: 'x'`) or along z. */
 function sawBlade(kit: Kit, radius: number, axis: 'x' | 'z', hub: Paint, x: number, y: number, z: number): Object3D {
@@ -32,16 +31,6 @@ function sawBlade(kit: Kit, radius: number, axis: 'x' | 'z', hub: Paint, x: numb
   return blade;
 }
 
-/** Log lying along z with pale cut ends; `y` is its underside. */
-function log(kit: Kit, radius: number, length: number, x: number, y: number, z: number): Object3D[] {
-  const p = kit.theme.props;
-  const cut = itemColor(kit.theme, 'lumber');
-  return [
-    kit.cyl(radius, radius, length, p.trunk, { x, y: y + radius - length / 2, z, rx: HALF_PI }, 14),
-    kit.cyl(radius * 0.8, radius * 0.8, length + 0.06, cut, { x, y: y + radius - length / 2 - 0.03, z, rx: HALF_PI }, 14),
-  ];
-}
-
 function sawmill(kit: Kit): Object3D {
   const theme = kit.theme;
   const palette = buildingPalette(theme, 'sawmill');
@@ -49,7 +38,8 @@ function sawmill(kit: Kit): Object3D {
   const trim = palette.trim ?? palette.accent;
   const plank = itemColor(theme, 'lumber');
   const sawdust = itemColor(theme, 'sawdust');
-  const window = kit.materials.window;
+  const log = (radius: number, length: number, x: number, y: number, z: number): Object3D[] =>
+    partLog(kit, radius, length, x, y, z, plank);
   const parts: Array<Object3D | Object3D[]> = [];
 
   const FLOOR = 0.3;
@@ -72,7 +62,6 @@ function sawmill(kit: Kit): Object3D {
   // Walls on a stone footing, gable, timber frame.
   parts.push(kit.box(W, WALL, D, palette.wall, { x: CX, y: FLOOR, z: CZ, r: 0.2 }));
   parts.push(kit.box(W + 0.16, 0.55, D + 0.16, p.rock, { x: CX, y: FLOOR, z: CZ, r: 0.14 }));
-  parts.push(kit.prism(D - 0.1, RISE, W - 0.1, palette.wall, { x: CX, y: eave - 0.05, z: CZ, ry: HALF_PI }));
   for (const x of [left + 0.1, right - 0.1]) {
     for (const z of [front - 0.1, CZ - D / 2 + 0.1]) {
       parts.push(kit.box(0.42, WALL + 0.1, 0.42, palette.accent, { x, y: FLOOR, z, r: 0.1 }));
@@ -81,38 +70,8 @@ function sawmill(kit: Kit): Object3D {
   parts.push(kit.box(W + 0.1, 0.34, 0.3, palette.accent, { x: CX, y: eave - 0.3, z: front + 0.02, r: 0.08 }));
   parts.push(kit.box(0.3, 0.34, D + 0.1, palette.accent, { x: right + 0.02, y: eave - 0.3, z: CZ, r: 0.08 }));
 
-  // Roof: two thick slabs with an overhang, a ridge cap and pale barge boards.
-  const pitch = Math.atan2(RISE, W / 2);
-  const span = W / 2 + 0.75;
-  const slab = span / Math.cos(pitch);
-  const ridgeY = eave + RISE + 0.12;
-  for (const side of [-1, 1]) {
-    const x = CX + (side * span) / 2;
-    const y = ridgeY - (span / 2) * Math.tan(pitch);
-    parts.push(kit.box(slab, 0.34, D + 1.3, palette.roof, { x, y: y - 0.17, z: CZ, rz: -side * pitch, r: 0.14 }));
-    parts.push(kit.box(slab, 0.2, 0.22, p.sign, { x, y: y - 0.24, z: front + 0.62, rz: -side * pitch, r: 0.06 }));
-  }
-  parts.push(kit.box(0.7, 0.3, D + 1.4, palette.accent, { x: CX, y: ridgeY - 0.02, z: CZ, r: 0.14 }));
-
-  // Sliding barn door on a rail, with cross braces.
-  const DOOR_W = 3;
-  const DOOR_H = 2.45;
-  const doorZ = front + 0.06;
-  parts.push(kit.box(DOOR_W + 0.4, DOOR_H + 0.2, 0.12, p.sign, { x: CX, y: FLOOR, z: front + 0.01, r: 0.06 }));
-  parts.push(kit.box(DOOR_W, DOOR_H, 0.16, trim, { x: CX, y: FLOOR, z: doorZ, r: 0.07 }));
-  const brace = Math.hypot(DOOR_W - 0.3, DOOR_H - 0.3);
-  const braceAngle = Math.atan2(DOOR_H - 0.3, DOOR_W - 0.3);
-  for (const side of [-1, 1]) {
-    parts.push(kit.box(brace, 0.2, 0.1, p.sign, { x: CX, y: FLOOR + DOOR_H / 2 - 0.1, z: doorZ + 0.08, rz: side * braceAngle, r: 0.04 }));
-  }
-  for (const y of [FLOOR + 0.02, FLOOR + DOOR_H - 0.22]) {
-    parts.push(kit.box(DOOR_W, 0.2, 0.1, p.sign, { x: CX, y, z: doorZ + 0.08, r: 0.04 }));
-  }
-  for (const x of [CX - DOOR_W / 2 + 0.1, CX + DOOR_W / 2 - 0.1]) {
-    parts.push(kit.box(0.2, DOOR_H, 0.1, p.sign, { x, y: FLOOR, z: doorZ + 0.08, r: 0.04 }));
-  }
-  parts.push(kit.box(DOOR_W + 1.6, 0.14, 0.16, p.darkMetal, { x: CX, y: FLOOR + DOOR_H + 0.18, z: doorZ + 0.06, r: 0.05 }));
-  parts.push(kit.box(0.34, 0.22, 0.16, kit.materials.lamp, { x: CX, y: FLOOR + DOOR_H + 0.42, z: front + 0.12, r: 0.07 }));
+  parts.push(gableRoof(kit, { cx: CX, cz: CZ, width: W, depth: D, eave, rise: RISE, wall: palette.wall, roof: palette.roof, cap: palette.accent }));
+  parts.push(barnDoor(kit, { cx: CX, wall: front, y: FLOOR, paint: trim }));
 
   // The saw blade on the gable says what the building does.
   parts.push(kit.cyl(1.02, 1.02, 0.1, p.sign, { x: CX, y: eave + 0.85, z: front + 0.02, rx: HALF_PI }, 28));
@@ -120,10 +79,7 @@ function sawmill(kit: Kit): Object3D {
 
   // Windows with frames and sills on the open side wall.
   for (const z of [CZ - 1.7, CZ + 1.7]) {
-    parts.push(kit.box(0.12, 1.3, 1.6, p.sign, { x: right + 0.02, y: FLOOR + 1.05, z, r: 0.05 }));
-    parts.push(kit.box(0.16, 1.05, 1.35, window, { x: right + 0.04, y: FLOOR + 1.18, z, r: 0.05 }));
-    parts.push(kit.box(0.2, 1.05, 0.1, p.sign, { x: right + 0.05, y: FLOOR + 1.18, z, r: 0.03 }));
-    parts.push(kit.box(0.34, 0.12, 1.8, palette.accent, { x: right + 0.1, y: FLOOR + 0.98, z, r: 0.05 }));
+    parts.push(framedWindow(kit, { face: 'right', along: z, wall: right, y: FLOOR + 1.05, sill: palette.accent }));
   }
   // Flower box under the front window.
   parts.push(kit.box(0.4, 0.3, 1.5, trim, { x: right + 0.22, y: FLOOR + 0.72, z: CZ + 1.7, r: 0.1 }));
@@ -165,7 +121,7 @@ function sawmill(kit: Kit): Object3D {
     const z = benchZ - 2.3 + i * 0.575;
     parts.push(kit.cyl(0.11, 0.11, 1.3, p.metal, { x: LX, y: FLOOR + 0.86 - 0.65, z, rz: HALF_PI }, 10));
   }
-  parts.push(log(kit, 0.42, 2.2, LX, FLOOR + 0.95, benchZ + 1.55));
+  parts.push(log(0.42, 2.2, LX, FLOOR + 0.95, benchZ + 1.55));
   parts.push(sawBlade(kit, 1.0, 'x', palette.roof, LX, FLOOR + 1.2, benchZ - 0.45));
   parts.push(kit.box(0.5, 0.75, 0.9, trim, { x: LX + 1.15, y: FLOOR, z: benchZ - 0.5, r: 0.14 }));
   parts.push(kit.box(0.3, 0.12, 0.3, p.hazard, { x: LX + 1.15, y: FLOOR + 0.75, z: benchZ - 0.5, r: 0.05 }));
@@ -178,9 +134,9 @@ function sawmill(kit: Kit): Object3D {
   // Log pile waiting beside the lean-to, held by stakes.
   const pileX = -6.75;
   const pileZ = CZ + 0.6;
-  parts.push(log(kit, 0.4, 3.6, pileX - 0.42, 0, pileZ));
-  parts.push(log(kit, 0.4, 3.6, pileX + 0.42, 0, pileZ + 0.15));
-  parts.push(log(kit, 0.38, 3.4, pileX, 0.68, pileZ - 0.1));
+  parts.push(log(0.4, 3.6, pileX - 0.42, 0, pileZ));
+  parts.push(log(0.4, 3.6, pileX + 0.42, 0, pileZ + 0.15));
+  parts.push(log(0.38, 3.4, pileX, 0.68, pileZ - 0.1));
   for (const z of [pileZ - 1.2, pileZ + 1.2]) {
     parts.push(kit.box(0.16, 0.95, 0.16, palette.accent, { x: pileX - 0.93, z, r: 0.05 }));
   }
@@ -196,8 +152,7 @@ function sawmill(kit: Kit): Object3D {
   }
 
   // Greenery at the corner and a barrel by the door.
-  parts.push(kit.blob(0.6, 0.5, 0.6, theme.props.foliage[2] ?? trim, { x: left + 0.25, y: FLOOR - 0.05, z: front + 0.55 }));
-  parts.push(kit.blob(0.4, 0.36, 0.4, theme.props.foliage[1] ?? trim, { x: left + 0.9, y: FLOOR - 0.05, z: front + 0.7 }));
+  parts.push(bush(kit, left + 0.25, FLOOR - 0.05, front + 0.55));
   parts.push(kit.cyl(0.32, 0.28, 0.75, p.wood, { x: CX - 2.2, y: 0.22, z: front + 0.75 }, 14));
   parts.push(kit.cyl(0.33, 0.33, 0.08, p.darkMetal, { x: CX - 2.2, y: 0.72, z: front + 0.75 }, 14));
 
