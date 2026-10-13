@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
@@ -42,8 +42,29 @@ const modelReview = (): Plugin => ({
   },
 });
 
+const SHOTS_DIR = fileURLToPath(new URL('./shots/', import.meta.url));
+
+/** Dev server only: saves a picture posted to /__shots/<name> as shots/<name>.png (not kept in the repository). */
+const shots = (): Plugin => ({
+  name: 'shots',
+  configureServer(server) {
+    server.middlewares.use('/__shots', (request, response) => {
+      const name = (request.url ?? '').replace(/[^a-z0-9-]/gi, '');
+      const chunks: Buffer[] = [];
+      request.on('data', (chunk: Buffer) => chunks.push(chunk));
+      request.on('end', () => {
+        if (request.method === 'POST' && name) {
+          mkdirSync(SHOTS_DIR, { recursive: true });
+          writeFileSync(`${SHOTS_DIR}${name}.png`, Buffer.concat(chunks));
+        }
+        response.end('{}');
+      });
+    });
+  },
+});
+
 export default defineConfig({
-  plugins: [modelReview()],
+  plugins: [modelReview(), shots()],
   // Saving an approval must not reload the page that saved it.
   server: { watch: { ignored: ['**/src/render/models/review.json'] } },
   resolve: {

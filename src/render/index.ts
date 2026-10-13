@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, PCFShadowMap, Scene, Vector3, WebGLRenderer } from 'three';
+import { PCFShadowMap, Scene, Vector3, WebGLRenderer } from 'three';
 import type { GameEvent, GameRenderer, GameSnapshot, PickTarget, RendererOptions, ScreenPoint, Selection } from '@/contracts';
 import { BLOCK_MODEL, registerBoxModels } from './boxModels';
 import { registerGameModels } from './models/index';
@@ -7,6 +7,7 @@ import { Effects } from './Effects';
 import { siteToWorld } from './layout';
 import { renderConfig } from './config';
 import { Environment } from './Environment';
+import { applyLook, DEFAULT_LOOK, isLook, LOOKS } from './looks';
 import { MaterialLibrary } from './materials';
 import { clamp, pickNearest, pointerToNdc, type Ray } from './math';
 import { ModelRegistry } from './ModelRegistry';
@@ -39,8 +40,9 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFShadowMap;
-  renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = renderConfig.exposure;
+  const wanted = import.meta.env.DEV ? new URLSearchParams(location.search).get('look') : null;
+  const look = LOOKS[isLook(wanted) ? wanted : DEFAULT_LOOK];
+  applyLook(renderer, look);
 
   const materials = new MaterialLibrary(theme);
   const kit = new Kit(theme, materials);
@@ -54,7 +56,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   registerGameModels(models, kit);
 
   const scene = new Scene();
-  const environment = new Environment(scene, models, theme, materials);
+  const environment = new Environment(scene, models, theme, materials, look);
   const view = new ViewSync(models, theme);
   scene.add(view.group);
   const effects = new Effects(models, theme, canvas);

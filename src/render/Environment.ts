@@ -15,6 +15,7 @@ import {
   type Scene,
 } from 'three';
 import type { IslandLayoutDef } from '@/contracts';
+import { DEFAULT_LOOK, LOOKS, type Look } from './looks';
 import { BLOCK_MODEL } from './boxModels';
 import { renderConfig } from './config';
 import { celestialState, dayPhase, lerpRgb, sampleDayNight, type Rgb } from './dayNight';
@@ -57,6 +58,7 @@ export class Environment {
     private readonly registry: ModelRegistry,
     private readonly theme: Theme,
     private readonly materials: MaterialLibrary,
+    private readonly look: Look = LOOKS[DEFAULT_LOOK],
   ) {
     const g = renderConfig.boxes.ground;
     this.ground = new Mesh(new PlaneGeometry(1, 1), materials.solid(theme.ground.grass));
@@ -327,10 +329,10 @@ export class Environment {
       this.centre.z + sky.light.z * this.lightDistance,
     );
     setRgb(this.sun.color, sample.light);
-    this.sun.intensity = sample.lightIntensity;
+    this.sun.intensity = sample.lightIntensity * this.look.sun;
     setRgb(this.ambient.color, sample.ambientSky);
     setRgb(this.ambient.groundColor, sample.ambientGround);
-    this.ambient.intensity = sample.ambientIntensity;
+    this.ambient.intensity = sample.ambientIntensity * this.look.ambient;
     setRgb(this.background, lerpRgb(sample.skyHorizon, sample.skyTop, 0.5));
     setRgb(this.fog.color, sample.fog);
     return sample.night;

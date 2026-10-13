@@ -196,7 +196,7 @@ export const renderConfig = {
     fenceSegment: 3.2,
   },
   maxPixelRatio: 2,
-  /** Exposure of the filmic tone mapping; the theme's light strengths assume it. */
+  /** Exposure of the model page; the game takes its own from its look (looks.ts). */
   exposure: 0.8,
   /** Longest real-time step a single frame may advance the camera by. */
   maxFrameSec: 0.1,
