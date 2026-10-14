@@ -191,6 +191,10 @@ export class Building implements CarrierHome, Consumer, PickupSource, Upgradable
 
   // --- logistics ------------------------------------------------------------
 
+  inputTarget(item: ItemId): BigNum {
+    return this.inputs.get(item)?.capacity ?? BigNum.ZERO;
+  }
+
   demand(item: ItemId): BigNum {
     return this.inputs.get(item)?.demand() ?? BigNum.ZERO;
   }

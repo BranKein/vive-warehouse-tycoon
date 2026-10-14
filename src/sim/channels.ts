@@ -39,9 +39,13 @@ export interface ChannelContext extends CarrierContext {
   /** Road path from the island gate to the dock of a site. */
   gatePath(site: Site): Path;
   consumersOf(item: ItemId): readonly Consumer[];
+  /** Raw material already on the island or on its way, at every place that imports it. */
+  rawOnHand(item: ItemId): BigNum;
   isUnlocked(unlock: UnlockId | null): boolean;
   /** Game-wide price multiplier. */
   priceMultiplier(): BigNum;
+  /** Money paid back, not earned: for upgrade levels a newer version no longer allows. */
+  refund(amount: BigNum): void;
   /** Money arrives; called when a sale vehicle leaves the island. */
   earn(amount: BigNum, channelId: string, x: number, z: number): void;
   /** Part of an `earn` that came from one kind of item; for the statistics. */
@@ -139,6 +143,13 @@ abstract class ChannelBase implements Upgradable {
 
   protected known = (item: ItemId): boolean => item in this.ctx.catalog.items;
 
+  /** Restores the upgrade levels and pays back levels beyond a maximum lowered since the save. */
+  protected restoreUpgrades(saved: unknown): void {
+    const refund = restoreLevels(this.levels, this.tracks, saved, this.upgradeCostScale);
+    if (isPositive(refund)) this.ctx.refund(refund);
+    this.refresh();
+  }
+
   protected parked(): { x: number; y: number; z: number; heading: number } {
     const { dock, heading } = this.site;
     return { x: dock.x, y: dock.y, z: dock.z, heading };
@@ -154,6 +165,94 @@ abstract class ChannelBase implements Upgradable {
 // --- inbound -----------------------------------------------------------------
 
 /**
+ * What the buildings still want of each raw material, plus a reserve, beyond
+ * what is on the island or on its way, scaled down to fit a load of `load`. Every place
+ * that imports asks the same question, so the yard, the dock and the apron
+ * share the demand instead of each bringing all of it. Null when nothing is wanted.
+ */
+function planImport(ctx: ChannelContext, load: BigNum): Array<{ item: ItemId; amount: BigNum }> | null {
+  const needs: Array<{ item: ItemId; amount: BigNum }> = [];
+  let total = BigNum.ZERO;
+  const reserve = ctx.balance.imports.reserveBuffers;
+  for (const item of ctx.rawItems) {
+    const consumers = ctx.consumersOf(item);
+    if (consumers.length === 0) continue;
+    let wanted = BigNum.ZERO;
+    for (const consumer of consumers) wanted = wanted.add(consumer.demand(item)).add(consumer.inputTarget(item).mul(reserve));
+    // Stock a carrier has already claimed is no longer counted in the buildings' demand.
+    const need = subClamp(wanted, ctx.rawOnHand(item));
+    if (!isPositive(need)) continue;
+    needs.push({ item, amount: need });
+    total = total.add(need);
+  }
+  if (needs.length === 0 || !isPositive(load)) return null;
+  if (total.cmp(load) > 0) {
+    const share = load.div(total);
+    for (const need of needs) need.amount = need.amount.mul(share);
+  }
+  return needs;
+}
+
+/** Raw material stock waiting for the buildings' carriers: the inbound yard, or what ships and planes unloaded. */
+class RawStock implements PickupSource {
+  readonly pickupUrgency = 0;
+  /** Everything that ever arrived here; not saved, only for reports. */
+  arrived = BigNum.ZERO;
+
+  constructor(
+    readonly id: string,
+    readonly site: Site,
+    readonly stock: Inventory = new Inventory(),
+  ) {}
+
+  /** What is here or on its way here. */
+  onHand(item: ItemId): BigNum {
+    const slot = this.stock.get(item);
+    return slot ? slot.available().add(slot.incoming) : BigNum.ZERO;
+  }
+
+  expect(item: ItemId, amount: BigNum): void {
+    const slot = this.stock.slot(item);
+    slot.incoming = slot.incoming.add(amount);
+  }
+
+  arrive(item: ItemId, amount: BigNum): void {
+    this.arrived = this.arrived.add(amount);
+    const slot = this.stock.slot(item);
+    slot.incoming = subClamp(slot.incoming, amount);
+    slot.add(amount);
+  }
+
+  fullness(_item: ItemId): number {
+    return 0;
+  }
+  availableForPickup(item: ItemId): BigNum {
+    return this.stock.get(item)?.available() ?? BigNum.ZERO;
+  }
+  reservePickup(item: ItemId, amount: BigNum): void {
+    const slot = this.stock.get(item);
+    if (slot) slot.reserved = slot.reserved.add(amount);
+  }
+  pickup(item: ItemId, planned: BigNum): BigNum {
+    const slot = this.stock.get(item);
+    if (!slot) return BigNum.ZERO;
+    slot.reserved = subClamp(slot.reserved, planned);
+    return slot.take(planned);
+  }
+  cancelPickup(item: ItemId, planned: BigNum): void {
+    const slot = this.stock.get(item);
+    if (slot) slot.reserved = subClamp(slot.reserved, planned);
+  }
+  deliver(item: ItemId, delivered: BigNum, _planned: BigNum): void {
+    this.stock.slot(item).add(delivered);
+  }
+  cancelDelivery(_item: ItemId, _planned: BigNum): void {}
+}
+
+/** Where a ship or plane leaves the raw materials it brought: the dock or the apron, a node of its own. */
+export class ImportDepot extends RawStock {}
+
+/**
  * Raw material trucks. Each truck brings what the buildings are asking for,
  * split in proportion to their requests, and leaves it in the yard, where
  * the buildings' carriers come to fetch it. Nothing is brought that nobody
@@ -162,6 +261,8 @@ abstract class ChannelBase implements Upgradable {
 export class InboundChannel extends ChannelBase implements PickupSource {
   readonly pickupUrgency = 0;
   readonly trucks: Visitor[] = [];
+  /** Works the channel's own stock; shares its code with the import depots. */
+  private readonly yard: RawStock;
   private readonly inPath: Path;
   private readonly outPath: Path;
 
@@ -171,6 +272,7 @@ export class InboundChannel extends ChannelBase implements PickupSource {
     ctx: ChannelContext,
   ) {
     super(def.id, site, ctx, def);
+    this.yard = new RawStock(def.id, site, this.stock);
     this.inPath = ctx.gatePath(site);
     this.outPath = reversePath(this.inPath);
     this.refresh();
@@ -188,30 +290,15 @@ export class InboundChannel extends ChannelBase implements PickupSource {
 
   /** Sends a truck loaded with what is being asked for. False when nothing is wanted. */
   private dispatch(tick: number): boolean {
-    const needs: Array<{ slot: Slot; need: BigNum }> = [];
-    let total = BigNum.ZERO;
-    for (const item of this.ctx.rawItems) {
-      const consumers = this.ctx.consumersOf(item);
-      if (consumers.length === 0) continue;
-      let wanted = BigNum.ZERO;
-      for (const consumer of consumers) wanted = wanted.add(consumer.demand(item));
-      const slot = this.stock.slot(item);
-      // Stock a carrier has already claimed is no longer counted in the buildings' demand.
-      const need = subClamp(wanted, slot.available().add(slot.incoming));
-      if (!isPositive(need)) continue;
-      needs.push({ slot, need });
-      total = total.add(need);
-    }
-    if (needs.length === 0) return false;
     const load = this.load;
-    const share = total.cmp(load) > 0 ? load.div(total) : BigNum.ONE;
+    const needs = planImport(this.ctx, load);
+    if (!needs) return false;
     this.seq += 1;
     const truck = new Visitor(`${this.id}.v${this.seq}`, 'inboundTruck', this.def.vehicleModel);
     truck.capacity = load;
-    for (const { slot, need } of needs) {
-      const amount = need.mul(share);
-      truck.cargo.add(slot.item, amount);
-      slot.incoming = slot.incoming.add(amount);
+    for (const { item, amount } of needs) {
+      truck.cargo.add(item, amount);
+      this.yard.expect(item, amount);
     }
     const { weight } = this.ctx.balance;
     const factor = weightFactor(truck.cargo.averageWeight(this.ctx.catalog.items), weight.inboundSensitivity, this.ctx.balance);
@@ -226,11 +313,7 @@ export class InboundChannel extends ChannelBase implements PickupSource {
       truck.state = 'unloading';
       truck.wake = tick + secondsToTicks(this.ctx.balance.channels.handlingSec);
     } else if (truck.phase === 'handle') {
-      for (const [item, amount] of truck.cargo.items) {
-        const slot = this.stock.slot(item);
-        slot.incoming = subClamp(slot.incoming, amount);
-        slot.add(amount);
-      }
+      for (const [item, amount] of truck.cargo.items) this.yard.arrive(item, amount);
       truck.cargo.clear();
       truck.phase = 'out';
       truck.wake = truck.travel(this.outPath, this.def.vehicleSpeed, tick);
@@ -240,29 +323,32 @@ export class InboundChannel extends ChannelBase implements PickupSource {
     }
   }
 
-  // PickupSource
+  /** Raw materials the trucks have brought so far; not saved, only for reports. */
+  get arrived(): BigNum {
+    return this.yard.arrived;
+  }
+
+  // PickupSource: the yard's stock
+  onHand(item: ItemId): BigNum {
+    return this.yard.onHand(item);
+  }
   fullness(_item: ItemId): number {
     return 0;
   }
   availableForPickup(item: ItemId): BigNum {
-    return this.stock.get(item)?.available() ?? BigNum.ZERO;
+    return this.yard.availableForPickup(item);
   }
   reservePickup(item: ItemId, amount: BigNum): void {
-    const slot = this.stock.get(item);
-    if (slot) slot.reserved = slot.reserved.add(amount);
+    this.yard.reservePickup(item, amount);
   }
   override pickup(item: ItemId, planned: BigNum): BigNum {
-    const slot = this.stock.get(item);
-    if (!slot) return BigNum.ZERO;
-    slot.reserved = subClamp(slot.reserved, planned);
-    return slot.take(planned);
+    return this.yard.pickup(item, planned);
   }
   override cancelPickup(item: ItemId, planned: BigNum): void {
-    const slot = this.stock.get(item);
-    if (slot) slot.reserved = subClamp(slot.reserved, planned);
+    this.yard.cancelPickup(item, planned);
   }
-  deliver(item: ItemId, delivered: BigNum, _planned: BigNum): void {
-    this.stock.slot(item).add(delivered);
+  deliver(item: ItemId, delivered: BigNum, planned: BigNum): void {
+    this.yard.deliver(item, delivered, planned);
   }
 
   get handlingCount(): number {
@@ -301,8 +387,7 @@ export class InboundChannel extends ChannelBase implements PickupSource {
   restore(saved: unknown): void {
     if (!saved || typeof saved !== 'object') return;
     const data = saved as Record<string, unknown>;
-    restoreLevels(this.levels, this.tracks, data.levels);
-    this.refresh();
+    this.restoreUpgrades(data.levels);
     this.stock.restore(data.stock, this.known);
     this.nextDispatch = Number(data.nextDispatch) || 0;
     this.seq = Number(data.seq) || 0;
@@ -328,6 +413,8 @@ export class InboundChannel extends ChannelBase implements PickupSource {
 export abstract class SaleChannel extends ChannelBase implements SaleHome {
   abstract readonly vehicleKind: VehicleKind;
   readonly carriers: Carrier[] = [];
+  /** Where this channel's vehicles leave the raw materials they bring in; null when they arrive empty. */
+  readonly depot: ImportDepot | null;
   vehicle: Visitor | null = null;
   private spawnTick = 0;
   private paths: { in: Path; out: Path } | null = null;
@@ -341,7 +428,9 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
     super(def.id, site, ctx, def, {
       [Stat.carrierCount]: saleCarriers.baseCount,
       [Stat.carrierLoad]: saleCarriers.baseLoad,
+      [Stat.importLoad]: def.importBaseLoad ?? 0,
     });
+    this.depot = def.importBaseLoad ? new ImportDepot(`${def.id}.import`, site) : null;
     this.refresh();
   }
 
@@ -396,14 +485,25 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
       return;
     }
     if (tick < this.nextDispatch || !this.unlocked) return;
-    if (!this.stock.hasAny) {
+    const imports = this.depot ? planImport(this.ctx, this.stats.value(Stat.importLoad)) : null;
+    if (!this.stock.hasAny && !imports) {
       this.nextDispatch = tick + RETRY_TICKS;
       return;
     }
     this.seq += 1;
     const next = new Visitor(`${this.id}.v${this.seq}`, this.vehicleKind, this.def.vehicleModel);
     next.capacity = this.load;
-    next.wake = next.travel(this.lanes.in, this.def.vehicleSpeed, tick);
+    let speed = this.def.vehicleSpeed;
+    if (imports && this.depot) {
+      // Comes in loaded with raw materials; the demand they meet is counted from now on.
+      next.capacity = this.stats.value(Stat.importLoad);
+      for (const { item, amount } of imports) {
+        next.cargo.add(item, amount);
+        this.depot.expect(item, amount);
+      }
+      speed *= weightFactor(next.cargo.averageWeight(this.ctx.catalog.items), this.def.weightSensitivity, this.ctx.balance);
+    }
+    next.wake = next.travel(this.lanes.in, speed, tick);
     this.vehicle = next;
     this.spawnTick = tick;
     this.nextDispatch = tick + this.intervalTicks;
@@ -415,6 +515,8 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
       vehicle.state = 'loading';
       vehicle.wake = tick + secondsToTicks(this.ctx.balance.channels.handlingSec);
     } else if (vehicle.phase === 'handle') {
+      if (this.depot) for (const [item, amount] of vehicle.cargo.items) this.depot.arrive(item, amount);
+      vehicle.cargo.clear();
       let total = BigNum.ZERO;
       for (const slot of this.stock.list) total = total.add(slot.amount);
       const load = this.load;
@@ -483,7 +585,8 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
       kind: this.ctx.layout.facilities.find((facility) => facility.id === this.def.facility)?.kind ?? 'truckYard',
       channelId: this.id,
       unlocked,
-      stock: this.stock.views(),
+      // Raw materials brought in are shown alongside the goods waiting to leave.
+      stock: this.depot ? [...this.stock.views(), ...this.depot.stock.views()] : this.stock.views(),
       upgrades: upgradeViews(this, money),
       nextArrivalSec: unlocked ? Math.max(0, this.nextDispatch - tick) / TICKS_PER_SECOND : null,
       handlingCount: carrierHandling + this.handlingCount,
@@ -494,6 +597,7 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
     return {
       levels: serializeLevels(this.levels),
       stock: this.stock.toJSON(true),
+      ...(this.depot ? { imports: this.depot.stock.toJSON(true) } : {}),
       nextDispatch: this.nextDispatch,
       spawnTick: this.spawnTick,
       seq: this.seq,
@@ -505,9 +609,9 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
   restore(saved: unknown): void {
     if (!saved || typeof saved !== 'object') return;
     const data = saved as Record<string, unknown>;
-    restoreLevels(this.levels, this.tracks, data.levels);
-    this.refresh();
+    this.restoreUpgrades(data.levels);
     this.stock.restore(data.stock, this.known);
+    this.depot?.stock.restore(data.imports, this.known);
     this.nextDispatch = Number(data.nextDispatch) || 0;
     this.spawnTick = Number(data.spawnTick) || 0;
     this.seq = Number(data.seq) || 0;

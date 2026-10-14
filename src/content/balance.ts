@@ -60,6 +60,14 @@ export interface Balance {
     /** Distance from a facility's centre to its loading point. */
     dockOffset: number;
   };
+  imports: {
+    /**
+     * Raw material kept waiting in the yard, the dock and the apron on top of
+     * what the buildings ask for, in full input buffers of the buildings. Ships
+     * and planes take a while to come in, so they bring enough to bridge the gap.
+     */
+    reserveBuffers: number;
+  };
   /** Stat values before any upgrade. */
   baseStats: { batchSize: number; cycleSpeed: number; priceMultiplier: number };
   autoPilot: {
@@ -90,7 +98,7 @@ export interface Balance {
 }
 
 export const BALANCE: Balance = {
-  storage: { inputBufferSec: 40, minInputCycles: 2, outputBufferSec: 150, minOutputCycles: 2 },
+  storage: { inputBufferSec: 80, minInputCycles: 2, outputBufferSec: 150, minOutputCycles: 2 },
   waste: { limitSec: 120, minLimitCycles: 4, slowdown: 0.5, source: 'wasteClogged' },
   weight: { slowPerWeight: 0.15, minFactor: 0.3, carrierSensitivity: 0.5, inboundSensitivity: 0.5 },
   carriers: { model: 'vehicle.carrier', speed: 12, baseCount: 1, baseLoad: 12, handlingSec: 1, maxStops: 4 },
@@ -101,6 +109,7 @@ export const BALANCE: Balance = {
     upgradeCostScale: { 'inbound.truck': 1, 'sale.truck': 1, 'sale.ship': 2, 'sale.plane': 200 },
     dockOffset: 6,
   },
+  imports: { reserveBuffers: 3 },
   baseStats: { batchSize: 1, cycleSpeed: 1, priceMultiplier: 1 },
   autoPilot: {
     checkEverySec: 1,

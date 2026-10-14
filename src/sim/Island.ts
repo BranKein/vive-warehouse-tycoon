@@ -18,7 +18,7 @@ import type {
 import { BigNum } from '@/core/BigNum';
 import type { Balance } from '@/content/balance';
 import { Building, type BuildingContext } from './Building';
-import { createSaleChannel, InboundChannel, type ChannelContext, type SaleChannel } from './channels';
+import { createSaleChannel, InboundChannel, type ChannelContext, type ImportDepot, type SaleChannel } from './channels';
 import { Dispatcher, type DispatchContext, type SaleHome } from './Dispatcher';
 import { parseAmount } from './Inventory';
 import { ModifierRegistry } from './modifiers';
@@ -34,6 +34,8 @@ export interface IslandHost {
   readonly balance: Balance;
   trySpend(amount: BigNum): boolean;
   earn(amount: BigNum, channelId: string, x: number, z: number): void;
+  /** Money paid back without counting as income. */
+  refund(amount: BigNum): void;
   isUnlocked(unlock: UnlockId | null): boolean;
   priceMultiplier(): BigNum;
   emit(event: GameEvent): void;
@@ -144,6 +146,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       const channel = createSaleChannel(saleDef, siteOf(saleDef.facility, saleDef.id), this);
       this.sales.push(channel);
       this.nodes.set(channel.id, channel);
+      if (channel.depot) this.nodes.set(channel.depot.id, channel.depot);
     }
     this.salesByPrice = [...this.sales].sort((a, b) => b.def.priceMultiplier - a.def.priceMultiplier);
     this.dispatcher = new Dispatcher(this);
@@ -174,6 +177,10 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
 
   earn(amount: BigNum, channelId: string, x: number, z: number): void {
     this.host.earn(amount, channelId, x, z);
+  }
+
+  refund(amount: BigNum): void {
+    this.host.refund(amount);
   }
 
   isUnlocked(unlock: UnlockId | null): boolean {
@@ -207,6 +214,17 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
 
   distance(from: number, to: number): number {
     return this.graph.distance(this.sites[from]!.road, this.sites[to]!.road);
+  }
+
+  /** Places sale vehicles leave imported raw materials. */
+  get depots(): ImportDepot[] {
+    return this.sales.flatMap((channel) => (channel.depot ? [channel.depot] : []));
+  }
+
+  rawOnHand(item: ItemId): BigNum {
+    let total = this.inbound.onHand(item);
+    for (const channel of this.sales) if (channel.depot) total = total.add(channel.depot.onHand(item));
+    return total;
   }
 
   consumersOf(item: ItemId): readonly Consumer[] {
@@ -356,8 +374,9 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
     this.homes = [...this.buildings, ...this.sales];
     this.consumers.clear();
     this.sources.clear();
-    // Raw materials wait in the inbound yard until a building's carrier comes for them.
-    for (const item of this.rawItems) this.sources.set(item, [this.inbound]);
+    // Raw materials wait in the inbound yard, the dock or the apron until a building's carrier comes for them.
+    const rawSources: PickupSource[] = [this.inbound, ...this.depots];
+    for (const item of this.rawItems) this.sources.set(item, [...rawSources]);
     for (const building of this.buildings) {
       for (const item of building.inputItems()) {
         const list = this.consumers.get(item) ?? [];
@@ -509,6 +528,7 @@ export class Island implements BuildingContext, ChannelContext, DispatchContext 
       earn: (amount) => {
         net = net.add(amount);
       },
+      refund: () => {},
       isUnlocked: (unlock) => this.host.isUnlocked(unlock),
       priceMultiplier: () => this.host.priceMultiplier(),
       emit: () => {},

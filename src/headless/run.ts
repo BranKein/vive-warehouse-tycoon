@@ -239,6 +239,15 @@ export function formatReport(report: HeadlessReport): string {
     .slice(0, 5)
     .map(([item, value]) => `${item} ${share(value)}`);
   if (short.length > 0) lines.push(`Most often missing: ${short.join(', ')}`);
+  const imports = [
+    { id: island.inbound.id, amount: island.inbound.arrived },
+    ...island.sales.flatMap((channel) => (channel.depot ? [{ id: channel.id, amount: channel.depot.arrived }] : [])),
+  ];
+  const imported = imports.reduce((sum, entry) => sum + entry.amount.toNumber(), 0);
+  if (imported > 0) {
+    const parts = imports.map((entry) => `${entry.id} ${Math.round((entry.amount.toNumber() / imported) * 100)}%`);
+    lines.push(`Raw materials brought in by: ${parts.join(', ')}`);
+  }
   lines.push(`Buildings built: ${report.buildingsBuilt}, upgrades bought: ${report.upgradesBought}`);
   lines.push(`Simulated ${report.game.tickCount} ticks in ${(report.wallMs / 1000).toFixed(1)} s`);
   return lines.join('\n');

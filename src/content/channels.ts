@@ -1,5 +1,5 @@
 import type { InboundChannelDef, SaleChannelDef, UnlockDef } from '@/contracts';
-import { INBOUND_TRACKS, SALE_TRACKS } from './upgrades';
+import { IMPORT_TRACKS, INBOUND_TRACKS, SALE_TRACKS } from './upgrades';
 
 export const INBOUND_CHANNELS: InboundChannelDef[] = [
   {
@@ -13,7 +13,10 @@ export const INBOUND_CHANNELS: InboundChannelDef[] = [
   },
 ];
 
-/** Trucks are the baseline; ships take a lot at once and shrug off weight; planes pay best but hate weight. */
+/**
+ * Trucks are the baseline; ships take a lot at once and shrug off weight; planes pay best but hate weight.
+ * Ships and planes also bring raw materials when they come in and leave them at the dock or the apron.
+ */
 export const SALE_CHANNELS: SaleChannelDef[] = [
   {
     id: 'sale.truck',
@@ -38,8 +41,9 @@ export const SALE_CHANNELS: SaleChannelDef[] = [
     vehicleSpeed: 7,
     priceMultiplier: 1.25,
     weightSensitivity: 0.1,
+    importBaseLoad: 200,
     unlock: 'unlock.channel.ship',
-    upgradeTracks: SALE_TRACKS,
+    upgradeTracks: [...SALE_TRACKS, ...IMPORT_TRACKS],
   },
   {
     id: 'sale.plane',
@@ -51,8 +55,9 @@ export const SALE_CHANNELS: SaleChannelDef[] = [
     vehicleSpeed: 30,
     priceMultiplier: 1.6,
     weightSensitivity: 1,
+    importBaseLoad: 40,
     unlock: 'unlock.channel.plane',
-    upgradeTracks: SALE_TRACKS,
+    upgradeTracks: [...SALE_TRACKS, ...IMPORT_TRACKS],
   },
 ];
 

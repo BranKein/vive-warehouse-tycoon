@@ -152,6 +152,7 @@ export const en = {
   'stat.load': 'load',
   'stat.priceMultiplier': 'prices',
   'stat.wasteOutput': 'waste',
+  'stat.importLoad': 'import load',
 
   // Upgrades
   'upgrade.level': 'Lv {level}',
@@ -336,6 +337,8 @@ export const en = {
   'upgrade.sale.load.desc': 'Each vehicle takes more goods away.',
   'upgrade.sale.carriers.name': 'Carriers',
   'upgrade.sale.carriers.desc': 'More carriers fetch goods from the buildings.',
+  'upgrade.sale.importLoad.name': 'Import Load',
+  'upgrade.sale.importLoad.desc': 'Each vehicle brings more raw materials when it comes in.',
   'upgrade.sale.carrierLoad.name': 'Carrier Load',
   'upgrade.sale.carrierLoad.desc': 'Each carrier hauls more per trip.',
   'upgrade.global.price.name': 'Brand Value',

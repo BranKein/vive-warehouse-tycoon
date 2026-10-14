@@ -38,6 +38,8 @@ export interface LogisticsNode {
 export interface Consumer extends LogisticsNode {
   /** How much of the item it still wants, not counting what is already on its way. */
   demand(item: ItemId): BigNum;
+  /** How much of the item it holds when its input is full. */
+  inputTarget(item: ItemId): BigNum;
   reserveDelivery(item: ItemId, amount: BigNum): void;
   /** True when every other ingredient is on hand, so this item would let work start at once. */
   readyExcept(item: ItemId): boolean;

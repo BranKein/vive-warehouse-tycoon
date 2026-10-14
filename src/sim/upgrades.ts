@@ -50,17 +50,27 @@ export function serializeLevels(levels: Map<UpgradeTrackId, number>): Record<str
   return out;
 }
 
-/** Restores levels for known tracks only and clamps them to the current maximum. */
+/**
+ * Restores levels for known tracks only and clamps them to the current
+ * maximum. Returns what the levels cut off by a lower maximum had cost, so
+ * the player can be paid back.
+ */
 export function restoreLevels(
   levels: Map<UpgradeTrackId, number>,
   tracks: readonly UpgradeTrackDef[],
   saved: unknown,
-): void {
-  if (!saved || typeof saved !== 'object') return;
+  costScale = 1,
+): BigNum {
+  let refund = BigNum.ZERO;
+  if (!saved || typeof saved !== 'object') return refund;
   const record = saved as Record<string, unknown>;
   for (const track of tracks) {
-    const level = record[track.id];
-    if (typeof level !== 'number' || !(level > 0)) continue;
-    levels.set(track.id, track.maxLevel === null ? Math.floor(level) : Math.min(Math.floor(level), track.maxLevel));
+    const raw = record[track.id];
+    if (typeof raw !== 'number' || !(raw > 0)) continue;
+    const level = Math.floor(raw);
+    const kept = track.maxLevel === null ? level : Math.min(level, track.maxLevel);
+    for (let cut = kept; cut < level; cut += 1) refund = refund.add(upgradeCost(track, cut, costScale));
+    levels.set(track.id, kept);
   }
+  return refund;
 }

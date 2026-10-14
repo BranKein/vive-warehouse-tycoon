@@ -85,6 +85,8 @@ export const Stat = {
   priceMultiplier: 'priceMultiplier',
   /** Share of a recipe's waste that is actually produced; 1 = all of it. */
   wasteOutput: 'wasteOutput',
+  /** Raw materials a ship or plane brings in on its way to pick up goods. */
+  importLoad: 'importLoad',
 } as const;
 
 export type UpgradeScope = 'building' | 'inbound' | 'sale' | 'global';
@@ -143,6 +145,8 @@ export interface SaleChannelDef {
   feeRate?: number;
   /** Fraction of the cargo lost in transit (island export). */
   lossRate?: number;
+  /** Raw materials each vehicle brings when it comes in; absent = it arrives empty. */
+  importBaseLoad?: number;
   unlock: UnlockId | null;
   upgradeTracks: UpgradeTrackId[];
 }

@@ -143,6 +143,7 @@ export const ko: Translations = {
   'stat.load': '적재량',
   'stat.priceMultiplier': '가격',
   'stat.wasteOutput': '폐기물',
+  'stat.importLoad': '수입량',
 
   'upgrade.level': 'Lv {level}',
   'upgrade.levelOfMax': 'Lv {level}/{max}',
@@ -318,6 +319,8 @@ export const ko: Translations = {
   'upgrade.sale.load.desc': '한 번에 더 많은 물품을 가져갑니다.',
   'upgrade.sale.carriers.name': '운반차 수',
   'upgrade.sale.carriers.desc': '건물에서 물품을 가져오는 운반차가 늘어납니다.',
+  'upgrade.sale.importLoad.name': '수입 적재량',
+  'upgrade.sale.importLoad.desc': '들어올 때 원자재를 더 많이 싣고 옵니다.',
   'upgrade.sale.carrierLoad.name': '운반차 적재량',
   'upgrade.sale.carrierLoad.desc': '운반차가 한 번에 더 많이 나릅니다.',
   'upgrade.global.price.name': '브랜드 가치',

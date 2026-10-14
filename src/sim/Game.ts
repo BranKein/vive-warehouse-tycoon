@@ -211,6 +211,11 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     this.earnedThisWindow = this.earnedThisWindow.add(amount);
   }
 
+  /** Pays back upgrade levels a save holds beyond a maximum lowered since; not income. */
+  refund(amount: BigNum): void {
+    this.money = this.money.add(amount);
+  }
+
   /** Adds money without counting it as income. For tests and development tools. */
   grant(amount: BigNum | number): void {
     this.money = this.money.add(amount);

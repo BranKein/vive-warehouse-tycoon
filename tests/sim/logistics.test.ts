@@ -75,6 +75,7 @@ const consumer = (wants: number): Consumer => ({
   id: 'consumer',
   site: site(8),
   demand: () => bn(wants),
+  inputTarget: () => bn(wants),
   reserveDelivery() {},
   readyExcept: () => true,
   productValue: 1,

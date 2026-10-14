@@ -10,7 +10,7 @@ const item = (
 
 /** Weight and price are independent on purpose: some goods are light and pricey, others heavy and cheap. */
 export const ITEMS: ItemDef[] = [
-  // Raw materials (arrive by inbound truck, never sold as is)
+  // Raw materials (arrive by inbound truck, ship or plane; never sold as is)
   item('wood', 'raw', 0, 3, 1),
   item('ironOre', 'raw', 0, 5, 1.2),
   item('cotton', 'raw', 0, 1, 1),
