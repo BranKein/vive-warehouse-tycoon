@@ -220,6 +220,7 @@ export const renderConfig = {
     siteOffsetZ: -2,
     /** Building models are drawn in the plot frame and then moved this far towards the road. */
     buildingOffsetZ: 1.3,
+    /** Click boxes used only when a model has nothing in it to measure; otherwise the box the model fills. */
     building: [10, 5, 7],
     facility: [12, 2, 7],
     vehicles: {

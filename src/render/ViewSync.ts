@@ -1,4 +1,4 @@
-import { CircleGeometry, Color, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
+import { Box3, CircleGeometry, Color, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
 import type {
   FacilityDef,
   GameSnapshot,
@@ -31,6 +31,7 @@ const ZERO_SHIFT = { x: 0, z: 0 };
 interface BuildingEntry {
   id: string;
   plotId: string;
+  typeId: string;
 }
 
 /** What the view remembers about a vehicle from one frame to the next. */
@@ -137,6 +138,8 @@ export class ViewSync {
   private readonly plots = new Map<string, PlotDef>();
   private readonly facilityDefs = new Map<string, FacilityDef>();
   private readonly buildings = new Map<string, BuildingEntry>();
+  /** Box each model fills in its own frame, measured the first time it is clicked at. */
+  private readonly bounds = new Map<string, Box3>();
   private readonly facilities = new Map<string, Object3D>();
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
@@ -206,7 +209,7 @@ export class ViewSync {
     for (const key of diff.remove) this.buildings.delete(key);
     for (const key of diff.create) {
       const building = wanted.get(key)!;
-      if (this.plots.has(building.plotId)) this.buildings.set(key, { id: building.id, plotId: building.plotId });
+      if (this.plots.has(building.plotId)) this.buildings.set(key, { id: building.id, plotId: building.plotId, typeId: building.typeId });
     }
 
     // Facility placeholders.
@@ -291,37 +294,41 @@ export class ViewSync {
         volume: { shape: 'box', cx: site.x, cy: 0, cz: site.z, hx: width / 2, hy: 0.3, hz: depth / 2, yaw: site.facing },
       });
     };
-    const standing = (site: Site, size: readonly [number, number, number], target: PickTarget, shift = 0): void => {
-      const centre = siteToWorld(site, 0, sizes.siteOffsetZ + shift);
+    // The click target of a building or facility is the box its model fills, so tall parts can be clicked
+    // and the yard in front still selects the site underneath.
+    const standing = (site: Site, model: string, fallback: readonly [number, number, number], target: PickTarget, shift = 0): void => {
+      const box = this.boundsOf(model);
+      const [cx, cy, cz, hx, hy, hz] = box.isEmpty()
+        ? [0, fallback[1] / 2, sizes.siteOffsetZ, fallback[0] / 2, fallback[1] / 2, fallback[2] / 2]
+        : [
+            (box.min.x + box.max.x) / 2,
+            (box.min.y + box.max.y) / 2,
+            (box.min.z + box.max.z) / 2,
+            (box.max.x - box.min.x) / 2,
+            (box.max.y - box.min.y) / 2,
+            (box.max.z - box.min.z) / 2,
+          ];
+      const centre = siteToWorld(site, cx, cz + shift);
       proxies.push({
         target,
         priority: PRIORITY_BOX,
-        volume: {
-          shape: 'box',
-          cx: centre.x,
-          cy: size[1] / 2,
-          cz: centre.z,
-          hx: size[0] / 2,
-          hy: size[1] / 2,
-          hz: size[2] / 2,
-          yaw: site.facing,
-        },
+        volume: { shape: 'box', cx: centre.x, cy, cz: centre.z, hx, hy, hz, yaw: site.facing },
       });
     };
 
-    const occupied = new Map<string, string>();
-    for (const building of this.buildings.values()) occupied.set(building.plotId, building.id);
+    const occupied = new Map<string, BuildingEntry>();
+    for (const building of this.buildings.values()) occupied.set(building.plotId, building);
     for (const plot of layout.plots) {
-      const buildingId = occupied.get(plot.id);
+      const building = occupied.get(plot.id);
       // The whole plot of a building selects that building, not just its box.
-      const target: PickTarget = buildingId ? { type: 'building', buildingId } : { type: 'plot', plotId: plot.id };
+      const target: PickTarget = building ? { type: 'building', buildingId: building.id } : { type: 'plot', plotId: plot.id };
       flat(plot, layout.plotSize.width, layout.plotSize.depth, target);
-      if (buildingId) standing(plot, sizes.building, target, sizes.buildingOffsetZ);
+      if (building) standing(plot, buildingModel(building.typeId), sizes.building, target, sizes.buildingOffsetZ);
     }
     for (const facility of layout.facilities) {
       const target: PickTarget = { type: 'facility', facilityId: facility.id };
       flat(facility, sizes.ground.facilityPad[0], sizes.ground.facilityPad[1], target);
-      standing(facility, sizes.facility, target);
+      standing(facility, facilityModel(facility.kind), sizes.facility, target);
     }
     const grow = renderConfig.vehicle.pickScale;
     for (const [id, track] of this.tracks) {
@@ -357,6 +364,7 @@ export class ViewSync {
   /** Drops every object so the next frame rebuilds it from the registry. Call when a model was re-registered. */
   clear(): void {
     this.buildings.clear();
+    this.bounds.clear();
     for (const object of this.facilities.values()) this.group.remove(object);
     this.facilities.clear();
     if (this.specialObject) this.group.remove(this.specialObject);
@@ -386,6 +394,15 @@ export class ViewSync {
   }
 
   /** A model wrapped in a holder, so moving and scaling it never disturbs the model's own transform. */
+  private boundsOf(name: string): Box3 {
+    let box = this.bounds.get(name);
+    if (!box) {
+      box = new Box3().setFromObject(this.registry.create(name));
+      this.bounds.set(name, box);
+    }
+    return box;
+  }
+
   private instantiate(name: string): Object3D {
     const holder = new Group();
     holder.add(this.registry.create(name));
