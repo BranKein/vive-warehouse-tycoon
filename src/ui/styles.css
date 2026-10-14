@@ -216,11 +216,21 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: 8px 14px;
+  width: max-content;
   max-width: calc(100% - 28px);
   padding: 8px 14px 8px 12px;
-  border-radius: 999px;
+  /* A pill on one row; a rounded card when a narrow window folds it onto two. */
+  border-radius: 30px;
+  box-sizing: border-box;
+}
+
+/* Nothing in the bar is squeezed: what does not fit goes to the next row. */
+.wt-topbar > * {
+  flex: none;
 }
 
 .wt-stat {
@@ -717,7 +727,7 @@
 
 .wt-menu {
   position: absolute;
-  top: 84px;
+  top: var(--wt-below-top, 84px);
   left: 50%;
   transform: translateX(-50%);
   width: 420px;
@@ -1100,10 +1110,10 @@
 
 .wt-stats {
   position: absolute;
-  top: 84px;
+  top: var(--wt-below-top, 84px);
   left: 14px;
   width: 232px;
-  max-height: calc(100% - 84px - min(36vh, 320px) - 40px);
+  max-height: calc(100% - var(--wt-below-top, 84px) - min(36vh, 320px) - 40px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1312,7 +1322,7 @@
 /* The selected vehicle: a card that hangs beside it (placed by vehiclePanel.ts). */
 .wt-vehicle {
   position: absolute;
-  top: 84px;
+  top: var(--wt-below-top, 84px);
   left: 0;
   width: 232px;
   display: flex;
@@ -1539,4 +1549,54 @@
 
 .wt-medal-gold {
   background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a);
+}
+
+/* ---------- Top bar in narrower windows ---------- */
+
+@media (max-width: 1120px) {
+  .wt-topbar {
+    gap: 8px 10px;
+    padding: 7px 10px;
+  }
+
+  .wt-auto-status {
+    width: 130px;
+  }
+}
+
+/* The auto-mode target moves into the toggle's tooltip, and the buttons tighten. */
+@media (max-width: 1020px) {
+  .wt-topbar .wt-auto-status {
+    display: none;
+  }
+
+  .wt-topbar .wt-stat-text {
+    min-width: 64px;
+  }
+
+  .wt-ui .wt-topbar .wt-seg-btn {
+    padding: 5px 8px;
+  }
+
+  .wt-ui .wt-topbar .wt-btn {
+    padding: 6px 10px;
+  }
+}
+
+.wt-lang-short {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .wt-topbar {
+    gap: 8px 7px;
+  }
+
+  .wt-topbar .wt-lang-full {
+    display: none;
+  }
+
+  .wt-topbar .wt-lang-short {
+    display: inline;
+  }
 }

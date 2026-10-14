@@ -6,6 +6,8 @@ import { button, h, KeyedList, setAttr, setClass, setFill, setHidden, setText, t
 import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text';
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
+/** Each language by its own short name, shown instead of the full one in narrow windows. */
+const SHORT_LANGUAGE: Record<Language, string> = { en: 'EN', ko: '한' };
 
 export function createTopBar(
   ctx: UIContext,
@@ -58,9 +60,10 @@ export function createTopBar(
   const langGroup = h('div', 'wt-seg');
   langGroup.setAttribute('role', 'group');
   const langButtons = LANGUAGES.map((language: Language) => {
-    const el = button('wt-seg-btn', () => setLanguage(language));
+    const full = h('span', 'wt-lang-full');
+    const el = button('wt-seg-btn', () => setLanguage(language), full, h('span', 'wt-lang-short', SHORT_LANGUAGE[language]));
     langGroup.append(el);
-    return { language, el };
+    return { language, el, full };
   });
 
   const trophyCount = h('span', 'wt-trophy-count');
@@ -85,9 +88,19 @@ export function createTopBar(
     settingsButton,
   );
 
+  // Cards and menus hang below the bar, which grows a row in narrow windows.
+  const resize = new ResizeObserver(() => {
+    const root = el.parentElement;
+    if (root) root.style.setProperty('--wt-below-top', `${Math.round(el.offsetTop + el.offsetHeight + 14)}px`);
+  });
+  resize.observe(el);
+
   return {
     el,
-    dispose: clock.dispose,
+    dispose(): void {
+      resize.disconnect();
+      clock.dispose();
+    },
     savesButton,
     settingsButton,
     update(snapshot: GameSnapshot, savesOpen: boolean, settingsOpen: boolean, achievementsOpen: boolean): void {
@@ -111,7 +124,8 @@ export function createTopBar(
       setText(autoState, auto.enabled ? tr.t('auto.on') : tr.t('auto.off'));
       setClass(autoButton, 'is-on', auto.enabled);
       setAttr(autoButton, 'aria-pressed', String(auto.enabled));
-      setAttr(autoButton, 'title', tr.t('auto.hint'));
+      // The target is also in the tooltip, for windows too narrow to show it beside the toggle.
+      setAttr(autoButton, 'title', auto.enabled ? `${tr.t('auto.hint')}\n${formatAutoStatus(tr, auto)}` : tr.t('auto.hint'));
       setHidden(autoStatus, !auto.enabled);
       const status = formatAutoStatus(tr, auto);
       setText(autoText, status);
@@ -125,8 +139,9 @@ export function createTopBar(
 
       setAttr(langGroup, 'aria-label', tr.t('lang.label'));
       const language = getLanguage();
-      for (const { language: lang, el: langButton } of langButtons) {
-        setText(langButton, tr.t(`lang.${lang}`));
+      for (const { language: lang, el: langButton, full } of langButtons) {
+        setText(full, tr.t(`lang.${lang}`));
+        setAttr(langButton, 'title', tr.t(`lang.${lang}`));
         setClass(langButton, 'is-active', lang === language);
         setAttr(langButton, 'aria-pressed', String(lang === language));
       }
