@@ -438,3 +438,4 @@ docs/agents/   # 서브에이전트 작업 지침
 - 폐기물 처리장 소속 운반차는 새 모델 `vehicle.wasteTanker`(운반차의 운전석·차대에 누운 둥근 탱크, 몸통 색 띠 두 줄, 위 해치, 뒤 밸브)로 그린다. 소속 색으로 칠한다. 운반차와 운전석·바퀴를 같은 함수(`carrierFront`)로 그려 운반차 모델은 그대로다(지문 같음). 승인 대기.
 - Ko-fi: `https://ko-fi.com/Z3M828RIBM`. 설정 창의 버튼 문구는 두 언어 모두 "☕ Buy me a coffee", Ko-fi 파란색(#72a4f2).
 - 지게차 색: 몸통(차체, 지붕, 바퀴 덮개)을 칠하는 재질로 바꿔, 운반차처럼 소속(1차 산호색)과 생산품 색으로 칠한다(`ownerModels.tier1.painted`). 쓰지 않게 된 `theme.vehicles.forklift`는 지웠다. 모양이 바뀌어 `vehicle.forklift`는 다시 승인이 필요하다.
+- 지게차 색을 더 밝고 다양하게(사용자: 칙칙하다): 섞은 색 대신 1차 생산품마다 고유한 밝은 색을 준다(`theme.vehicles.carrierGoodsColors.tier1`). 목재 주황, 강철 하늘, 천 분홍, 플라스틱 보라, 유리 청록, 밀가루 노랑, 전선 연두. 다른 운반차는 그대로 섞은 색.

@@ -289,12 +289,15 @@ describe('carrierColor', () => {
   });
 
   it('moves towards the colour of the goods, differently for each kind', () => {
-    const lumber = carrierColor(defaultTheme, 'tier1', 'lumber');
-    const steel = carrierColor(defaultTheme, 'tier1', 'steel');
-    expect(lumber).not.toBe(steel);
-    expect(lumber).not.toBe(defaultTheme.vehicles.carrierCab);
-    // Still nearer its owner's colour than the goods': red stays the strongest channel.
-    expect((steel >> 16) & 0xff).toBeGreaterThan(steel & 0xff);
+    const chair = carrierColor(defaultTheme, 'tier2', 'chair');
+    const snack = carrierColor(defaultTheme, 'tier2', 'snack');
+    expect(chair).not.toBe(snack);
+    expect(chair).not.toBe(defaultTheme.vehicles.carrierOwners.tier2);
+  });
+
+  it("uses the owner's own colour for goods that have one", () => {
+    expect(carrierColor(defaultTheme, 'tier1', 'lumber')).toBe(defaultTheme.vehicles.carrierGoodsColors.tier1!.lumber);
+    expect(carrierColor(defaultTheme, 'tier1', 'steel')).not.toBe(carrierColor(defaultTheme, 'tier1', 'lumber'));
   });
 });
 

@@ -72,6 +72,11 @@ export interface Theme {
     carrierOwners: Record<string, number>;
     /** How far a carrier's colour moves from its owner's towards the colour of the goods its building makes, 0..1. */
     carrierGoodsMix: number;
+    /**
+     * Owners whose carriers get a colour of their own for each kind of goods instead of the mix, keyed by
+     * the goods. Tier-1 forklifts use these: one bright colour per building type.
+     */
+    carrierGoodsColors: Record<string, Record<string, number>>;
   };
   goods: {
     pallet: number;
@@ -189,6 +194,17 @@ export const defaultTheme: Theme = {
       facility: 0xc99b7d,
     },
     carrierGoodsMix: 0.4,
+    carrierGoodsColors: {
+      tier1: {
+        lumber: 0xff9a3c,
+        steel: 0x4aa8ff,
+        fabric: 0xff6fae,
+        plastic: 0x9b6bff,
+        glass: 0x2fd0c0,
+        flour: 0xffd23a,
+        wire: 0x7fd94a,
+      },
+    },
   },
   goods: {
     pallet: 0xdcb98f,
@@ -420,12 +436,15 @@ export const defaultTheme: Theme = {
 
 /**
  * Colour of a carrier's cab: the colour of who it works for, moved towards the
- * colour of the goods its building makes (when it makes any).
+ * colour of the goods its building makes (when it makes any), or the owner's
+ * own colour for those goods when it has one.
  */
 export function carrierColor(theme: Theme, owner: string | undefined, itemId?: string): number {
   const v = theme.vehicles;
   const base = (owner !== undefined ? v.carrierOwners[owner] : undefined) ?? v.carrierCab;
   if (itemId === undefined) return base;
+  const own = owner !== undefined ? v.carrierGoodsColors[owner]?.[itemId] : undefined;
+  if (own !== undefined) return own;
   const goods = itemColor(theme, itemId);
   const mix = (shift: number): number => {
     const from = (base >> shift) & 0xff;
