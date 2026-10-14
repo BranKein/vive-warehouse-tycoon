@@ -64,6 +64,8 @@ export class CameraRig {
   constructor(
     private readonly element: HTMLElement,
     private readonly onClick: (clientX: number, clientY: number) => void,
+    /** Called when a middle-button drag lets go of what was being followed, so the selection can go too. */
+    private readonly onLetGo: () => void = () => {},
   ) {
     const c = renderConfig.camera;
     this.camera = new PerspectiveCamera(c.fovDeg, 1, c.near, c.far);
@@ -179,10 +181,16 @@ export class CameraRig {
     listen(el, 'pointerdown', (event) => {
       this.wake();
       if (event.button === 1 || event.button === 2) {
-        // The view cannot be moved off what it follows; moving it on the way back stops the return.
+        // Moving the view lets go of what it follows and stays where it is; moving it on the way back stops the return.
         if (event.button === 1) {
-          this.panning = !this.following;
-          if (this.panning && this.returning) {
+          if (this.following) {
+            this.following = null;
+            this.resume = null;
+            this.returning = false;
+            this.onLetGo();
+          }
+          this.panning = true;
+          if (this.returning) {
             this.returning = false;
             this.target.y = c.targetHeight;
           }

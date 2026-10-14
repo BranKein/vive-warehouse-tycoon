@@ -2,7 +2,7 @@ import type { GameSnapshot, GameSpeed } from '@/contracts';
 import { getLanguage, LANGUAGES, setLanguage, type Language } from '@/i18n';
 import type { UIContext } from './context';
 import { button, h, setAttr, setClass, setDisabled, setHidden, setText } from './dom';
-import { LINKS } from './links';
+import { KOFI_ICON, LINKS } from './links';
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
 
@@ -61,8 +61,17 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
     return { name, el, label };
   });
 
-  const github = button('wt-btn', () => openLink(LINKS.github));
-  const kofi = button('wt-btn wt-kofi', () => openLink(LINKS.kofi));
+  // The GitHub mark (Octicons, MIT), drawn in the text colour.
+  const githubIcon = h('span', 'wt-link-icon');
+  githubIcon.innerHTML =
+    '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
+  const githubLabel = h('span');
+  const github = button('wt-btn wt-github', () => openLink(LINKS.github), githubIcon, githubLabel);
+  const kofiIcon = h('img', 'wt-kofi-icon');
+  kofiIcon.src = KOFI_ICON;
+  kofiIcon.alt = '';
+  const kofiLabel = h('span');
+  const kofi = button('wt-btn wt-kofi', () => openLink(LINKS.kofi), kofiIcon, kofiLabel);
   setDisabled(kofi, !LINKS.kofi);
 
   const el = h(
@@ -114,8 +123,8 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
       setAttr(lookButton, 'aria-pressed', String(name === look));
     }
 
-    setText(github, tr.t('settings.github'));
-    setText(kofi, tr.t('settings.kofi'));
+    setText(githubLabel, tr.t('settings.github'));
+    setText(kofiLabel, tr.t('settings.kofi').replace(/^☕\s*/, ''));
     setAttr(kofi, 'title', LINKS.kofi ? null : tr.t('settings.kofiSoon'));
   }
 

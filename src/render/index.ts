@@ -83,11 +83,18 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
     const ray: Ray = { ox: origin.x, oy: origin.y, oz: origin.z, dx: pickPoint.x, dy: pickPoint.y, dz: pickPoint.z };
     return pickNearest(ray, view.pickProxies())?.target ?? { type: 'none' };
   };
-  const rig = new CameraRig(canvas, (clientX, clientY) => {
-    if (listeners.length === 0) return;
-    const target = pickAt(clientX, clientY);
-    for (const listener of [...listeners]) listener(target);
-  });
+  const rig = new CameraRig(
+    canvas,
+    (clientX, clientY) => {
+      if (listeners.length === 0) return;
+      const target = pickAt(clientX, clientY);
+      for (const listener of [...listeners]) listener(target);
+    },
+    // Panning away from what is selected deselects it, as a click on empty ground would.
+    () => {
+      for (const listener of [...listeners]) listener({ type: 'none' });
+    },
+  );
 
 
   // Dev server only: lets a test session point the camera and watch the effects from the console.

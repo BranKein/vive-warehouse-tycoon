@@ -885,14 +885,34 @@
   gap: 8px;
 }
 
-/* Ko-fi's own blue, so the support button reads as theirs. */
+.wt-btn.wt-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wt-link-icon {
+  display: inline-flex;
+}
+
+/* Same look as the round Ko-fi button in the top bar: Ko-fi's cup on cream. */
+.wt-btn.wt-kofi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .wt-btn.wt-kofi:not(:disabled) {
-  background: #72a4f2;
-  color: #fff;
+  background: var(--wt-cream-deep);
+  transition: background 0.15s;
 }
 
 .wt-btn.wt-kofi:not(:disabled):hover {
-  background: #5f93e6;
+  background: var(--wt-butter);
+}
+
+.wt-btn.wt-kofi .wt-kofi-icon {
+  width: 20px;
 }
 
 .wt-kofi-round {

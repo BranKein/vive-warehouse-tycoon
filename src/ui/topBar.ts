@@ -3,7 +3,7 @@ import { getLanguage, keys, LANGUAGES, setLanguage, type Language } from '@/i18n
 import type { UIContext } from './context';
 import { createDayClock } from './dayClock';
 import { button, h, KeyedList, setAttr, setClass, setFill, setHidden, setText, type Row } from './dom';
-import { LINKS } from './links';
+import { KOFI_ICON, LINKS } from './links';
 import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text';
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
@@ -72,9 +72,8 @@ export function createTopBar(
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
   const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
   // A round shortcut to Ko-fi; the same link stays in the settings menu.
-  // Ko-fi's own cup, loaded from their CDN the way their button widget does.
   const kofiIcon = h('img', 'wt-kofi-icon');
-  kofiIcon.src = 'https://storage.ko-fi.com/cdn/cup-border.png';
+  kofiIcon.src = KOFI_ICON;
   kofiIcon.alt = '';
   const kofi = h('a', 'wt-kofi-round', kofiIcon);
   kofi.href = LINKS.kofi;
