@@ -198,8 +198,8 @@ export interface IslandLayoutDef {
   shipLane: Vec3[];
   /** Approach path for planes; the last point is the apron at the airport. */
   flightLane: Vec3[];
-  /** Way out for ships, from the berth; without it they go back the way they came. */
-  shipDeparture?: Vec3[];
+  /** Way out for ships, from the berth; without it they go back the way they came. `pace` as for planes. */
+  shipDeparture?: Array<Vec3 & { pace?: number }>;
   /**
    * Way out for planes, from the apron; without it they go back the way they came. A point's `pace`
    * makes the stretch that ends at it that many times slower (taxiing).

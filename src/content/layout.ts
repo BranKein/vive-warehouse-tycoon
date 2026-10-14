@@ -151,7 +151,22 @@ const BERTH = SHIP_LANE[SHIP_LANE.length - 1]!;
 const APRON = FLIGHT_LANE[FLIGHT_LANE.length - 1]!;
 /** Planes taxi round at the apron this many times slower than they fly. */
 const PLANE_TAXI_PACE = 5;
-const SHIP_LANE_LENGTH = BERTH.x - SHIP_LANE[0]!.x;
+/** Ships leave by sailing on `ahead` past the berth, then turning round to seaward on `radius`, `pace` times slower. */
+const SHIP_SWING = { ahead: 10, radius: 10, pace: 2.5 };
+
+/**
+ * Half a circle of radius `r` for a ship heading east from (x, z): it turns to
+ * starboard (south, out to sea) and ends heading west, 2r further south. One
+ * point every 5° of turn, each `pace` times slower.
+ */
+function uTurn(x: number, z: number, r: number, pace: number): Array<Vec3 & { pace: number }> {
+  const points: Array<Vec3 & { pace: number }> = [];
+  for (let step = 1; step <= 36; step += 1) {
+    const angle = (step / 36) * Math.PI;
+    points.push({ x: x + r * Math.sin(angle), y: 0, z: z + r - r * Math.cos(angle), pace });
+  }
+  return points;
+}
 
 export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   bounds: { minX: GATE_X, maxX: EAST_X + 35, minZ: NORTH_ROAD_Z - 44, maxZ: SOUTH_ROAD_Z + 41 },
@@ -165,11 +180,17 @@ export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   // Ships and planes come in from the west, so they are seen travelling the length of the board.
   // Both lanes start over the board: the view fades vehicles in at the first point and out at the last.
   // The ship keeps one straight line along the quay, clear of the end of the wharf, up to its berth at the
-  // dock, and sails on east out to sea, as far as it came. The plane stops on the runway, turns round on it
-  // and takes off back over the way it landed.
+  // dock, then sails on a little, turns round to seaward and goes back west on a lane further out. The plane
+  // stops on the runway, turns round on it and takes off back over the way it landed.
   shipLane: SHIP_LANE,
   flightLane: FLIGHT_LANE,
-  shipDeparture: [BERTH, { x: BERTH.x + SHIP_LANE_LENGTH, y: 0, z: BERTH.z }],
+  shipDeparture: [
+    BERTH,
+    // Slowly at first, out past the wharf, then round to seaward and back west on a lane of its own.
+    { x: BERTH.x + SHIP_SWING.ahead, y: 0, z: BERTH.z, pace: SHIP_SWING.pace },
+    ...uTurn(BERTH.x + SHIP_SWING.ahead, BERTH.z, SHIP_SWING.radius, SHIP_SWING.pace),
+    { x: SHIP_LANE[0]!.x, y: 0, z: BERTH.z + 2 * SHIP_SWING.radius },
+  ],
   flightDeparture: [
     APRON,
     ...turnRound(APRON.x, APRON.z, EAST, 3, PLANE_TAXI_PACE),
