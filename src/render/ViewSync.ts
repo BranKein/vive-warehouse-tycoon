@@ -23,7 +23,7 @@ import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileG
 import { bounceStretch, log10Of, smoothstep, type Pose, pileCrateCount, pileHeight, pileSlot, squashFor, type PickProxy } from './math';
 import type { ModelRegistry } from './ModelRegistry';
 import { CRATE_MODEL, PALLET_MODEL, WASTE_HEAP_MODEL } from './models/goods';
-import { backOutPose, buildingKey, crossingPose, cruiseStep, drawnLength, planCrossing, diffKeys, onTrail, parkedShift, routeDots, type Crossing, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
+import { lineFrom, smoothLane, backOutPose, buildingKey, crossingPose, cruiseStep, drawnLength, planCrossing, diffKeys, onTrail, parkedShift, type Crossing, type Leaving, type TrailPoint, pilesToShow, vehicleFade, vehiclePoses } from './sync';
 import { carrierColor, itemColor, type Theme } from './theme';
 
 const UP = new Vector3(0, 1, 0);
@@ -789,6 +789,13 @@ export class ViewSync {
     return { x: track.x + track.shiftX, y: track.y + track.lift, z: track.z + track.shiftZ };
   }
 
+  /** Middle of the selected building or facility on the ground; null when neither is selected. */
+  selectedSitePoint(): { x: number; y: number; z: number } | null {
+    if (this.selection.type !== 'building' && this.selection.type !== 'facility') return null;
+    const frame = this.selectionFrame();
+    return frame ? { x: frame.x, y: 0, z: frame.z } : null;
+  }
+
   private inTunnel(track: VehicleTrack): boolean {
     return track.truck && this.gate !== null && Math.hypot(track.x - this.gate.x, track.z - this.gate.z) < renderConfig.vehicle.tunnelCover;
   }
@@ -925,10 +932,9 @@ export class ViewSync {
       this.routeLine.hide();
       return;
     }
-    // The game is ahead of where the vehicle is drawn: start the line where the vehicle is, so it drives on it.
-    const behind = road.dist - road.at;
-    const dots = routeDots(route.points, route.travelled - behind + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset);
-    this.routeLine.show([{ x: track.x + track.shiftX, z: track.z + track.shiftZ }, ...dots]);
+    // On the lane with its corners rounded off, from under the vehicle (the game is ahead of where it is drawn).
+    const at = { x: track.x + track.shiftX, z: track.z + track.shiftZ };
+    this.routeLine.show(lineFrom(smoothLane(route.points, renderConfig.vehicle.laneOffset, rule.cornerRadius), at));
   }
 
   private updateMarker(dt: number): void {

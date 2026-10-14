@@ -235,9 +235,10 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
       materials.setNight(environment.update(realTimeSec));
       view.update(prev.island.id === curr.island.id ? prev : null, curr, alpha, dt);
       latest = curr;
-      // A selected vehicle is followed; when it is gone the camera goes back by itself.
+      // A selected vehicle is followed, and a selected building or facility is moved to and zoomed in on;
+      // when nothing is selected any more the camera goes back by itself.
       const followed = chosen.type === 'vehicle' ? view.vehiclePoint(chosen.vehicleId) : null;
-      rig.follow(followed);
+      rig.follow(followed ?? view.selectedSitePoint());
       // Its card hangs beside it: tell where on the page that is.
       if (followed) {
         const rect = canvas.getBoundingClientRect();

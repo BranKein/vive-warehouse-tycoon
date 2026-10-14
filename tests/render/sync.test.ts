@@ -13,7 +13,8 @@ import {
   laneShift,
   onTrail,
   planCrossing,
-  routeDots,
+  lineFrom,
+  smoothLane,
   trailPoint,
   pilesToShow,
   vehiclePoses,
@@ -307,21 +308,27 @@ describe('carrierColor', () => {
   });
 });
 
-describe('routeDots', () => {
+describe('smoothLane', () => {
   const way = [{ x: 0, z: 0 }, { x: 0, z: 10 }, { x: 10, z: 10 }];
 
-  it('runs from where the vehicle is to the end of its way, on the right-hand lane', () => {
-    const dots = routeDots(way, 4, 2, 1);
-    // Heading +z, the right-hand side is -x.
-    expect(dots[0]).toEqual({ x: -1, z: 4 });
-    const last = dots[dots.length - 1]!;
-    expect(last.x).toBeCloseTo(10);
-    expect(last.z).toBeCloseTo(11);
-    expect(dots.every((dot) => dot.z >= 4)).toBe(true);
+  it('runs on the right-hand lane and rounds the corner off', () => {
+    const line = smoothLane(way, 1, 3);
+    // Heading +z, the right-hand side is -x; heading +x, it is +z.
+    expect(line[0]).toEqual({ x: -1, z: 0 });
+    expect(line[line.length - 1]).toEqual({ x: 10, z: 11 });
+    // No point at the sharp corner of the two lanes, (-1, 11): the curve cuts inside it.
+    for (const point of line) expect(Math.hypot(point.x + 1, point.z - 11)).toBeGreaterThan(0.5);
+    // Never steps backwards along the way.
+    for (let index = 1; index < line.length; index += 1) {
+      expect(line[index]!.x + line[index]!.z).toBeGreaterThanOrEqual(line[index - 1]!.x + line[index - 1]!.z - 1e-9);
+    }
   });
 
-  it('is empty once the way is behind it', () => {
-    expect(routeDots(way, 25, 2, 1)).toEqual([]);
+  it('starts from the point nearest the vehicle', () => {
+    const rest = lineFrom(smoothLane(way, 1, 3), { x: -1.2, z: 4 });
+    expect(rest[0]!.x).toBeCloseTo(-1);
+    expect(rest[0]!.z).toBeCloseTo(4);
+    expect(rest[rest.length - 1]).toEqual({ x: 10, z: 11 });
   });
 });
 

@@ -320,33 +320,81 @@ export function backOutPose(leaving: BackOut, distance: number): { x: number; z:
 }
 
 /**
- * Dots along the rest of a vehicle's way: every `spacing` from `from` (a
- * distance along `points`) to the end, each on the right-hand lane of its
- * stretch. The last dot is the end of the way.
+ * The right-hand lane of a way, `lane` off its centre line, with each corner
+ * rounded off: the lanes of two stretches meet where their offset lines cross,
+ * and that corner is replaced by a curve that leaves `radius` before it (less
+ * where the stretches are short), sampled in `steps` pieces. For drawing only.
  */
-export function routeDots(
+export function smoothLane(
   points: ReadonlyArray<{ x: number; z: number }>,
-  from: number,
-  spacing: number,
   lane: number,
+  radius: number,
+  steps = 8,
 ): Array<{ x: number; z: number }> {
-  const dots: Array<{ x: number; z: number }> = [];
-  let start = 0;
-  let next = Math.max(0, from);
-  let last: { x: number; z: number } | null = null;
-  for (let index = 1; index < points.length; index += 1) {
-    const a = points[index - 1]!;
-    const b = points[index]!;
-    const length = Math.hypot(b.x - a.x, b.z - a.z);
-    if (length === 0) continue;
-    const side = laneShift(Math.atan2(b.x - a.x, b.z - a.z), lane);
-    for (; next <= start + length; next += spacing) {
-      const part = (next - start) / length;
-      dots.push({ x: a.x + (b.x - a.x) * part + side.x, z: a.z + (b.z - a.z) * part + side.z });
+  const way = points.filter((point, index) => index === 0 || Math.hypot(point.x - points[index - 1]!.x, point.z - points[index - 1]!.z) > 1e-6);
+  if (way.length < 2) return way.map((point) => ({ x: point.x, z: point.z }));
+  const dirs = way.slice(1).map((point, index) => {
+    const from = way[index]!;
+    const length = Math.hypot(point.x - from.x, point.z - from.z);
+    return { x: (point.x - from.x) / length, z: (point.z - from.z) / length, length };
+  });
+  // Right-hand side of a direction, as `laneShift` has it.
+  const side = (d: { x: number; z: number }) => ({ x: -d.z * lane, z: d.x * lane });
+  const offset: Array<{ x: number; z: number }> = [];
+  way.forEach((point, index) => {
+    const before = dirs[index - 1];
+    const after = dirs[index];
+    if (!before || !after) {
+      const shift = side((before ?? after)!);
+      offset.push({ x: point.x + shift.x, z: point.z + shift.z });
+      return;
     }
-    start += length;
-    last = { x: b.x + side.x, z: b.z + side.z };
+    const a = side(before);
+    const b = side(after);
+    const dot = (a.x * b.x + a.z * b.z) / (lane * lane || 1);
+    // Where the two offset lines cross; a turn right back on itself has no such point.
+    const k = dot > -0.95 ? 1 / (1 + dot) : 0.5;
+    offset.push({ x: point.x + (a.x + b.x) * k, z: point.z + (a.z + b.z) * k });
+  });
+  const smooth: Array<{ x: number; z: number }> = [offset[0]!];
+  for (let index = 1; index < offset.length - 1; index += 1) {
+    const corner = offset[index]!;
+    const prev = offset[index - 1]!;
+    const next = offset[index + 1]!;
+    const inLength = Math.hypot(corner.x - prev.x, corner.z - prev.z);
+    const outLength = Math.hypot(next.x - corner.x, next.z - corner.z);
+    const cut = Math.min(radius, inLength / 2, outLength / 2);
+    if (cut <= 1e-6 || inLength <= 1e-6 || outLength <= 1e-6) {
+      smooth.push(corner);
+      continue;
+    }
+    const start = { x: corner.x + ((prev.x - corner.x) / inLength) * cut, z: corner.z + ((prev.z - corner.z) / inLength) * cut };
+    const end = { x: corner.x + ((next.x - corner.x) / outLength) * cut, z: corner.z + ((next.z - corner.z) / outLength) * cut };
+    // A quadratic curve through the corner's neighbourhood: close enough to an arc at this size.
+    for (let step = 0; step <= steps; step += 1) {
+      const t = step / steps;
+      const u = 1 - t;
+      smooth.push({ x: u * u * start.x + 2 * u * t * corner.x + t * t * end.x, z: u * u * start.z + 2 * u * t * corner.z + t * t * end.z });
+    }
   }
-  if (last && from < start) dots.push(last);
-  return dots;
+  smooth.push(offset[offset.length - 1]!);
+  return smooth;
+}
+
+/** The part of a line from the point on it nearest `from` on to its end, beginning with that point. */
+export function lineFrom(line: ReadonlyArray<{ x: number; z: number }>, from: { x: number; z: number }): Array<{ x: number; z: number }> {
+  if (line.length < 2) return [...line];
+  let best = { index: 0, point: line[0]!, distance: Infinity };
+  for (let index = 1; index < line.length; index += 1) {
+    const a = line[index - 1]!;
+    const b = line[index]!;
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const length = dx * dx + dz * dz;
+    const t = length > 0 ? Math.min(1, Math.max(0, ((from.x - a.x) * dx + (from.z - a.z) * dz) / length)) : 0;
+    const point = { x: a.x + dx * t, z: a.z + dz * t };
+    const distance = Math.hypot(point.x - from.x, point.z - from.z);
+    if (distance < best.distance) best = { index, point, distance };
+  }
+  return [best.point, ...line.slice(best.index)];
 }
