@@ -7,7 +7,12 @@ import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text'
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
 
-export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggleSettings: () => void) {
+export function createTopBar(
+  ctx: UIContext,
+  onToggleSaves: () => void,
+  onToggleSettings: () => void,
+  onToggleAchievements: () => void,
+) {
   const { tr } = ctx;
   let autoEnabled = false;
 
@@ -58,6 +63,8 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
     return { language, el };
   });
 
+  const trophyCount = h('span', 'wt-trophy-count');
+  const achievementsButton = button('wt-btn wt-trophy', onToggleAchievements, h('span', 'wt-trophy-icon', '🏆'), trophyCount);
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
   const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
 
@@ -73,6 +80,7 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
     h('div', 'wt-auto', autoButton, autoStatus),
     islandGroup,
     langGroup,
+    achievementsButton,
     savesButton,
     settingsButton,
   );
@@ -82,7 +90,7 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
     dispose: clock.dispose,
     savesButton,
     settingsButton,
-    update(snapshot: GameSnapshot, savesOpen: boolean, settingsOpen: boolean): void {
+    update(snapshot: GameSnapshot, savesOpen: boolean, settingsOpen: boolean, achievementsOpen: boolean): void {
       clock.rerender();
       clock.update();
       setText(moneyLabel, tr.t('top.money'));
@@ -122,6 +130,12 @@ export function createTopBar(ctx: UIContext, onToggleSaves: () => void, onToggle
         setClass(langButton, 'is-active', lang === language);
         setAttr(langButton, 'aria-pressed', String(lang === language));
       }
+
+      const achievements = snapshot.achievements;
+      setText(trophyCount, `${achievements.achieved}/${achievements.list.length}`);
+      setAttr(achievementsButton, 'title', tr.t('top.achievements'));
+      setAttr(achievementsButton, 'aria-label', `${tr.t('top.achievements')} ${achievements.achieved}/${achievements.list.length}`);
+      setClass(achievementsButton, 'is-active', achievementsOpen);
 
       setText(savesButton, tr.t('save.menu'));
       setClass(savesButton, 'is-active', savesOpen);

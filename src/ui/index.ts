@@ -7,6 +7,7 @@ import type { BigNum } from '@/core/BigNum';
 import { formatDuration } from '@/core/format';
 import type { CommandResult, GameEvent, GameSnapshot, GameUI, PickTarget, Selection, UIDeps, UnlockView } from '@/contracts';
 import { i18n, keys } from '@/i18n';
+import { achievementName, createAchievementsModal } from './achievementsModal';
 import { createBuildModal } from './buildModal';
 import type { Frame, ToastKind, UIContext } from './context';
 import { createHoverCard } from './hoverCard';
@@ -16,13 +17,14 @@ import { createSidePanel } from './sidePanel';
 import { createStatsModal } from './statsModal';
 import { createIslandPanel } from './islandPanel';
 import { createStatsPanel } from './statsPanel';
-import { formatAmount, unlockName } from './text';
+import { formatAmount, formatPercent, unlockName } from './text';
 import { createToasts } from './toasts';
 import { createTopBar } from './topBar';
 import { createVehiclePanel } from './vehiclePanel';
 import './styles.css';
 
 const AWAY_NOTICE_TTL_MS = 20000;
+const ACHIEVEMENT_TTL_MS = 8000;
 
 export const sameSelection = (a: Selection, b: Selection): boolean => {
   if (a.type !== b.type) return false;
@@ -83,6 +85,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
 
   const menu = createSaveMenu(ctx, () => render());
   const settings = createSettingsMenu(ctx, () => render());
+  const achievements = createAchievementsModal(ctx, () => render());
   // Both popovers share one spot, so opening one closes the other.
   const topBar = createTopBar(
     ctx,
@@ -93,6 +96,11 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     () => {
       menu.close();
       settings.toggle();
+    },
+    () => {
+      menu.close();
+      settings.close();
+      achievements.toggle();
     },
   );
   const panel = createSidePanel(ctx, () => render());
@@ -105,7 +113,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   const vehiclePanel = createVehiclePanel(ctx);
 
   root.classList.add('wt-ui');
-  root.append(topBar.el, vehiclePanel.el, menu.el, settings.el, statsPanel.el, islandPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el);
+  root.append(topBar.el, vehiclePanel.el, menu.el, settings.el, statsPanel.el, islandPanel.el, panel.el, toasts.el, hoverCard.el, buildModal.el, statsModal.el, achievements.el);
 
   // Clicking anywhere outside an open popover closes it.
   const onPointerDown = (event: PointerEvent): void => {
@@ -117,7 +125,8 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   document.addEventListener('pointerdown', onPointerDown);
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape') return;
-    if (statsModal.isOpen()) statsModal.close();
+    if (achievements.isOpen()) achievements.close();
+    else if (statsModal.isOpen()) statsModal.close();
     else if (buildModal.isOpen()) buildModal.dismiss();
     else if (selection.type === 'vehicle') ctx.select({ type: 'none' });
   };
@@ -153,7 +162,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     if (disposed || !last) return;
     const unlocks = new Map<string, UnlockView>(last.unlocks.map((unlock) => [unlock.id, unlock]));
     const frame: Frame = { snapshot: last, unlocks, selection };
-    topBar.update(last, menu.isOpen(), settings.isOpen());
+    topBar.update(last, menu.isOpen(), settings.isOpen(), achievements.isOpen());
     settings.update(last);
     panel.update(frame);
     buildModal.update(frame);
@@ -161,6 +170,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     islandPanel.update();
     vehiclePanel.update(frame);
     statsModal.update(frame);
+    achievements.update(frame);
     hoverCard.update(frame);
   }
 
@@ -198,6 +208,13 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
         if (event.type === 'unlocked') {
           const { unlockId } = event;
           notify('good', () => tr.t('notice.unlocked', { name: unlockName(tr, unlockId) }));
+        } else if (event.type === 'achievementUnlocked') {
+          const { achievementId } = event;
+          const bonus = formatPercent(event.saleBonus);
+          toasts.push('good', () => tr.t('notice.achievement', { name: achievementName(tr, achievementId), bonus }), {
+            title: () => tr.t('notice.achievementTitle'),
+            ttlMs: ACHIEVEMENT_TTL_MS,
+          });
         } else if (event.type === 'specialCargoCollected') {
           const { reward } = event;
           notify('good', () => tr.t('notice.specialCargo', { amount: formatAmount(reward) }));
@@ -227,6 +244,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       islandPanel.el.remove();
       vehiclePanel.el.remove();
       statsModal.el.remove();
+      achievements.el.remove();
       hoverCard.el.remove();
       root.classList.remove('wt-ui');
     },

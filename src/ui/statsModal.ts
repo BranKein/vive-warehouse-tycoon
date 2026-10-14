@@ -150,6 +150,11 @@ export function createStatsModal(ctx: UIContext, onChange: () => void) {
           label: tr.t('stats.unlocks'),
           value: `${snapshot.unlocks.filter((unlock) => unlock.unlocked).length}/${snapshot.unlocks.length}`,
         },
+        {
+          id: 'achievementBonus',
+          label: tr.t('stats.achievementBonus'),
+          value: `+${formatPercent(snapshot.achievements.saleBonus)}%`,
+        },
       ]);
 
       // Every type that has been built: how many stand and how much they worked on average.

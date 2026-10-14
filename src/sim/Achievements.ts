@@ -6,6 +6,8 @@ export interface AchievementHost {
   measure(metric: AchievementMetric): BigNum;
   /** Simulated seconds played. */
   playSeconds(): number;
+  /** Added to sale prices per achievement reached. */
+  readonly saleBonusEach: number;
   emit(event: GameEvent): void;
 }
 
@@ -49,11 +51,17 @@ export class Achievements {
     for (const def of this.defs) {
       if (this.reached.has(def.id) || this.value(def.metric).lt(def.goal)) continue;
       this.reached.set(def.id, this.host.playSeconds());
-      if (!quiet) this.host.emit({ type: 'achievementUnlocked', achievementId: def.id });
+      if (!quiet) {
+        this.host.emit({ type: 'achievementUnlocked', achievementId: def.id, saleBonus: this.saleBonus });
+      }
     }
   }
 
-  view(saleBonusEach: number): AchievementsView {
+  get saleBonus(): number {
+    return this.reached.size * this.host.saleBonusEach;
+  }
+
+  view(): AchievementsView {
     return {
       list: this.defs.map((def) => ({
         id: def.id,
@@ -62,7 +70,7 @@ export class Achievements {
         goal: bn(def.goal),
       })),
       achieved: this.reached.size,
-      saleBonus: this.reached.size * saleBonusEach,
+      saleBonus: this.saleBonus,
     };
   }
 

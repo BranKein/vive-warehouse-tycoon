@@ -37,6 +37,8 @@ export interface HeadlessReport {
   changes: Array<{ atSec: number; kind: 'build' | 'unlock'; id: string }>;
   /** Every unlock in the order it happened, in simulated seconds. */
   unlocks: Array<{ id: string; atSec: number }>;
+  /** Every achievement in the order it was reached, in simulated seconds. */
+  achievements: Array<{ id: string; atSec: number }>;
   firstTier2UnlockSec: number | null;
   /** When every plot of the start island held a building. */
   allPlotsFilledSec: number | null;
@@ -68,6 +70,7 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
     hours: [],
     changes: [],
     unlocks: [],
+    achievements: [],
     firstTier2UnlockSec: null,
     allPlotsFilledSec: null,
     longestGapSec: 0,
@@ -107,6 +110,8 @@ export function runHeadless(options: HeadlessOptions): HeadlessReport {
         report.buildingsBuilt += 1;
         report.changes.push({ atSec: second, kind: 'build', id: event.typeId });
         if (report.allPlotsFilledSec === null && game.island.isFull) report.allPlotsFilledSec = second;
+      } else if (event.type === 'achievementUnlocked') {
+        report.achievements.push({ id: event.achievementId, atSec: second });
       } else if (event.type === 'upgraded') {
         report.upgradesBought += 1;
       } else if (event.type === 'unlocked') {
@@ -217,6 +222,9 @@ export function formatReport(report: HeadlessReport): string {
     lines.push('');
     lines.push('Timeline:');
     for (const change of report.changes) lines.push(`  ${time(change.atSec).padStart(10)}  ${change.kind.padEnd(6)}  ${change.id}`);
+    lines.push('');
+    lines.push('Achievements:');
+    for (const entry of report.achievements) lines.push(`  ${time(entry.atSec).padStart(10)}  ${entry.id}`);
     lines.push('');
   }
   const total = Object.values(report.statusSeconds).reduce((sum, value) => sum + value, 0) || 1;

@@ -152,6 +152,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     this.achievements = new Achievements(this.catalog.achievements, {
       measure: (metric) => this.measure(metric),
       playSeconds: () => this.tickCount / TICKS_PER_SECOND,
+      saleBonusEach: this.balance.achievements.saleBonusEach,
       emit: (event) => this.emit(event),
     });
     this.nextSpecialTick = 0;
@@ -194,8 +195,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
   }
 
   priceMultiplier(): BigNum {
-    const bonus = 1 + this.achievements.count * this.balance.achievements.saleBonusEach;
-    return this.globalUpgrades.stats.value(Stat.priceMultiplier).mul(bonus);
+    return this.globalUpgrades.stats.value(Stat.priceMultiplier).mul(1 + this.achievements.saleBonus);
   }
 
   emit(event: GameEvent): void {
@@ -267,7 +267,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
       }),
       globalUpgrades: upgradeViews(this.globalUpgrades, money),
       islands: this.islands.summaries(),
-      achievements: this.achievements.view(this.balance.achievements.saleBonusEach),
+      achievements: this.achievements.view(),
       island: this.island.snapshot(money, this.specialView()),
     };
   }

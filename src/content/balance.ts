@@ -78,7 +78,7 @@ export interface Balance {
     estimateSec: number;
   };
   achievements: {
-    /** Added to every sale price per achievement reached (0.01 = +1%); the shares add up. */
+    /** Added to every sale price per achievement reached (0.005 = +0.5%); the shares add up. */
     saleBonusEach: number;
   };
   income: {
@@ -107,7 +107,7 @@ export const BALANCE: Balance = {
   },
   specialCargo: { minIntervalSec: 180, maxIntervalSec: 420, lifetimeSec: 40, rewardSeconds: 45, minReward: 10 },
   islands: { estimateSec: 600 },
-  achievements: { saleBonusEach: 0.01 },
+  achievements: { saleBonusEach: 0.005 },
   income: { smoothingSec: 60 },
   eventQueueLimit: 2000,
 };

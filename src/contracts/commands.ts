@@ -51,4 +51,4 @@ export type GameEvent =
   | { type: 'specialCargoSpawned'; id: string }
   | { type: 'specialCargoCollected'; id: string; reward: BigNum }
   | { type: 'islandSwitched'; islandId: IslandId }
-  | { type: 'achievementUnlocked'; achievementId: AchievementId };
+  | { type: 'achievementUnlocked'; achievementId: AchievementId; /** Sale bonus from all achievements now, e.g. 0.05. */ saleBonus: number };

@@ -23,10 +23,10 @@ const single = (id: string, tier: AchievementTier, metric: AchievementMetric, go
 export const ACHIEVEMENTS: AchievementDef[] = [
   ...ladder('buildings', { kind: 'buildings' }, [10, 30, 59]),
   ...ladder('unlocks', { kind: 'unlocks' }, [3, 8, 17]),
-  ...ladder('upgrades', { kind: 'upgrades' }, [50, 300, 1000]),
+  ...ladder('upgrades', { kind: 'upgrades' }, [100, 1000, 4000]),
   ...ladder('earned', { kind: 'earned' }, [1e6, 1e9, 1e12]),
   ...ladder('income', { kind: 'income' }, [1e3, 1e6, 1e9]),
-  ...ladder('sales', { kind: 'sales' }, [100, 1000, 10000]),
+  ...ladder('sales', { kind: 'sales' }, [100, 1000, 5000]),
   ...ladder('specialCargo', { kind: 'specialCargo' }, [5, 25, 100]),
   ...ladder('playTime', { kind: 'playSeconds' }, [3600, 4 * 3600, 12 * 3600]),
   single('firstWasteDisposal', 'bronze', { kind: 'category', category: 'disposal' }),

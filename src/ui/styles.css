@@ -1465,3 +1465,78 @@
 .wt-topbar {
   z-index: 4;
 }
+
+/* ---------- Achievements ---------- */
+
+.wt-trophy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-trophy-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.wt-ach {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--wt-radius-small);
+  border: 1px solid var(--wt-line);
+  background: var(--wt-cream);
+  opacity: 0.8;
+}
+
+.wt-ach.is-done {
+  opacity: 1;
+  background: var(--wt-butter);
+  border-color: var(--wt-butter-deep);
+}
+
+.wt-ach-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wt-ach-name {
+  font-weight: 800;
+}
+
+.wt-ach-desc {
+  font-size: 11px;
+  color: var(--wt-ink-soft);
+}
+
+.wt-medal {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--wt-shadow-soft);
+  filter: grayscale(1) opacity(0.45);
+}
+
+.wt-ach.is-done .wt-medal {
+  filter: none;
+}
+
+.wt-medal-bronze {
+  background: radial-gradient(circle at 35% 30%, #f6c9a0, #c47f45);
+}
+
+.wt-medal-silver {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #a9b0ba);
+}
+
+.wt-medal-gold {
+  background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a);
+}

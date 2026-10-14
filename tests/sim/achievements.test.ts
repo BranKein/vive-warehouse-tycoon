@@ -61,7 +61,7 @@ describe('achievements', () => {
   it('count sales by channel and special cargo from events', () => {
     const events: GameEvent[] = [];
     const defs = catalog.achievements.filter((def) => def.id === 'firstShipSale' || def.id === 'specialCargo.1');
-    const tracker = new Achievements(defs, { measure: () => bn(0), playSeconds: () => 42, emit: (e) => events.push(e) });
+    const tracker = new Achievements(defs, { measure: () => bn(0), playSeconds: () => 42, saleBonusEach: 0.01, emit: (e) => events.push(e) });
     tracker.observe({ type: 'sale', channelId: 'sale.truck', amount: bn(5), x: 0, z: 0 });
     tracker.check();
     expect(tracker.count).toBe(0);
@@ -70,7 +70,7 @@ describe('achievements', () => {
     tracker.check();
     expect(tracker.count).toBe(2);
     expect(events).toHaveLength(2);
-    expect(tracker.view(0.01).list.every((entry) => entry.achievedAtSec === 42)).toBe(true);
+    expect(tracker.view().list.every((entry) => entry.achievedAtSec === 42)).toBe(true);
     // Once is enough.
     tracker.check();
     expect(events).toHaveLength(2);
