@@ -51,12 +51,12 @@ const ROWS: Row[] = [
   { id: 'wireMill', category: 'tier1', buildCost: 100000, unlockCost: 150000, maxCount: 3, upgradeCostScale: 5000 },
   { id: 'sofaWorkshop', category: 'tier3', buildCost: 250000, unlockCost: 400000, maxCount: 2, upgradeCostScale: 5e4, buildCostGrowth: 12 },
   { id: 'motorFactory', category: 'tier2', buildCost: 1.5e6, unlockCost: 2.5e6, maxCount: 2, upgradeCostScale: 1e5, buildCostGrowth: 20 },
-  { id: 'packagingPlant', category: 'tier3', buildCost: 3.6e6, unlockCost: 6e6, maxCount: 2, upgradeCostScale: 1e6, buildCostGrowth: 36 },
-  { id: 'eBikeFactory', category: 'tier3', buildCost: 7e7, unlockCost: 8e7, maxCount: 2, upgradeCostScale: 5e6, buildCostGrowth: 7.5 },
-  { id: 'applianceFactory', category: 'tier3', buildCost: 2.1e8, unlockCost: 2.4e8, maxCount: 2, upgradeCostScale: 1.5e7, buildCostGrowth: 10 },
-  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 8e8, unlockCost: 1.3e9, maxCount: 2, upgradeCostScale: 2.3e8, buildCostGrowth: 7.5 },
-  { id: 'smartHomeFactory', category: 'tier4', buildCost: 2.7e9, unlockCost: 3.5e9, maxCount: 2, upgradeCostScale: 2e9, buildCostGrowth: 5 },
-  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 1.8e10, unlockCost: 2e10, maxCount: 2, upgradeCostScale: 2.5e10, buildCostGrowth: 1.4 },
+  { id: 'packagingPlant', category: 'tier3', buildCost: 3.6e6, unlockCost: 6e6, maxCount: 2, upgradeCostScale: 1e6, buildCostGrowth: 58 },
+  { id: 'eBikeFactory', category: 'tier3', buildCost: 7e7, unlockCost: 8e7, maxCount: 2, upgradeCostScale: 5e6, buildCostGrowth: 13.5 },
+  { id: 'applianceFactory', category: 'tier3', buildCost: 4e8, unlockCost: 4.5e8, maxCount: 2, upgradeCostScale: 1.5e7, buildCostGrowth: 7.5 },
+  { id: 'luxuryPackingCenter', category: 'tier4', buildCost: 1.2e9, unlockCost: 1.7e9, maxCount: 2, upgradeCostScale: 2.3e8, buildCostGrowth: 5.6 },
+  { id: 'smartHomeFactory', category: 'tier4', buildCost: 3.6e9, unlockCost: 4.5e9, maxCount: 2, upgradeCostScale: 2e9, buildCostGrowth: 3.6 },
+  { id: 'handmadeWorkshop', category: 'handmade', buildCost: 1.9e10, unlockCost: 2.1e10, maxCount: 2, upgradeCostScale: 2.5e10, buildCostGrowth: 1.65 },
 ];
 
 export const buildingUnlockId = (buildingType: string): string => `unlock.building.${buildingType}`;
