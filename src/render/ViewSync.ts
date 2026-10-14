@@ -919,12 +919,16 @@ export class ViewSync {
   private updateRoute(): void {
     const rule = renderConfig.vehicle.route;
     const track = this.selection.type === 'vehicle' ? this.tracks.get(this.selection.vehicleId) : undefined;
-    const route = track && track.seen && track.road && !track.road.leaving ? track.route : null;
-    if (!route) {
+    const road = track && track.seen && !track.road?.leaving ? track.road : null;
+    const route = road ? track!.route : null;
+    if (!track || !road || !route) {
       this.routeLine.hide();
       return;
     }
-    this.routeLine.show(routeDots(route.points, route.travelled + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset));
+    // The game is ahead of where the vehicle is drawn: start the line where the vehicle is, so it drives on it.
+    const behind = road.dist - road.at;
+    const dots = routeDots(route.points, route.travelled - behind + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset);
+    this.routeLine.show([{ x: track.x + track.shiftX, z: track.z + track.shiftZ }, ...dots]);
   }
 
   private updateMarker(dt: number): void {

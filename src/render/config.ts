@@ -113,9 +113,9 @@ export const renderConfig = {
     pickScale: 1.4,
     /**
      * The line that shows a selected road vehicle's way: a band this wide through points this far apart,
-     * this high over the ground, beginning this far ahead of it, with a disc at the end.
+     * this high over the ground, from under the vehicle (the next point `ahead` of it), with a disc at the end.
      */
-    route: { spacing: 0.8, width: 0.4, endRadius: 0.9, height: 0.14, ahead: 2.5, max: 800 },
+    route: { spacing: 0.8, width: 0.4, endRadius: 0.9, height: 0.14, ahead: 0.5, max: 800 },
     /**
      * Carriers of these owners are drawn as another vehicle instead of the carrier truck; `painted` ones
      * take the owner's colour like the carrier does.
