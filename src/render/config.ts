@@ -115,8 +115,14 @@ export const renderConfig = {
     markerScale: 1.5,
     /** The dots that show a selected road vehicle's way: how far apart, how big, how high over the ground, and how far ahead of it they begin. */
     route: { spacing: 1.6, radius: 0.34, endScale: 2.6, height: 0.14, ahead: 2.5, max: 400 },
-    /** Carriers of these owners are drawn as another vehicle instead of the carrier truck. */
-    ownerModels: { tier1: 'vehicle.forklift' } as Partial<Record<VehicleOwner, string>>,
+    /**
+     * Carriers of these owners are drawn as another vehicle instead of the carrier truck; `painted` ones
+     * take the owner's colour like the carrier does.
+     */
+    ownerModels: {
+      tier1: { model: 'vehicle.forklift', painted: false },
+      disposal: { model: 'vehicle.wasteTanker', painted: true },
+    } as Partial<Record<VehicleOwner, { model: string; painted: boolean }>>,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },
@@ -228,6 +234,7 @@ export const renderConfig = {
     vehicles: {
       carrier: [1.5, 1.3, 2.6],
       forklift: [1.3, 2.4, 3.1],
+      wasteTanker: [1.9, 2.2, 3.6],
       boxTruck: [2.3, 2.5, 5.6],
       cargoShip: [7, 4, 20],
       cargoPlane: [6, 3, 16],

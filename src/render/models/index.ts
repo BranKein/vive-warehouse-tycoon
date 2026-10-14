@@ -41,6 +41,7 @@ const HAND_DRAWN_VEHICLES = [
   'vehicle.boxTruck',
   'vehicle.carrier',
   'vehicle.forklift',
+  'vehicle.wasteTanker',
   'vehicle.cargoShip',
   'vehicle.cargoPlane',
 ];

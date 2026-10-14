@@ -180,6 +180,7 @@ function carrierSwatches(): Swatch[] {
 /** The colours the game tints a model with, for the models it tints. */
 const SWATCHES: Record<string, () => Swatch[]> = {
   'vehicle.carrier': carrierSwatches,
+  'vehicle.wasteTanker': carrierSwatches,
   'prop.crate': () => Object.keys(catalog.items).map((item) => ({ color: itemColor(theme, item), label: word(`item.${item}.name`) })),
 };
 

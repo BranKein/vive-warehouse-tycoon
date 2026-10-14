@@ -95,6 +95,38 @@ function boxTruck(kit: Kit): Object3D {
   return kit.group(parts);
 }
 
+/** Cab and wheels shared by the carrier and the waste tanker: everything but what rides on the back. */
+function carrierFront(kit: Kit, cab: Paint): Object3D[] {
+  const p = kit.theme.props;
+  const light = kit.materials.headlight;
+  const HALF_PI = Math.PI / 2;
+  const parts: Object3D[] = [];
+  // Cab.
+  const CAB_Z = 1.12;
+  parts.push(kit.box(1.8, 1.45, 1.2, cab, { y: 0.48, z: CAB_Z, r: 0.36 }));
+  parts.push(kit.box(1.44, 0.56, 0.26, p.glass, { y: 1.18, z: CAB_Z + 0.5, r: 0.1 }));
+  parts.push(kit.box(1.84, 0.5, 0.58, p.glass, { y: 1.21, z: CAB_Z + 0.08, r: 0.1 }));
+  parts.push(kit.box(1.0, 0.24, 0.12, p.sign, { y: 0.72, z: CAB_Z + 0.58, r: 0.06 }));
+  parts.push(kit.box(1.86, 0.24, 0.32, p.sign, { y: 0.36, z: CAB_Z + 0.52, r: 0.1 }));
+  parts.push(kit.box(0.5, 0.1, 0.3, p.hazard, { y: 1.92, z: CAB_Z - 0.1, r: 0.05 }));
+  for (const x of [-0.64, 0.64]) {
+    parts.push(kit.cyl(0.15, 0.15, 0.1, light, { x, y: 0.86 - 0.05, z: CAB_Z + 0.59, rx: HALF_PI }, 12));
+    parts.push(kit.box(0.24, 0.05, 0.05, p.darkMetal, { x: x * 1.5, y: 1.42, z: CAB_Z + 0.36 }));
+    parts.push(kit.box(0.08, 0.3, 0.2, p.darkMetal, { x: x * 1.62, y: 1.2, z: CAB_Z + 0.36, r: 0.03 }));
+  }
+
+  // Wheels under arches.
+  const FRONT_Z = 1.05;
+  const REAR_Z = -1.05;
+  for (const x of [-0.8, 0.8]) {
+    parts.push(kit.barrel(0.26, 0.5, 1.08, cab, { x, y: 0.38, z: FRONT_Z }));
+    parts.push(kit.barrel(0.26, 0.5, 1.08, p.darkMetal, { x, y: 0.38, z: REAR_Z }));
+    parts.push(...toyWheel(kit, 0.38, 0.36, x, FRONT_Z, cab));
+    parts.push(...toyWheel(kit, 0.38, 0.36, x, REAR_Z, cab));
+  }
+  return parts;
+}
+
 /**
  * Carrier: the little flatbed that shuttles goods around the estate. Same toy
  * look as the box truck, one size down: round cab, cream bed with slatted rails.
@@ -134,30 +166,45 @@ function carrier(kit: Kit): Object3D {
   // Headboard between the cab and the load.
   parts.push(kit.box(1.8, 0.75, 0.1, v.carrierCab, { y: 0.84, z: BED_Z + BED_LEN / 2 - 0.08, r: 0.05 }));
 
-  // Cab.
-  const CAB_Z = 1.12;
-  parts.push(kit.box(1.8, 1.45, 1.2, v.carrierCab, { y: 0.48, z: CAB_Z, r: 0.36 }));
-  parts.push(kit.box(1.44, 0.56, 0.26, p.glass, { y: 1.18, z: CAB_Z + 0.5, r: 0.1 }));
-  parts.push(kit.box(1.84, 0.5, 0.58, p.glass, { y: 1.21, z: CAB_Z + 0.08, r: 0.1 }));
-  parts.push(kit.box(1.0, 0.24, 0.12, p.sign, { y: 0.72, z: CAB_Z + 0.58, r: 0.06 }));
-  parts.push(kit.box(1.86, 0.24, 0.32, p.sign, { y: 0.36, z: CAB_Z + 0.52, r: 0.1 }));
-  parts.push(kit.box(0.5, 0.1, 0.3, p.hazard, { y: 1.92, z: CAB_Z - 0.1, r: 0.05 }));
-  for (const x of [-0.64, 0.64]) {
-    parts.push(kit.cyl(0.15, 0.15, 0.1, light, { x, y: 0.86 - 0.05, z: CAB_Z + 0.59, rx: HALF_PI }, 12));
-    parts.push(kit.box(0.24, 0.05, 0.05, p.darkMetal, { x: x * 1.5, y: 1.42, z: CAB_Z + 0.36 }));
-    parts.push(kit.box(0.08, 0.3, 0.2, p.darkMetal, { x: x * 1.62, y: 1.2, z: CAB_Z + 0.36, r: 0.03 }));
-  }
-
-  // Wheels under arches.
-  const FRONT_Z = 1.05;
-  const REAR_Z = -1.05;
-  for (const x of [-0.8, 0.8]) {
-    parts.push(kit.barrel(0.26, 0.5, 1.08, v.carrierCab, { x, y: 0.38, z: FRONT_Z }));
-    parts.push(kit.barrel(0.26, 0.5, 1.08, p.darkMetal, { x, y: 0.38, z: REAR_Z }));
-    parts.push(...toyWheel(kit, 0.38, 0.36, x, FRONT_Z, v.carrierCab));
-    parts.push(...toyWheel(kit, 0.38, 0.36, x, REAR_Z, v.carrierCab));
-  }
+  parts.push(...carrierFront(kit, v.carrierCab));
   return kit.group(parts, { cargo, cargoScale: [[1, 1, 1]] });
+}
+
+/**
+ * Waste tanker: the carrier's cab on the same chassis, with a round tank lying
+ * on the back instead of the bed, a band in the body paint round its middle,
+ * a hatch on top and a valve at the back. Painted by owner like the carrier.
+ */
+function wasteTanker(kit: Kit): Object3D {
+  const cab: Paint = kit.materials.paint;
+  const v = kit.theme.vehicles;
+  const p = kit.theme.props;
+  const HALF_PI = Math.PI / 2;
+  const parts: Object3D[] = [];
+  parts.push(kit.box(1.3, 0.26, 3.4, p.darkMetal, { y: 0.36, z: -0.1, r: 0.09 }));
+
+  const TANK_Z = -0.68;
+  const TANK_LEN = 1.9;
+  const R = 0.74;
+  const MID = 0.62 + R + 0.06;
+  // Two saddles on the chassis hold the tank.
+  for (const dz of [-0.6, 0.6]) parts.push(kit.box(1.5, 0.36, 0.26, p.darkMetal, { y: 0.5, z: TANK_Z + dz, r: 0.06 }));
+  parts.push(kit.cyl(R, R, TANK_LEN, v.carrierBed, { y: MID - TANK_LEN / 2, z: TANK_Z, rx: HALF_PI }, 24));
+  for (const end of [-1, 1]) {
+    parts.push(kit.blob(R, R, 0.26, v.carrierBed, { y: MID - R, z: TANK_Z + end * (TANK_LEN / 2) }));
+  }
+  for (const dz of [-0.45, 0.45]) parts.push(kit.cyl(R + 0.05, R + 0.05, 0.16, cab, { y: MID - 0.08, z: TANK_Z + dz, rx: HALF_PI }, 24));
+  // Hatch on top, valve and tail lights at the back.
+  parts.push(kit.cyl(0.26, 0.28, 0.16, p.darkMetal, { y: MID + R - 0.06, z: TANK_Z + 0.2 }, 14));
+  parts.push(kit.cyl(0.18, 0.18, 0.06, p.metal, { y: MID + R + 0.1, z: TANK_Z + 0.2 }, 14));
+  const back = TANK_Z - TANK_LEN / 2 - 0.24;
+  parts.push(kit.cyl(0.09, 0.09, 0.34, p.darkMetal, { y: 0.7 - 0.17, z: back - 0.02, rx: HALF_PI }, 10));
+  parts.push(kit.cyl(0.13, 0.13, 0.06, p.hazard, { y: 0.7 - 0.03, z: back - 0.2, rx: HALF_PI }, 12));
+  parts.push(kit.box(1.8, 0.16, 0.2, p.darkMetal, { y: 0.34, z: -1.82, r: 0.06 }));
+  for (const x of [-0.72, 0.72]) parts.push(kit.box(0.2, 0.14, 0.08, kit.materials.headlight, { x, y: 0.4, z: -1.93, r: 0.04 }));
+
+  parts.push(...carrierFront(kit, cab));
+  return kit.group(parts);
 }
 
 /** Forklift for the yards: a stubby yellow truck with a roll cage, a mast and two forks. */
@@ -335,6 +382,7 @@ export function registerVehicleModels(registry: ModelRegistry): void {
   registry.register('vehicle.boxTruck', boxTruck);
   registry.register('vehicle.carrier', carrier);
   registry.register('vehicle.forklift', forklift);
+  registry.register('vehicle.wasteTanker', wasteTanker);
   registry.register('vehicle.cargoShip', cargoShip);
   registry.register('vehicle.cargoPlane', cargoPlane);
   registry.register('vehicle.default', boxTruck);

@@ -464,7 +464,7 @@ export class ViewSync {
         const onRoad = ROAD_KINDS.has(vehicle.kind);
         // Some owners' carriers are drawn as another vehicle; only the carrier itself is painted by owner and goods.
         const ownModel = vehicle.kind === 'carrier' && vehicle.owner ? rule.ownerModels[vehicle.owner] : undefined;
-        const model = ownModel ?? vehicle.model;
+        const model = ownModel?.model ?? vehicle.model;
         track = {
           model,
           x: pose.x,
@@ -485,7 +485,7 @@ export class ViewSync {
             : null,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
-          paint: vehicle.kind === 'carrier' && !ownModel ? this.carrierPaint(vehicle, curr) : null,
+          paint: vehicle.kind === 'carrier' && (ownModel?.painted ?? true) ? this.carrierPaint(vehicle, curr) : null,
           route: null,
           seen: true,
         };
