@@ -15,7 +15,7 @@ export interface SaveSummary {
 }
 
 /** Format version written by this build. Bump it together with a step in `src/save/migrations.ts`. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SaveData {
   /** Format version; older versions are upgraded step by step on load. */

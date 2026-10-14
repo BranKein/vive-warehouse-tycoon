@@ -1,6 +1,7 @@
 import {
   SAVE_VERSION,
   Stat,
+  type AchievementMetric,
   type BuildingId,
   type BuildingTypeId,
   type ChannelId,
@@ -25,6 +26,7 @@ import { BigNum, bn } from '@/core/BigNum';
 import { Rng } from '@/core/Rng';
 import { secondsToTicks, TICKS_PER_SECOND } from '@/core/time';
 import type { Balance } from '@/content/balance';
+import { Achievements } from './Achievements';
 import { AutoPilot, type AutoPilotHost } from './AutoPilot';
 import { parseAmount } from './Inventory';
 import type { Island, IslandHost } from './Island';
@@ -90,6 +92,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
   readonly globalUpgrades: GlobalUpgrades;
   readonly islands: IslandManager;
   readonly autoPilot: AutoPilot;
+  readonly achievements: Achievements;
 
   money = BigNum.ZERO;
   totalEarned = BigNum.ZERO;
@@ -146,10 +149,18 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
 
     this.islands = new IslandManager(this.catalog, this, state?.islands);
     this.autoPilot = new AutoPilot(this);
+    this.achievements = new Achievements(this.catalog.achievements, {
+      measure: (metric) => this.measure(metric),
+      playSeconds: () => this.tickCount / TICKS_PER_SECOND,
+      emit: (event) => this.emit(event),
+    });
     this.nextSpecialTick = 0;
     if (state) {
       this.autoPilot.restore(state.auto);
       this.restoreSpecial(state.special);
+      this.achievements.restore(state.achievements);
+      // A save from before achievements is judged once by what it already shows, without a toast for each.
+      if (!state.achievements) this.achievements.check(true);
     } else {
       this.nextSpecialTick = this.tickCount + this.rollSpecialDelay();
     }
@@ -183,10 +194,12 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
   }
 
   priceMultiplier(): BigNum {
-    return this.globalUpgrades.stats.value(Stat.priceMultiplier);
+    const bonus = 1 + this.achievements.count * this.balance.achievements.saleBonusEach;
+    return this.globalUpgrades.stats.value(Stat.priceMultiplier).mul(bonus);
   }
 
   emit(event: GameEvent): void {
+    this.achievements?.observe(event);
     this.events.push(event);
     const limit = this.balance.eventQueueLimit;
     if (this.events.length > limit) this.events.splice(0, this.events.length - limit);
@@ -216,6 +229,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
     this.updateSpecial(tick);
     this.autoPilot.update(tick);
     if (tick % TICKS_PER_SECOND === 0) {
+      this.achievements.check();
       // Two exponential moving averages in a row, sampled once a second. The second one
       // turns the spike of a sale and the slide after it into a gentle rise and fall.
       const alpha = 1 - Math.exp(-1 / Math.max(1e-6, this.balance.income.smoothingSec));
@@ -253,8 +267,53 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
       }),
       globalUpgrades: upgradeViews(this.globalUpgrades, money),
       islands: this.islands.summaries(),
+      achievements: this.achievements.view(this.balance.achievements.saleBonusEach),
       island: this.island.snapshot(money, this.specialView()),
     };
+  }
+
+  // --- achievements -------------------------------------------------------------------
+
+  private measure(metric: AchievementMetric): BigNum {
+    switch (metric.kind) {
+      case 'buildings':
+        return bn(this.islands.buildingCount());
+      case 'unlocks':
+        return bn(this.unlocked.size);
+      case 'upgrades':
+        return bn(this.upgradeLevels());
+      case 'earned':
+        return this.totalEarned;
+      case 'income':
+        return this.incomePerSec;
+      case 'playSeconds':
+        return bn(this.tickCount / TICKS_PER_SECOND);
+      case 'category': {
+        let count = 0;
+        for (const island of this.islands.islands.values()) {
+          for (const building of island.buildings) if (building.def.category === metric.category) count += 1;
+        }
+        return bn(count);
+      }
+      default:
+        return BigNum.ZERO;
+    }
+  }
+
+  /** Upgrade levels held across the game: buildings, channels and the game-wide tracks. */
+  private upgradeLevels(): number {
+    const sum = (levels: ReadonlyMap<string, number>): number => {
+      let total = 0;
+      for (const level of levels.values()) total += level;
+      return total;
+    };
+    let total = sum(this.globalUpgrades.levels);
+    for (const island of this.islands.islands.values()) {
+      total += sum(island.inbound.levels);
+      for (const channel of island.sales) total += sum(channel.levels);
+      for (const building of island.buildings) total += sum(building.levels);
+    }
+    return total;
   }
 
   // --- unlocks --------------------------------------------------------------------------
@@ -506,6 +565,7 @@ export class Game implements GameEngine, GameCommands, IslandHost, AutoPilotHost
       global: serializeLevels(this.globalUpgrades.levels),
       islands: this.islands.toJSON(),
       auto: this.autoPilot.toJSON(),
+      achievements: this.achievements.toJSON(),
       special: {
         seq: this.specialSeq,
         next: this.nextSpecialTick,

@@ -223,6 +223,36 @@ export interface IslandDef {
   };
 }
 
+export type AchievementId = string;
+export type AchievementTier = 'bronze' | 'silver' | 'gold';
+
+/** What an achievement counts. Kinds that read the state can be judged again from an old save. */
+export type AchievementMetric =
+  /** Buildings standing on all islands. */
+  | { kind: 'buildings' }
+  | { kind: 'unlocks' }
+  /** Upgrade levels bought, all kinds together. */
+  | { kind: 'upgrades' }
+  /** Money earned in total. */
+  | { kind: 'earned' }
+  /** The smoothed income per second. */
+  | { kind: 'income' }
+  /** Loads sold; only through one channel when `channel` is given. */
+  | { kind: 'sales'; channel?: ChannelId }
+  | { kind: 'specialCargo' }
+  | { kind: 'playSeconds' }
+  /** Buildings of one category standing. */
+  | { kind: 'category'; category: BuildingCategory };
+
+export interface AchievementDef {
+  id: AchievementId;
+  /** Achievements of a group are listed together, lowest goal first. */
+  group: string;
+  tier: AchievementTier;
+  metric: AchievementMetric;
+  goal: number;
+}
+
 export interface ContentCatalog {
   items: Record<ItemId, ItemDef>;
   recipes: Record<RecipeId, RecipeDef>;
@@ -234,5 +264,7 @@ export interface ContentCatalog {
   islands: Record<IslandId, IslandDef>;
   /** Upgrade tracks that apply to the whole game. */
   globalUpgradeTracks: UpgradeTrackId[];
+  /** In the order they are listed. */
+  achievements: AchievementDef[];
   startIsland: IslandId;
 }

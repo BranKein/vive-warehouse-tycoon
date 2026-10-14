@@ -1,4 +1,5 @@
 import type { ContentCatalog, IslandDef } from '@/contracts';
+import { ACHIEVEMENTS } from './achievements';
 import { BUILDINGS, BUILDING_UNLOCKS } from './buildings';
 import { CHANNEL_UNLOCKS, INBOUND_CHANNELS, SALE_CHANNELS } from './channels';
 import { ITEMS } from './items';
@@ -33,5 +34,6 @@ export const catalog: ContentCatalog = {
   saleChannels: byId(SALE_CHANNELS),
   islands: byId([ISLAND_ONE]),
   globalUpgradeTracks: GLOBAL_TRACKS,
+  achievements: ACHIEVEMENTS,
   startIsland: ISLAND_ONE.id,
 };

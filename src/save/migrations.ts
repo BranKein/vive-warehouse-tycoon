@@ -12,12 +12,15 @@ export const CURRENT_SAVE_VERSION = SAVE_VERSION;
 /** Upgrades a save from version N to version N + 1. Must not mutate its argument. */
 export type MigrationStep = (data: SaveData) => SaveData;
 
-/**
- * Steps keyed by the version they upgrade FROM. Example for a future format 2:
- *
- *   1: (data) => ({ ...data, version: 2, state: reshape(data.state) }),
- */
-export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {};
+/** Steps keyed by the version they upgrade FROM. */
+export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {
+  // 2 adds achievements. An empty entry tells the game to judge the save once by what it already shows.
+  1: (data) => ({
+    ...data,
+    version: 2,
+    state: isRecord(data.state) ? { ...data.state, achievements: null } : data.state,
+  }),
+};
 
 export type SaveErrorCode = 'invalid' | 'tooNew' | 'missingStep' | 'badStep';
 

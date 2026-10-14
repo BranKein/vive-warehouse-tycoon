@@ -196,6 +196,7 @@ export function createFixtureSnapshot(catalog: ContentCatalog, timeSec: number):
     incomePerSec: money.div(400),
     totalEarned: money.mul(3),
     speed: 1,
+    achievements: { list: [], achieved: 0, saleBonus: 0 },
     autoPilot: {
       enabled: false,
       target: null,

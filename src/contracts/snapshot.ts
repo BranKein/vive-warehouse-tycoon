@@ -5,6 +5,7 @@
  */
 import type { BigNum } from '@/core/BigNum';
 import type {
+  AchievementId,
   BuildingCategory,
   BuildingTypeId,
   ChannelId,
@@ -198,6 +199,22 @@ export interface AutoPilotView {
   targetCost: BigNum | null;
 }
 
+export interface AchievementView {
+  id: AchievementId;
+  /** Simulated seconds played when it was reached; `null` while it is not. */
+  achievedAtSec: number | null;
+  /** How far the measure has got, and where it has to get. */
+  value: BigNum;
+  goal: BigNum;
+}
+
+export interface AchievementsView {
+  list: AchievementView[];
+  achieved: number;
+  /** Added to every sale price, e.g. 0.12 for +12%. */
+  saleBonus: number;
+}
+
 export interface GameSnapshot {
   tick: number;
   /** Simulated seconds played. */
@@ -211,6 +228,7 @@ export interface GameSnapshot {
   unlocks: UnlockView[];
   globalUpgrades: UpgradeView[];
   islands: IslandSummaryView[];
+  achievements: AchievementsView;
   /** The island currently being watched. */
   island: IslandSnapshot;
 }

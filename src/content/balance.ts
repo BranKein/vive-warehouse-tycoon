@@ -77,6 +77,10 @@ export interface Balance {
     /** Simulated seconds fast-forwarded on a copy to estimate the income of an island being left. */
     estimateSec: number;
   };
+  achievements: {
+    /** Added to every sale price per achievement reached (0.01 = +1%); the shares add up. */
+    saleBonusEach: number;
+  };
   income: {
     /** Time constant of each of the two stages of the rolling income average. */
     smoothingSec: number;
@@ -103,6 +107,7 @@ export const BALANCE: Balance = {
   },
   specialCargo: { minIntervalSec: 180, maxIntervalSec: 420, lifetimeSec: 40, rewardSeconds: 45, minReward: 10 },
   islands: { estimateSec: 600 },
+  achievements: { saleBonusEach: 0.01 },
   income: { smoothingSec: 60 },
   eventQueueLimit: 2000,
 };

@@ -1,5 +1,6 @@
 import type { BigNum } from '@/core/BigNum';
 import type {
+  AchievementId,
   BuildingTypeId,
   ChannelId,
   IslandId,
@@ -49,4 +50,5 @@ export type GameEvent =
   | { type: 'sale'; channelId: ChannelId; amount: BigNum; x: number; z: number }
   | { type: 'specialCargoSpawned'; id: string }
   | { type: 'specialCargoCollected'; id: string; reward: BigNum }
-  | { type: 'islandSwitched'; islandId: IslandId };
+  | { type: 'islandSwitched'; islandId: IslandId }
+  | { type: 'achievementUnlocked'; achievementId: AchievementId };
