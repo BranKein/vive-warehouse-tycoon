@@ -21,7 +21,7 @@ import {
   parkedShift,
   type VehicleLike,
 } from '@/render/sync';
-import { carrierColor, defaultTheme } from '@/render/theme';
+import { carrierColor, defaultTheme, saturate } from '@/render/theme';
 
 describe('diffKeys', () => {
   it('lists what to create and what to remove', () => {
@@ -283,9 +283,15 @@ describe('scenery', () => {
 });
 
 describe('carrierColor', () => {
-  it('keeps the colour of the owner when the building makes nothing', () => {
-    expect(carrierColor(defaultTheme, 'tier2')).toBe(defaultTheme.vehicles.carrierOwners.tier2);
-    expect(carrierColor(defaultTheme, 'tier1')).toBe(defaultTheme.vehicles.carrierCab);
+  it('keeps the colour of the owner, a little livelier, when the building makes nothing', () => {
+    const lively = defaultTheme.vehicles.carrierSaturation;
+    expect(carrierColor(defaultTheme, 'tier2')).toBe(saturate(defaultTheme.vehicles.carrierOwners.tier2!, lively));
+    expect(carrierColor(defaultTheme, 'tier1')).toBe(saturate(defaultTheme.vehicles.carrierCab, lively));
+  });
+
+  it('saturate keeps grey grey and stays in range', () => {
+    expect(saturate(0x808080, 2)).toBe(0x808080);
+    expect(saturate(0xff8000, 3)).toBe(0xff8000);
   });
 
   it('moves towards the colour of the goods, differently for each kind', () => {

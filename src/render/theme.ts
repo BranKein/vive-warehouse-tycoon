@@ -72,9 +72,11 @@ export interface Theme {
     carrierOwners: Record<string, number>;
     /** How far a carrier's colour moves from its owner's towards the colour of the goods its building makes, 0..1. */
     carrierGoodsMix: number;
+    /** Saturation of a carrier's colour (not an owner's own goods colour) is multiplied by this, so carriers are not washed out. */
+    carrierSaturation: number;
     /**
      * Owners whose carriers get a colour of their own for each kind of goods instead of the mix, keyed by
-     * the goods. Tier-1 forklifts use these: one bright colour per building type.
+     * the goods. Tier-1 forklifts use these: one colour per building type, as lively as the carriers.
      */
     carrierGoodsColors: Record<string, Record<string, number>>;
   };
@@ -194,15 +196,16 @@ export const defaultTheme: Theme = {
       facility: 0xc99b7d,
     },
     carrierGoodsMix: 0.4,
+    carrierSaturation: 1.3,
     carrierGoodsColors: {
       tier1: {
-        lumber: 0xff9a3c,
-        steel: 0x4aa8ff,
-        fabric: 0xff6fae,
-        plastic: 0x9b6bff,
-        glass: 0x2fd0c0,
-        flour: 0xffd23a,
-        wire: 0x7fd94a,
+        lumber: 0xe8a567,
+        steel: 0x73b1ea,
+        fabric: 0xef93bb,
+        plastic: 0xaf90ee,
+        glass: 0x53c1b6,
+        flour: 0xe8ca65,
+        wire: 0x8fcc6c,
       },
     },
   },
@@ -442,7 +445,7 @@ export const defaultTheme: Theme = {
 export function carrierColor(theme: Theme, owner: string | undefined, itemId?: string): number {
   const v = theme.vehicles;
   const base = (owner !== undefined ? v.carrierOwners[owner] : undefined) ?? v.carrierCab;
-  if (itemId === undefined) return base;
+  if (itemId === undefined) return saturate(base, v.carrierSaturation);
   const own = owner !== undefined ? v.carrierGoodsColors[owner]?.[itemId] : undefined;
   if (own !== undefined) return own;
   const goods = itemColor(theme, itemId);
@@ -451,7 +454,18 @@ export function carrierColor(theme: Theme, owner: string | undefined, itemId?: s
     const to = (goods >> shift) & 0xff;
     return Math.round(from + (to - from) * v.carrierGoodsMix) << shift;
   };
-  return mix(16) | mix(8) | mix(0);
+  return saturate(mix(16) | mix(8) | mix(0), v.carrierSaturation);
+}
+
+/** A colour with its saturation (HSL) multiplied by `factor`, at the same hue and lightness, as far as it can go. */
+export function saturate(color: number, factor: number): number {
+  const rgb = [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff].map((c) => c / 255);
+  const light = (Math.max(...rgb) + Math.min(...rgb)) / 2;
+  // Each channel moves away from the grey of the same lightness; no channel may leave 0..1.
+  const room = Math.min(...rgb.map((c) => (c > light ? (1 - light) / (c - light) : c < light ? light / (light - c) : Infinity)));
+  const k = Math.min(factor, room);
+  const [r, g, b] = rgb.map((c) => Math.round((light + (c - light) * k) * 255));
+  return (r! << 16) | (g! << 8) | b!;
 }
 
 /** Colour of the crates that carry an item. Unknown items get a stable colour from the fallback list. */

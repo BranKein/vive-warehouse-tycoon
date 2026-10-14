@@ -439,3 +439,4 @@ docs/agents/   # 서브에이전트 작업 지침
 - Ko-fi: `https://ko-fi.com/Z3M828RIBM`. 설정 창의 버튼 문구는 두 언어 모두 "☕ Buy me a coffee", Ko-fi 파란색(#72a4f2).
 - 지게차 색: 몸통(차체, 지붕, 바퀴 덮개)을 칠하는 재질로 바꿔, 운반차처럼 소속(1차 산호색)과 생산품 색으로 칠한다(`ownerModels.tier1.painted`). 쓰지 않게 된 `theme.vehicles.forklift`는 지웠다. 모양이 바뀌어 `vehicle.forklift`는 다시 승인이 필요하다.
 - 지게차 색을 더 밝고 다양하게(사용자: 칙칙하다): 섞은 색 대신 1차 생산품마다 고유한 밝은 색을 준다(`theme.vehicles.carrierGoodsColors.tier1`). 목재 주황, 강철 하늘, 천 분홍, 플라스틱 보라, 유리 청록, 밀가루 노랑, 전선 연두. 다른 운반차는 그대로 섞은 색.
+- 지게차와 트럭의 톤 맞추기(사용자: 지게차만 쨍하다, 둘의 중간으로): 지게차의 품목별 색은 채도를 0.74배로 낮추고 명도를 조금 올렸다. 트럭(운반차·탱크 트럭)은 섞은 색과 소속 색 모두 채도를 1.3배로 올린다(`theme.vehicles.carrierSaturation`, `saturate`). 지게차의 품목별 색에는 채도를 더하지 않는다.
