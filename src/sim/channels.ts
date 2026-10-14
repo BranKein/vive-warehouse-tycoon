@@ -356,10 +356,15 @@ export abstract class SaleChannel extends ChannelBase implements SaleHome {
   /** Path a vehicle takes onto the island; its last point is where it loads. */
   protected abstract approach(): Path;
 
+  /** Path a vehicle takes away, from where it loaded; null to go back the way it came. */
+  protected departure(): Path | null {
+    return null;
+  }
+
   private get lanes(): { in: Path; out: Path } {
     if (!this.paths) {
       const path = this.approach();
-      this.paths = { in: path, out: reversePath(path) };
+      this.paths = { in: path, out: this.departure() ?? reversePath(path) };
     }
     return this.paths;
   }
@@ -526,6 +531,11 @@ export class ShipSaleChannel extends SaleChannel {
   protected approach(): Path {
     return makePath(this.ctx.layout.shipLane);
   }
+
+  protected override departure(): Path | null {
+    const way = this.ctx.layout.shipDeparture;
+    return way ? makePath(way) : null;
+  }
 }
 
 /** Planes land on the runway and taxi to the apron. */
@@ -533,6 +543,11 @@ export class PlaneSaleChannel extends SaleChannel {
   readonly vehicleKind: VehicleKind = 'plane';
   protected approach(): Path {
     return makePath(this.ctx.layout.flightLane);
+  }
+
+  protected override departure(): Path | null {
+    const way = this.ctx.layout.flightDeparture;
+    return way ? makePath(way) : null;
   }
 }
 

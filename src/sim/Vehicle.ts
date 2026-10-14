@@ -4,7 +4,7 @@ import { TICKS_PER_SECOND } from '@/core/time';
 import type { Balance } from '@/content/balance';
 import { parseAmount } from './Inventory';
 import { isPositive, ratio, subClamp } from './math';
-import { poseAt, type Path, type Pose } from './RoadGraph';
+import { distanceAt, poseAt, type Path, type Pose } from './RoadGraph';
 
 /** What a vehicle carries. Mixed loads are allowed; capacity counts units, not weight. */
 export class Cargo {
@@ -107,7 +107,7 @@ export class Vehicle {
     this.path = path;
     this.state = 'moving';
     this.legStart = tick;
-    this.legEnd = tick + travelTicks(path.length, speed);
+    this.legEnd = tick + travelTicks(path.duration, speed);
     return this.legEnd;
   }
 
@@ -115,14 +115,15 @@ export class Vehicle {
     if (!this.path) return parked;
     if (this.state !== 'moving') return poseAt(this.path, 1);
     const span = this.legEnd - this.legStart;
-    return poseAt(this.path, span <= 0 ? 1 : (tick - this.legStart) / span);
+    if (span <= 0 || this.path.length === 0) return poseAt(this.path, 1);
+    return poseAt(this.path, distanceAt(this.path, (tick - this.legStart) / span) / this.path.length);
   }
 
   /** How far along its path it is. */
   private travelled(tick: number): number {
     if (!this.path) return 0;
     const span = this.legEnd - this.legStart;
-    return this.path.length * (span <= 0 ? 1 : Math.min(1, Math.max(0, (tick - this.legStart) / span)));
+    return span <= 0 ? this.path.length : distanceAt(this.path, (tick - this.legStart) / span);
   }
 
   view(tick: number, parked: Pose): VehicleView {

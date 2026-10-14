@@ -1,4 +1,4 @@
-import type { FacilityDef, IslandLayoutDef, PlotDef, RoadNodeDef, RoadNodeId } from '@/contracts';
+import type { FacilityDef, IslandLayoutDef, PlotDef, RoadNodeDef, RoadNodeId, Vec3 } from '@/contracts';
 
 /**
  * First island: 59 plots on a roughly square board. +x is east, +z is south.
@@ -114,6 +114,45 @@ const FACILITIES: FacilityDef[] = [
 
 const roads = buildRoads();
 
+/**
+ * A turn round on the spot for a vehicle at (x, z) heading `heading`: a bulb of
+ * radius `r` (right 60°, left 300°, right 60°) that comes back to where it
+ * started, facing the other way, `pace` times slower than it flies. One point every 5° of turn.
+ */
+function turnRound(x: number, z: number, heading: number, r: number, pace: number): Array<Vec3 & { pace: number }> {
+  const points: Array<Vec3 & { pace: number }> = [];
+  const third = Math.PI / 3;
+  for (const turn of [-third, Math.PI + 2 * third, -third]) {
+    const steps = Math.ceil(Math.abs(turn) / (Math.PI / 36));
+    const step = turn / steps;
+    const chord = 2 * r * Math.sin(Math.abs(step) / 2);
+    for (let index = 0; index < steps; index += 1) {
+      const middle = heading + step / 2;
+      x += Math.sin(middle) * chord;
+      z += Math.cos(middle) * chord;
+      heading += step;
+      points.push({ x, y: 0, z, pace });
+    }
+  }
+  return points;
+}
+
+const SHIP_LANE: Vec3[] = [
+  { x: GATE_X + 18, y: 0, z: SOUTH_ROAD_Z + 33 },
+  { x: EAST_X + 2, y: 0, z: SOUTH_ROAD_Z + 33 },
+];
+const FLIGHT_LANE: Vec3[] = [
+  { x: EAST_X - 135, y: 28, z: NORTH_ROAD_Z - 35 },
+  { x: EAST_X - 84, y: 8, z: NORTH_ROAD_Z - 35 },
+  { x: EAST_X - 58, y: 0, z: NORTH_ROAD_Z - 35 },
+  { x: EAST_X + 8, y: 0, z: NORTH_ROAD_Z - 35 },
+];
+const BERTH = SHIP_LANE[SHIP_LANE.length - 1]!;
+const APRON = FLIGHT_LANE[FLIGHT_LANE.length - 1]!;
+/** Planes taxi round at the apron this many times slower than they fly. */
+const PLANE_TAXI_PACE = 5;
+const SHIP_LANE_LENGTH = BERTH.x - SHIP_LANE[0]!.x;
+
 export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   bounds: { minX: GATE_X, maxX: EAST_X + 35, minZ: NORTH_ROAD_Z - 44, maxZ: SOUTH_ROAD_Z + 41 },
   plotSize: { width: 16, depth: 14 },
@@ -124,18 +163,19 @@ export const ISLAND_ONE_LAYOUT: IslandLayoutDef = {
   facilities: FACILITIES,
   roadGate: 'gate',
   // Ships and planes come in from the west, so they are seen travelling the length of the board.
-  // Both lanes start over the board: the view fades vehicles in and out at the first point.
-  // The plane stops on the runway, without turning off it.
-  // The ship keeps one straight line along the quay, clear of the end of the wharf, up to its berth at the dock.
-  shipLane: [
-    { x: GATE_X + 18, y: 0, z: SOUTH_ROAD_Z + 33 },
-    { x: EAST_X + 2, y: 0, z: SOUTH_ROAD_Z + 33 },
-  ],
-  flightLane: [
-    { x: EAST_X - 135, y: 28, z: NORTH_ROAD_Z - 35 },
-    { x: EAST_X - 84, y: 8, z: NORTH_ROAD_Z - 35 },
-    { x: EAST_X - 58, y: 0, z: NORTH_ROAD_Z - 35 },
-    { x: EAST_X + 8, y: 0, z: NORTH_ROAD_Z - 35 },
+  // Both lanes start over the board: the view fades vehicles in at the first point and out at the last.
+  // The ship keeps one straight line along the quay, clear of the end of the wharf, up to its berth at the
+  // dock, and sails on east out to sea, as far as it came. The plane stops on the runway, turns round on it
+  // and takes off back over the way it landed.
+  shipLane: SHIP_LANE,
+  flightLane: FLIGHT_LANE,
+  shipDeparture: [BERTH, { x: BERTH.x + SHIP_LANE_LENGTH, y: 0, z: BERTH.z }],
+  flightDeparture: [
+    APRON,
+    ...turnRound(APRON.x, APRON.z, EAST, 3, PLANE_TAXI_PACE),
+    // Rolling slowly at first, as it speeds up.
+    { x: APRON.x - 14, y: 0, z: APRON.z, pace: 2 },
+    ...FLIGHT_LANE.slice(0, -1).reverse(),
   ],
   river: { minX: GATE_X, maxX: EAST_X + 35, minZ: SOUTH_ROAD_Z + 25, maxZ: SOUTH_ROAD_Z + 41 },
   runway: { minX: EAST_X - 70, maxX: EAST_X + 28, minZ: NORTH_ROAD_Z - 39, maxZ: NORTH_ROAD_Z - 31 },

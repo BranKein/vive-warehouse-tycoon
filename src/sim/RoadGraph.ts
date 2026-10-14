@@ -6,21 +6,49 @@ export interface Path {
   /** Distance from the first point to point i. */
   cumulative: readonly number[];
   length: number;
+  /** Like `cumulative`, with each stretch counted `pace` times over: how long it takes, in units of distance. */
+  timeline: readonly number[];
+  /** Length the travel time is worked out from: `length` with slow stretches counted longer. */
+  duration: number;
 }
 
-export function makePath(points: readonly Vec3[]): Path {
+/** A point of a path. `pace` above 1 makes the stretch that ends at it that many times slower to travel. */
+export type PathPoint = Vec3 & { pace?: number };
+
+export function makePath(points: readonly PathPoint[]): Path {
   const cumulative = [0];
+  const timeline = [0];
   let length = 0;
+  let duration = 0;
   for (let i = 1; i < points.length; i += 1) {
     const a = points[i - 1]!;
     const b = points[i]!;
-    length += Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    const step = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    length += step;
+    duration += step * Math.max(1, b.pace ?? 1);
     cumulative.push(length);
+    timeline.push(duration);
   }
-  return { points, cumulative, length };
+  return { points, cumulative, length, timeline, duration };
 }
 
-export const reversePath = (path: Path): Path => makePath([...path.points].reverse());
+/** Distance along the path after fraction `t` (0..1) of the time it takes to travel. */
+export function distanceAt(path: Path, t: number): number {
+  const target = Math.min(1, Math.max(0, t)) * path.duration;
+  let segment = 1;
+  while (segment < path.points.length - 1 && path.timeline[segment]! < target) segment += 1;
+  const start = path.timeline[segment - 1] ?? 0;
+  const span = (path.timeline[segment] ?? start) - start;
+  const from = path.cumulative[segment - 1] ?? 0;
+  const to = path.cumulative[segment] ?? from;
+  return span === 0 ? to : from + (to - from) * Math.min(1, (target - start) / span);
+}
+
+/** The same way travelled backwards; each stretch keeps its pace. */
+export const reversePath = (path: Path): Path => {
+  const points = path.points as readonly PathPoint[];
+  return makePath(points.map((_, i) => ({ ...points[points.length - 1 - i]!, pace: points[points.length - i]?.pace })));
+};
 
 export interface Pose {
   x: number;
