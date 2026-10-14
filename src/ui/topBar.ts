@@ -3,6 +3,7 @@ import { getLanguage, keys, LANGUAGES, setLanguage, type Language } from '@/i18n
 import type { UIContext } from './context';
 import { createDayClock } from './dayClock';
 import { button, h, KeyedList, setAttr, setClass, setFill, setHidden, setText, type Row } from './dom';
+import { LINKS } from './links';
 import { fillRatio, formatAmount, formatAutoStatus, formatIncome } from './text';
 
 const SPEEDS: readonly GameSpeed[] = [0, 1, 2, 4];
@@ -70,6 +71,12 @@ export function createTopBar(
   const achievementsButton = button('wt-btn wt-trophy', onToggleAchievements, h('span', 'wt-trophy-icon', '🏆'), trophyCount);
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
   const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
+  // A round shortcut to Ko-fi; the same link stays in the settings menu.
+  const kofi = h('a', 'wt-kofi-round', '☕');
+  kofi.href = LINKS.kofi;
+  kofi.target = '_blank';
+  kofi.rel = 'noopener noreferrer';
+  setHidden(kofi, !LINKS.kofi);
 
   // The time of day stands where a plain coin used to, when there is a 3D view to tell it.
   const clock = createDayClock(ctx);
@@ -86,6 +93,7 @@ export function createTopBar(
     achievementsButton,
     savesButton,
     settingsButton,
+    kofi,
   );
 
   // Cards and menus hang below the bar, which grows a row in narrow windows.
@@ -155,6 +163,9 @@ export function createTopBar(
       setText(savesButton, tr.t('save.menu'));
       setClass(savesButton, 'is-active', savesOpen);
       setAttr(savesButton, 'aria-expanded', String(savesOpen));
+
+      setAttr(kofi, 'title', tr.t('settings.kofi'));
+      setAttr(kofi, 'aria-label', tr.t('settings.kofi'));
 
       setText(settingsButton, tr.t('settings.menu'));
       setClass(settingsButton, 'is-active', settingsOpen);

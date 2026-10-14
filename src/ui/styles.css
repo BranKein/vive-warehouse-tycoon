@@ -895,6 +895,26 @@
   background: #5f93e6;
 }
 
+.wt-kofi-round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #72a4f2;
+  box-shadow: var(--wt-shadow-soft);
+  font-size: 16px;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.wt-kofi-round:hover {
+  background: #5f93e6;
+  transform: scale(1.06);
+}
+
 .wt-looks {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
