@@ -72,7 +72,11 @@ export function createTopBar(
   const savesButton = button('wt-btn wt-saves-toggle', onToggleSaves);
   const settingsButton = button('wt-btn wt-settings-toggle', onToggleSettings);
   // A round shortcut to Ko-fi; the same link stays in the settings menu.
-  const kofi = h('a', 'wt-kofi-round', '☕');
+  // Ko-fi's own cup, loaded from their CDN the way their button widget does.
+  const kofiIcon = h('img', 'wt-kofi-icon');
+  kofiIcon.src = 'https://storage.ko-fi.com/cdn/cup-border.png';
+  kofiIcon.alt = '';
+  const kofi = h('a', 'wt-kofi-round', kofiIcon);
   kofi.href = LINKS.kofi;
   kofi.target = '_blank';
   kofi.rel = 'noopener noreferrer';

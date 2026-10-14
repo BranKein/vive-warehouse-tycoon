@@ -902,17 +902,18 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #72a4f2;
-  box-shadow: var(--wt-shadow-soft);
-  font-size: 16px;
-  line-height: 1;
-  text-decoration: none;
+  background: var(--wt-cream-deep);
   transition: background 0.15s, transform 0.15s;
 }
 
 .wt-kofi-round:hover {
-  background: #5f93e6;
+  background: var(--wt-butter);
   transform: scale(1.06);
+}
+
+.wt-kofi-icon {
+  width: 22px;
+  height: auto;
 }
 
 .wt-looks {
