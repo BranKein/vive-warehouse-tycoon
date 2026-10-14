@@ -248,6 +248,7 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
         for (const listener of [...anchorListeners]) listener(null);
       }
       anchored = followed !== null;
+      effects.smoke(view.chimneys, dt);
       effects.update(dt, rig.camera);
       refreshPointer();
       renderer.render(scene, rig.camera);

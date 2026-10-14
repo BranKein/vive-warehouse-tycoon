@@ -120,11 +120,16 @@ export const renderConfig = {
     buildSec: 0.75,
     demolishSec: 0.45,
   },
+  /**
+   * Forklifts in a building's yard while a carrier is handled there: they stand `pileX` to the side of the
+   * plot's centre line, `z` in front of its centre, and drive `reach` towards the carrier and back.
+   */
   forklift: {
-    speed: 3.2,
-    acceleration: 5,
+    speed: 2.6,
     pauseSec: 0.55,
-    turnRate: 6,
+    pileX: 5.4,
+    reach: 2.1,
+    z: 4.8,
     /** At most this many forklifts are drawn per yard. */
     maxPerYard: 2,
   },
@@ -166,6 +171,12 @@ export const renderConfig = {
       maxLabels: 6,
       labelColor: '#b9791f',
     },
+    /**
+     * Puffs from the chimneys of buildings that are at work: one every `everySec` (give or take `jitter` of
+     * it) from each chimney, rising and drifting with the wind while they swell, then shrinking away. Smoke
+     * only takes up to `share` of the particles, so it never crowds out the other effects.
+     */
+    smoke: { everySec: 0.8, jitter: 0.35, size: 1.1, grow: 1.8, rise: 1.7, wind: { x: 0.55, z: -0.25 }, lifeSec: 2.6, share: 0.6 },
   },
   click: {
     /** Pixels the pointer may travel between press and release and still count as a click. */

@@ -5,7 +5,7 @@ import { renderConfig } from './config';
 import { InstancedModel } from './InstancedModel';
 import { smoothstep } from './math';
 import type { ModelRegistry } from './ModelRegistry';
-import { COIN_MODEL, SPARK_MODEL } from './models/effects';
+import { COIN_MODEL, SMOKE_MODEL, SPARK_MODEL } from './models/effects';
 import type { Theme } from './theme';
 
 interface Particle {
@@ -22,6 +22,8 @@ interface Particle {
   angle: number;
   age: number;
   life: number;
+  /** Swells to this many times its size over its life instead of popping in (smoke). */
+  grow?: number;
 }
 
 interface Label {
@@ -68,6 +70,8 @@ export class Effects {
   /** Seconds since each source's last upgrade effect. */
   private readonly upgraded = new Map<string, number>();
   private sinceUpgrade = Infinity;
+  /** Seconds until each chimney's next puff. */
+  private readonly puffs = new Map<string, number>();
   private readonly layer: HTMLElement | null;
 
   private readonly matrix = new Matrix4();
@@ -129,6 +133,40 @@ export class Effects {
     this.earnings.set(key, earning);
   }
 
+  /** Chimneys smoking this frame, in the world. Each puffs now and then while it is listed. */
+  smoke(chimneys: ReadonlyArray<{ key: string; x: number; y: number; z: number }>, dt: number): void {
+    const rule = renderConfig.effects.smoke;
+    const listed = new Set<string>();
+    for (const chimney of chimneys) {
+      listed.add(chimney.key);
+      // A chimney that just started waits a random part of the gap, so neighbours do not puff together.
+      const left = (this.puffs.get(chimney.key) ?? Math.random() * rule.everySec) - dt;
+      if (left > 0) {
+        this.puffs.set(chimney.key, left);
+        continue;
+      }
+      this.puffs.set(chimney.key, rule.everySec * (1 + (Math.random() * 2 - 1) * rule.jitter));
+      if (this.particles.length >= renderConfig.effects.maxParticles * rule.share) continue;
+      this.spawn({
+        model: SMOKE_MODEL,
+        x: chimney.x,
+        y: chimney.y,
+        z: chimney.z,
+        vx: rule.wind.x * (0.8 + Math.random() * 0.4),
+        vy: rule.rise * (0.85 + Math.random() * 0.3),
+        vz: rule.wind.z * (0.8 + Math.random() * 0.4),
+        gravity: 0,
+        size: rule.size * (0.85 + Math.random() * 0.3),
+        spin: (Math.random() - 0.5) * 0.8,
+        angle: Math.random() * Math.PI * 2,
+        age: 0,
+        life: rule.lifeSec,
+        grow: rule.grow,
+      });
+    }
+    for (const key of this.puffs.keys()) if (!listed.has(key)) this.puffs.delete(key);
+  }
+
   update(dt: number, camera: Camera): void {
     this.sinceUpgrade += dt;
     for (const [key, quiet] of this.upgraded) this.upgraded.set(key, quiet + dt);
@@ -173,8 +211,10 @@ export class Effects {
       p.z += p.vz * dt;
       p.angle += p.spin * dt;
       const t = p.age / p.life;
-      // Pops in quickly, shrinks away over the last third.
-      const size = p.size * smoothstep(t * 6) * (1 - smoothstep((t - 0.65) / 0.35));
+      // Pops in quickly, shrinks away over the last third. Smoke swells as it goes, and leaves more slowly.
+      const size = p.grow
+        ? p.size * (1 + (p.grow - 1) * t) * smoothstep(t * 4) * (1 - smoothstep((t - 0.5) / 0.5))
+        : p.size * smoothstep(t * 6) * (1 - smoothstep((t - 0.65) / 0.35));
       this.position.set(p.x, p.y, p.z);
       this.rotation.setFromAxisAngle(UP, p.angle);
       this.scale.set(size, size, size);
@@ -205,6 +245,7 @@ export class Effects {
 
   /** Drops everything on screen and forgets what was pending. */
   clear(): void {
+    this.puffs.clear();
     this.particles.length = 0;
     for (const label of this.labels) label.el.remove();
     this.labels.length = 0;
