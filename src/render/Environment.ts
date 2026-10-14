@@ -58,11 +58,27 @@ export class Environment {
   /** Where in the day cycle the picture is, 0..1, as of the last update. */
   phase = 0;
   private phaseShift = 0;
+  /** Where the cycle would be without the shift, as of the last update. */
+  private basePhase = 0;
+  /** While set, the picture stays at this point of the cycle. */
+  private lockedPhase: number | null = null;
 
-  /** Jumps to a point of the day cycle; the day runs on from there. */
+  /** Jumps to a point of the day cycle; the day runs on from there, or stays there while locked. */
   setPhase(phase: number): void {
-    this.phaseShift = wrapPhase(this.phaseShift + phase - this.phase);
     this.phase = wrapPhase(phase);
+    if (this.lockedPhase !== null) this.lockedPhase = this.phase;
+    else this.phaseShift = wrapPhase(this.phase - this.basePhase);
+  }
+
+  get locked(): boolean {
+    return this.lockedPhase !== null;
+  }
+
+  /** Stops the day at the point it is at, or lets it run on from there. */
+  setLocked(locked: boolean): void {
+    if (locked === this.locked) return;
+    this.lockedPhase = locked ? this.phase : null;
+    if (!locked) this.phaseShift = wrapPhase(this.phase - this.basePhase);
   }
 
   /** The light scales of `look` apply from the next frame. */
@@ -357,7 +373,8 @@ export class Environment {
    */
   update(realTimeSec: number): number {
     const settings = this.theme.dayNight;
-    this.phase = wrapPhase(dayPhase(realTimeSec, settings) + this.phaseShift);
+    this.basePhase = dayPhase(realTimeSec, settings);
+    this.phase = this.lockedPhase ?? wrapPhase(this.basePhase + this.phaseShift);
     const phase = this.phase;
     const sample = sampleDayNight(settings.keyframes, phase);
     const sky = celestialState(phase, settings);

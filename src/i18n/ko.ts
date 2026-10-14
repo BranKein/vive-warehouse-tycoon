@@ -168,6 +168,8 @@ export const ko: Translations = {
   'settings.soundOff': '꺼짐',
   'settings.soundSoon': '소리는 아직 준비 중입니다.',
   'daytime.title': '시간대',
+  'daytime.lock': '시간대 고정',
+  'daytime.lockHint': '화면을 이 시간대에 멈춰 둡니다. 다이얼을 돌려 고르세요.',
   'daytime.dawn': '새벽',
   'daytime.morning': '아침',
   'daytime.day': '낮',

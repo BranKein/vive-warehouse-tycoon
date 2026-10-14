@@ -16,6 +16,9 @@ import { Kit } from './models/kit';
 import { defaultTheme, type Theme } from './theme';
 import { ViewSync } from './ViewSync';
 
+/** Where a held time of day is remembered (the phase it is held at). */
+const DAY_LOCK_STORAGE_KEY = 'warehouse-tycoon.dayLock';
+
 export interface CreateRendererOptions extends RendererOptions {
   /** Colours and lighting. Defaults to `defaultTheme`. */
   theme?: Theme;
@@ -194,6 +197,25 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
   };
   resize(canvas.clientWidth || canvas.width, canvas.clientHeight || canvas.height);
 
+  // A held time of day is remembered as the phase it is held at.
+  function rememberDayLock(): void {
+    try {
+      if (environment.locked) globalThis.localStorage?.setItem(DAY_LOCK_STORAGE_KEY, String(environment.phase));
+      else globalThis.localStorage?.removeItem(DAY_LOCK_STORAGE_KEY);
+    } catch {
+      // Storage may be blocked; the lock then lasts for this visit only.
+    }
+  }
+  try {
+    const held = Number(globalThis.localStorage?.getItem(DAY_LOCK_STORAGE_KEY) ?? Number.NaN);
+    if (Number.isFinite(held)) {
+      environment.setPhase(held);
+      environment.setLocked(true);
+    }
+  } catch {
+    // Nothing remembered.
+  }
+
   return {
     models,
     dayTime: {
@@ -203,7 +225,15 @@ export function createRenderer(canvas: HTMLCanvasElement, options: CreateRendere
         color: `#${rgbToHex(lerpRgb(hexToRgb(keyframe.skyHorizon), hexToRgb(keyframe.skyTop), 0.5)).toString(16).padStart(6, '0')}`,
       })),
       phase: () => environment.phase,
-      setPhase: (phase: number) => environment.setPhase(phase),
+      setPhase: (phase: number) => {
+        environment.setPhase(phase);
+        if (environment.locked) rememberDayLock();
+      },
+      locked: () => environment.locked,
+      setLocked: (locked: boolean) => {
+        environment.setLocked(locked);
+        rememberDayLock();
+      },
     },
     looks: {
       names: LOOK_NAMES,

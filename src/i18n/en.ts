@@ -181,6 +181,8 @@ export const en = {
   'settings.soundOff': 'Off',
   'settings.soundSoon': 'Sound is not available yet.',
   'daytime.title': 'Time of day',
+  'daytime.lock': 'Hold this time',
+  'daytime.lockHint': 'Keeps the picture at this time of day. Turn the dial to choose it.',
   'daytime.dawn': 'Dawn',
   'daytime.morning': 'Morning',
   'daytime.day': 'Day',

@@ -47,8 +47,11 @@ export interface DayTimeControl {
   readonly parts: ReadonlyArray<{ at: number; name: string; color: string }>;
   /** Where in the cycle the picture is now, 0..1. */
   phase(): number;
-  /** Jumps to a point of the cycle; the day runs on from there. */
+  /** Jumps to a point of the cycle; the day runs on from there (or stays there while locked). */
   setPhase(phase: number): void;
+  /** True while the picture is held at one time of day. Remembered by the renderer. */
+  locked(): boolean;
+  setLocked(locked: boolean): void;
 }
 
 export interface GameRenderer {

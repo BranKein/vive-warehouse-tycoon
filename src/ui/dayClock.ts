@@ -32,7 +32,13 @@ export function createDayClock(ctx: UIContext) {
   const hand = h('div', 'wt-dial-hand', h('span', 'wt-dial-knob'));
   const dial = h('div', 'wt-dial', hand);
   const name = h('div', 'wt-dial-name');
-  const popover = h('div', 'wt-card wt-daytime-pop', title, dial, name);
+  const lockState = h('span', 'wt-toggle-state');
+  const lockLabel = h('span', 'wt-toggle-label');
+  const lock = button('wt-toggle wt-daytime-lock', () => {
+    time?.setLocked(!time.locked());
+    texts();
+  }, lockLabel, lockState);
+  const popover = h('div', 'wt-card wt-daytime-pop', title, dial, name, lock);
   popover.setAttribute('role', 'dialog');
   const el = h('div', 'wt-daytime-wrap', toggle, popover);
 
@@ -78,6 +84,12 @@ export function createDayClock(ctx: UIContext) {
     setAttr(toggle, 'aria-label', label);
     setAttr(toggle, 'aria-expanded', String(open));
     setAttr(popover, 'aria-label', tr.t('daytime.title'));
+    const locked = time?.locked() ?? false;
+    setText(lockLabel, tr.t('daytime.lock'));
+    setText(lockState, locked ? tr.t('auto.on') : tr.t('auto.off'));
+    lock.classList.toggle('is-on', locked);
+    setAttr(lock, 'aria-pressed', String(locked));
+    setAttr(lock, 'title', tr.t('daytime.lockHint'));
   }
 
   /** Follows the time of day; cheap enough to call every frame. */
