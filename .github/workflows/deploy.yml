@@ -1,0 +1,100 @@
+# A tag v* (e.g. v1.0.0) tests and builds the game, brings its hosting up to date in BranKein/vive-infra,
+# then uploads the build to S3 and refreshes CloudFront.
+name: deploy
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  INFRA_REPO: BranKein/vive-infra
+  SITE: warehouse-tycoon
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx vitest run
+      - run: npm run build
+
+      # deploy/site.json is what this project wants from its hosting. A change is committed to the
+      # infra repository (its main push applies it); otherwise a tag there applies the site as it is.
+      - name: Bring the hosting up to date
+        id: infra
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${INFRA_REPO}.git" infra
+          cp deploy/site.json "infra/sites/${SITE}/site.auto.tfvars.json"
+          cd infra
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            ref="${SITE}/${TAG}"
+            git tag "$ref"
+            git push --quiet origin "$ref"
+          else
+            ref="main"
+            git commit --quiet -am "- chore: ${SITE} site settings from ${TAG}"
+            git push --quiet origin main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the infra apply
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
+          SHA: ${{ steps.infra.outputs.sha }}
+          REF: ${{ steps.infra.outputs.ref }}
+        run: |
+          id=""
+          for _ in $(seq 1 30); do
+            id="$(gh run list -R "$INFRA_REPO" --workflow apply.yml --commit "$SHA" --json databaseId,headBranch \
+              --jq "[.[] | select(.headBranch == \"$REF\")][0].databaseId // empty")"
+            [[ -n "$id" ]] && break
+            sleep 10
+          done
+          if [[ -z "$id" ]]; then
+            echo "::error::No apply run started in $INFRA_REPO for $REF"
+            exit 1
+          fi
+          echo "Waiting for https://github.com/$INFRA_REPO/actions/runs/$id"
+          timeout 20m gh run watch "$id" -R "$INFRA_REPO" --exit-status --interval 15 > /dev/null
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Hashed files first, index.html last, so no page ever points at a file that is not there yet.
+      - name: Upload
+        env:
+          BUCKET: ${{ vars.S3_BUCKET }}
+        run: |
+          aws s3 sync dist/assets "s3://$BUCKET/assets" --cache-control "public, max-age=31536000, immutable"
+          aws s3 sync dist "s3://$BUCKET" --exclude "assets/*" --exclude index.html --cache-control no-cache
+          aws s3 cp dist/index.html "s3://$BUCKET/index.html" --cache-control no-cache
+          aws s3 sync dist "s3://$BUCKET" --delete
+
+      - name: Refresh CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/" "/index.html" --query Invalidation.Id --output text
