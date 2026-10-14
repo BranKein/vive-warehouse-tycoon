@@ -4,7 +4,23 @@ import { renderConfig } from '@/render/config';
 import { facilityPileLocal, pilePosition, roadStrips, siteToWorld } from '@/render/layout';
 import { fallbackName } from '@/render/ModelRegistry';
 import { gapTreeSpots, outskirts, runwayLightSpots } from '@/render/scenery';
-import { buildingKey, diffKeys, backOutPose, laneShift, routeDots, trailPoint, pilesToShow, vehiclePoses, vehicleFade, parkedShift, type VehicleLike } from '@/render/sync';
+import {
+  buildingKey,
+  crossingPose,
+  cruiseStep,
+  diffKeys,
+  backOutPose,
+  laneShift,
+  onTrail,
+  planCrossing,
+  routeDots,
+  trailPoint,
+  pilesToShow,
+  vehiclePoses,
+  vehicleFade,
+  parkedShift,
+  type VehicleLike,
+} from '@/render/sync';
 import { carrierColor, defaultTheme } from '@/render/theme';
 
 describe('diffKeys', () => {
@@ -297,5 +313,64 @@ describe('routeDots', () => {
 
   it('is empty once the way is behind it', () => {
     expect(routeDots(way, 25, 2, 1)).toEqual([]);
+  });
+});
+
+describe('cruiseStep', () => {
+  const rule = { slack: 4, ease: 20, slowest: 0.85, fastest: 1.15 };
+
+  it('moves as far on screen as the game moved it when it is where it should be', () => {
+    expect(cruiseStep(6, 1, 10, () => 1, rule)).toBeCloseTo(7);
+    // On the inner lane of a right turn the trail runs faster than the screen.
+    expect(cruiseStep(6, 1, 10, () => 0.5, rule)).toBeCloseTo(8);
+  });
+
+  it('closes a gap slowly and never runs past the furthest it may be drawn', () => {
+    expect(cruiseStep(0, 1, 10, () => 1, rule)).toBeCloseTo(1.15);
+    expect(cruiseStep(9, 1, 10, () => 1, rule)).toBeCloseTo(9.85);
+    expect(cruiseStep(9.9, 1, 10, () => 0.3, rule)).toBe(10);
+    expect(cruiseStep(5, 0, 10, () => 1, rule)).toBe(5);
+  });
+});
+
+describe('onTrail', () => {
+  it('is drawn on the right-hand lane facing along the trail', () => {
+    const trail = [
+      { x: 0, z: 0, d: 0 },
+      { x: 0, z: 20, d: 20 },
+    ];
+    const drawn = onTrail(trail, 10, 2, -Infinity, 1.5, 0);
+    expect(drawn.heading).toBeCloseTo(0);
+    expect(drawn.x).toBeCloseTo(laneShift(0, 1.5).x);
+    expect(drawn.z).toBeCloseTo(10);
+  });
+});
+
+describe('crossing', () => {
+  it('backs out, swings round and ends standing in the site opposite, facing into it', () => {
+    const from = { x: 1.5, z: -5.4, heading: Math.PI };
+    const to = { x: -1.5, z: 5.4 };
+    const plan = planCrossing(from, to, 2)!;
+    expect(plan).not.toBeNull();
+    const start = crossingPose(plan, 0);
+    expect(start.x).toBeCloseTo(from.x);
+    expect(start.z).toBeCloseTo(from.z);
+    const end = crossingPose(plan, plan.length);
+    expect(end.done).toBe(true);
+    expect(end.x).toBeCloseTo(to.x);
+    expect(end.z).toBeCloseTo(to.z);
+    expect(Math.cos(end.heading)).toBeCloseTo(1);
+    // No jumps on the way, in place or in heading.
+    let previous = start;
+    for (let distance = 0.1; distance <= plan.length; distance += 0.1) {
+      const pose = crossingPose(plan, distance);
+      expect(Math.hypot(pose.x - previous.x, pose.z - previous.z)).toBeLessThan(0.11);
+      expect(Math.abs(Math.atan2(Math.sin(pose.heading - previous.heading), Math.cos(pose.heading - previous.heading)))).toBeLessThan(0.1);
+      previous = pose;
+    }
+  });
+
+  it('gives up when the sites are too close for the curves', () => {
+    expect(planCrossing({ x: 0, z: 0, heading: Math.PI }, { x: 3, z: 3 }, 2)).toBeNull();
   });
 });

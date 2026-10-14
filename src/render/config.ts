@@ -85,13 +85,22 @@ export const renderConfig = {
     /**
      * Setting off, a vehicle waits until the game has taken it round the corner onto the road, then backs
      * out at the speed the game moves it: straight first, then round a curve of `radius` that ends on its
-     * lane, facing the way it will drive. All that leaves the drawing behind the game; it catches up over
-     * the next `catchUp` of the way. A vehicle whose way has not turned after `giveUp` drives off as it
-     * stands. The step from the end of the curve onto the lane is smoothed away over `settle`.
+     * lane, facing the way it will drive. All that leaves the drawing behind the game; `cruise` makes it up.
+     * A vehicle whose way has not turned after `giveUp` drives off as it stands. The step from the end of
+     * the curve onto the lane is smoothed away over `settle`, or `settlePerUnit` for every unit of the step if longer.
+     * A vehicle going straight across the road to the site opposite backs out round a curve of at most
+     * `crossRadius` and drives round into the other site instead.
      */
-    backOut: { radius: 3, giveUp: 12, catchUp: 40, settle: 6 },
+    backOut: { radius: 3, giveUp: 12, settle: 14, settlePerUnit: 8, crossRadius: 2 },
+    /**
+     * On the road a vehicle moves as far on screen as the game moves it, so it does not slow down on the
+     * inner lane of a right turn or speed up on the outer lane of a left one. It is kept `slack` behind the
+     * furthest it may be drawn, to have room to hurry through a right turn, and makes up any other gap over
+     * `ease` of the way, at most this much slower or faster than the game (`render/sync.ts`, `cruiseStep`).
+     */
+    cruise: { slack: 4.5, ease: 20, slowest: 0.85, fastest: 1.15 },
     /** A vehicle the game has stopped at a site is in and standing within this many seconds of game time. */
-    arriveSec: 0.45,
+    arriveSec: 0.6,
     /** A parked vehicle belongs to the site whose centre is within this distance. */
     parkReach: 12,
     /** A truck this close to the gate is inside the tunnel: it shows whole, and is dropped at once when it leaves. */
