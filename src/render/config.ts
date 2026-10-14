@@ -120,7 +120,7 @@ export const renderConfig = {
      * take the owner's colour like the carrier does.
      */
     ownerModels: {
-      tier1: { model: 'vehicle.forklift', painted: false },
+      tier1: { model: 'vehicle.forklift', painted: true },
       disposal: { model: 'vehicle.wasteTanker', painted: true },
     } as Partial<Record<VehicleOwner, { model: string; painted: boolean }>>,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */

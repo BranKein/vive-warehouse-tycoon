@@ -207,13 +207,14 @@ function wasteTanker(kit: Kit): Object3D {
   return kit.group(parts);
 }
 
-/** Forklift for the yards: a stubby yellow truck with a roll cage, a mast and two forks. */
+/** Forklift: a stubby truck with a roll cage, a mast and two forks, its body painted by the game. */
 function forklift(kit: Kit): Object3D {
-  const v = kit.theme.vehicles;
+  // The body is paint: the game colours each forklift by its owner and goods, like the carrier.
+  const body: Paint = kit.materials.paint;
   const p = kit.theme.props;
   const parts: Object3D[] = [];
   // Body, counterweight and seat.
-  parts.push(kit.box(1.2, 0.8, 1.6, v.forklift, { y: 0.22, z: -0.25, r: 0.28 }));
+  parts.push(kit.box(1.2, 0.8, 1.6, body, { y: 0.22, z: -0.25, r: 0.28 }));
   parts.push(kit.box(1.1, 0.6, 0.55, p.darkMetal, { y: 0.28, z: -1.0, r: 0.2 }));
   parts.push(kit.box(0.62, 0.16, 0.56, p.tire, { y: 1.0, z: -0.42, r: 0.07 }));
   parts.push(kit.box(0.62, 0.6, 0.14, p.tire, { y: 1.06, z: -0.72, r: 0.06 }));
@@ -224,7 +225,7 @@ function forklift(kit: Kit): Object3D {
     // The posts start inside the body: its shoulders are rounded, so posts set on top of it would hang in the air.
     for (const z of [0.36, -0.86]) parts.push(kit.box(0.1, 1.66, 0.1, p.darkMetal, { x: x * 0.92, y: 0.52, z, r: 0.03 }));
   }
-  parts.push(kit.box(1.2, 0.1, 1.5, v.forklift, { y: 2.14, z: -0.24, r: 0.05 }));
+  parts.push(kit.box(1.2, 0.1, 1.5, body, { y: 2.14, z: -0.24, r: 0.05 }));
   // Warning beacon on the roof, work lights at the front, a tail light on the counterweight.
   const light = kit.materials.headlight;
   parts.push(kit.cyl(0.15, 0.17, 0.08, p.darkMetal, { y: 2.24, z: -0.6 }, 12));
@@ -240,8 +241,8 @@ function forklift(kit: Kit): Object3D {
   parts.push(kit.box(0.9, 0.14, 0.14, p.darkMetal, { y: 2.3, z: 0.66, r: 0.03 }));
   parts.push(kit.box(0.9, 0.12, 0.1, p.darkMetal, { y: 0.5, z: 0.76, r: 0.03 }));
   for (const x of [-0.6, 0.6]) {
-    parts.push(...toyWheel(kit, 0.32, 0.26, x, 0.32, v.forklift));
-    parts.push(...toyWheel(kit, 0.25, 0.22, x * 0.92, -0.85, v.forklift));
+    parts.push(...toyWheel(kit, 0.32, 0.26, x, 0.32, body));
+    parts.push(...toyWheel(kit, 0.25, 0.22, x * 0.92, -0.85, body));
   }
   return kit.group(parts, { cargo: [[0, 0.22, 1.3]] });
 }

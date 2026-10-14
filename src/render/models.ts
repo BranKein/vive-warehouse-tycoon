@@ -181,6 +181,7 @@ function carrierSwatches(): Swatch[] {
 const SWATCHES: Record<string, () => Swatch[]> = {
   'vehicle.carrier': carrierSwatches,
   'vehicle.wasteTanker': carrierSwatches,
+  'vehicle.forklift': carrierSwatches,
   'prop.crate': () => Object.keys(catalog.items).map((item) => ({ color: itemColor(theme, item), label: word(`item.${item}.name`) })),
 };
 

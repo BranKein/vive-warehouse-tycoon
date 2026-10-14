@@ -437,3 +437,4 @@ docs/agents/   # 서브에이전트 작업 지침
 - 건물 앞을 잠깐씩 오가던 지게차를 뺐다. 대신 1차 공장 소속 운반차를 지게차로 그린다(`renderConfig.vehicle.ownerModels`). 지게차는 칠하지 않는다(모델에 칠할 부분이 없어 통째로 물든다).
 - 폐기물 처리장 소속 운반차는 새 모델 `vehicle.wasteTanker`(운반차의 운전석·차대에 누운 둥근 탱크, 몸통 색 띠 두 줄, 위 해치, 뒤 밸브)로 그린다. 소속 색으로 칠한다. 운반차와 운전석·바퀴를 같은 함수(`carrierFront`)로 그려 운반차 모델은 그대로다(지문 같음). 승인 대기.
 - Ko-fi: `https://ko-fi.com/Z3M828RIBM`. 설정 창의 버튼 문구는 두 언어 모두 "☕ Buy me a coffee", Ko-fi 파란색(#72a4f2).
+- 지게차 색: 몸통(차체, 지붕, 바퀴 덮개)을 칠하는 재질로 바꿔, 운반차처럼 소속(1차 산호색)과 생산품 색으로 칠한다(`ownerModels.tier1.painted`). 쓰지 않게 된 `theme.vehicles.forklift`는 지웠다. 모양이 바뀌어 `vehicle.forklift`는 다시 승인이 필요하다.

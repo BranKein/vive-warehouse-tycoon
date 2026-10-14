@@ -62,7 +62,6 @@ export interface Theme {
     truckCab: number;
     carrierCab: number;
     carrierBed: number;
-    forklift: number;
     shipHull: number;
     shipDeck: number;
     shipCabin: number;
@@ -175,7 +174,6 @@ export const defaultTheme: Theme = {
     truckCab: 0xffb5a3,
     carrierCab: 0xf2887a,
     carrierBed: 0xf1e3cf,
-    forklift: 0xffd66e,
     shipHull: 0xf59d93,
     shipDeck: 0xf7ead6,
     shipCabin: 0xfffaf2,

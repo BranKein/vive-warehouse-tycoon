@@ -136,5 +136,8 @@
   },
   "vehicle.forklift": {
     "approved": "36-4194c59e"
+  },
+  "vehicle.wasteTanker": {
+    "approved": "43-980ebebf"
   }
 }
