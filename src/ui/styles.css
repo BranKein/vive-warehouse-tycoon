@@ -875,6 +875,16 @@
   gap: 8px;
 }
 
+/* Ko-fi's own blue, so the support button reads as theirs. */
+.wt-btn.wt-kofi:not(:disabled) {
+  background: #72a4f2;
+  color: #fff;
+}
+
+.wt-btn.wt-kofi:not(:disabled):hover {
+  background: #5f93e6;
+}
+
 .wt-looks {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

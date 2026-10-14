@@ -100,7 +100,6 @@ interface RoadTrack {
 
 /** Step along the trail over which `cruiseStep` measures how far a vehicle moves on screen. */
 const STRETCH_STEP = 0.5;
-const FORKLIFT_MODEL = 'vehicle.forklift';
 
 const ROAD_KINDS: ReadonlySet<string> = new Set(['carrier', 'inboundTruck', 'saleTruck']);
 const SLOW_KINDS: ReadonlySet<string> = new Set(['ship', 'plane']);
@@ -144,8 +143,6 @@ export class ViewSync {
   /** Chimneys of the buildings at work, in the world, as of the last update. */
   readonly chimneys: Array<{ key: string; x: number; y: number; z: number }> = [];
   private readonly chimney = new Vector3();
-  /** Seconds of play the yards have seen, for the forklifts. */
-  private yardClock = 0;
   private readonly facilities = new Map<string, Object3D>();
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
@@ -260,7 +257,6 @@ export class ViewSync {
     };
 
     this.chimneys.length = 0;
-    if (curr.speed > 0) this.yardClock += dt;
     for (const building of island.buildings) {
       const plot = this.plots.get(building.plotId);
       if (!plot) continue;
@@ -282,7 +278,6 @@ export class ViewSync {
       this.piles(plot, 'inputs', building.inputs);
       this.piles(plot, 'outputs', building.outputs);
       this.piles(plot, 'waste', building.waste);
-      if (building.handlingCount > 0) this.forklifts(plot, building.id, building.inputs, building.outputs);
     }
     for (const facility of island.facilities) {
       const def = this.facilityDefs.get(facility.id);
@@ -467,8 +462,11 @@ export class ViewSync {
       let track = this.tracks.get(vehicle.id);
       if (!track) {
         const onRoad = ROAD_KINDS.has(vehicle.kind);
+        // Some owners' carriers are drawn as another vehicle; only the carrier itself is painted by owner and goods.
+        const ownModel = vehicle.kind === 'carrier' && vehicle.owner ? rule.ownerModels[vehicle.owner] : undefined;
+        const model = ownModel ?? vehicle.model;
         track = {
-          model: vehicle.model,
+          model,
           x: pose.x,
           y: pose.y,
           z: pose.z,
@@ -487,7 +485,7 @@ export class ViewSync {
             : null,
           lift: surfaceLift(vehicle.kind),
           cargo: [],
-          paint: vehicle.kind === 'carrier' ? this.carrierPaint(vehicle, curr) : null,
+          paint: vehicle.kind === 'carrier' && !ownModel ? this.carrierPaint(vehicle, curr) : null,
           route: null,
           seen: true,
         };
@@ -834,44 +832,6 @@ export class ViewSync {
       this.position.set(at.x, (rule.palletHeight + slot.layer * rule.crateSize) * size, at.z);
       crates.add(this.matrix.compose(this.position, this.rotation, this.scale), color);
     }
-  }
-
-  /**
-   * Forklifts at work while a carrier is loaded or unloaded at a building: one beside the outputs that
-   * takes crates to the carrier, and one beside the inputs that brings them from it. Each drives from
-   * its piles towards the carrier, stops, backs up and stops again, over and over.
-   */
-  private forklifts(site: Site, id: string, inputs: ReadonlyArray<StockView>, outputs: ReadonlyArray<StockView>): void {
-    const rule = renderConfig.forklift;
-    const sides: Array<{ side: number; stock: StockView | undefined; out: boolean }> = [
-      { side: 1, stock: outputs.find((stock) => !stock.amount.isZero), out: true },
-      { side: -1, stock: inputs.find((stock) => !stock.amount.isZero), out: false },
-    ];
-    const drive = rule.reach / rule.speed;
-    const cycle = 2 * (drive + rule.pauseSec);
-    // Each yard keeps its own beat.
-    let phase = 0;
-    for (let index = 0; index < id.length; index += 1) phase = (phase * 31 + id.charCodeAt(index)) % 997;
-    sides.slice(0, rule.maxPerYard).forEach(({ side, stock, out }, which) => {
-      const t = (this.yardClock + (phase / 997) * cycle + which * cycle * 0.5) % cycle;
-      // 0 at the piles, 1 next to the carrier.
-      const towards = t < drive ? smoothstep(t / drive) : t < drive + rule.pauseSec ? 1 : t < 2 * drive + rule.pauseSec ? 1 - smoothstep((t - drive - rule.pauseSec) / drive) : 0;
-      const going = t < drive + rule.pauseSec;
-      const local = { x: side * (rule.pileX - rule.reach * towards), z: rule.z };
-      const at = siteToWorld(site, local.x, local.z);
-      this.position.set(at.x, 0, at.z);
-      this.rotation.setFromAxisAngle(UP, site.facing - side * (Math.PI / 2));
-      this.scale.set(1, 1, 1);
-      const model = this.model(FORKLIFT_MODEL, 64);
-      model.add(this.matrix.compose(this.position, this.rotation, this.scale));
-      // Outputs are carried to the carrier, inputs back from it.
-      if (!stock || going !== out) return;
-      const fork = model.anchors.cargo?.[0];
-      if (!fork) return;
-      this.chimney.set(fork[0], fork[1], fork[2]).applyMatrix4(this.matrix);
-      this.position.copy(this.chimney);
-      this.model(CRATE_MODEL, 1024).add(this.matrix.compose(this.position, this.rotation, this.scale), this.colorOf(stock.item));
-    });
   }
 
   private wasteHeap(site: Site, local: GroundPoint, stock: StockView): void {

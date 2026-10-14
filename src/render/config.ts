@@ -1,3 +1,5 @@
+import type { VehicleOwner } from '@/contracts';
+
 /**
  * Tuning values of the 3D view that are not colours or lighting (those live
  * in `theme.ts`). Sizes are in world units, times in real seconds.
@@ -113,25 +115,14 @@ export const renderConfig = {
     markerScale: 1.5,
     /** The dots that show a selected road vehicle's way: how far apart, how big, how high over the ground, and how far ahead of it they begin. */
     route: { spacing: 1.6, radius: 0.34, endScale: 2.6, height: 0.14, ahead: 2.5, max: 400 },
+    /** Carriers of these owners are drawn as another vehicle instead of the carrier truck. */
+    ownerModels: { tier1: 'vehicle.forklift' } as Partial<Record<VehicleOwner, string>>,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },
   building: {
     buildSec: 0.75,
     demolishSec: 0.45,
-  },
-  /**
-   * Forklifts in a building's yard while a carrier is handled there: they stand `pileX` to the side of the
-   * plot's centre line, `z` in front of its centre, and drive `reach` towards the carrier and back.
-   */
-  forklift: {
-    speed: 2.6,
-    pauseSec: 0.55,
-    pileX: 5.4,
-    reach: 2.1,
-    z: 4.8,
-    /** At most this many forklifts are drawn per yard. */
-    maxPerYard: 2,
   },
   bounce: {
     durationSec: 0.7,
@@ -236,6 +227,7 @@ export const renderConfig = {
     facility: [12, 2, 7],
     vehicles: {
       carrier: [1.5, 1.3, 2.6],
+      forklift: [1.3, 2.4, 3.1],
       boxTruck: [2.3, 2.5, 5.6],
       cargoShip: [7, 4, 20],
       cargoPlane: [6, 3, 16],

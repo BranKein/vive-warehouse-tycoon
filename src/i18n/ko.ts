@@ -183,7 +183,7 @@ export const ko: Translations = {
   'look.sunny': '햇살',
   'look.classic': '클래식',
   'settings.github': 'GitHub',
-  'settings.kofi': 'Ko-fi로 후원하기',
+  'settings.kofi': '☕ Buy me a coffee',
   'settings.kofiSoon': '준비 중',
 
   'save.menu': '저장',

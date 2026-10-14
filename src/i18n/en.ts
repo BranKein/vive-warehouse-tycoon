@@ -196,7 +196,7 @@ export const en = {
   'look.sunny': 'Sunny',
   'look.classic': 'Classic',
   'settings.github': 'GitHub',
-  'settings.kofi': 'Support on Ko-fi',
+  'settings.kofi': '☕ Buy me a coffee',
   'settings.kofiSoon': 'Coming soon',
 
   'save.menu': 'Saves',

@@ -62,7 +62,7 @@ export function createSettingsMenu(ctx: UIContext, onToggle: () => void) {
   });
 
   const github = button('wt-btn', () => openLink(LINKS.github));
-  const kofi = button('wt-btn', () => openLink(LINKS.kofi));
+  const kofi = button('wt-btn wt-kofi', () => openLink(LINKS.kofi));
   setDisabled(kofi, !LINKS.kofi);
 
   const el = h(
