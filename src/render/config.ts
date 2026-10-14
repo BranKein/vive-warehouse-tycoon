@@ -111,10 +111,11 @@ export const renderConfig = {
     cardHeight: 4,
     /** Click targets are this much bigger than the vehicle, which is small and moving. */
     pickScale: 1.4,
-    /** The pad under a selected vehicle is this much bigger than the vehicle. */
-    markerScale: 1.5,
-    /** The dots that show a selected road vehicle's way: how far apart, how big, how high over the ground, and how far ahead of it they begin. */
-    route: { spacing: 1.6, radius: 0.34, endScale: 2.6, height: 0.14, ahead: 2.5, max: 400 },
+    /**
+     * The line that shows a selected road vehicle's way: a band this wide through points this far apart,
+     * this high over the ground, beginning this far ahead of it, with a disc at the end.
+     */
+    route: { spacing: 0.8, width: 0.4, endRadius: 0.9, height: 0.14, ahead: 2.5, max: 800 },
     /**
      * Carriers of these owners are drawn as another vehicle instead of the carrier truck; `painted` ones
      * take the owner's colour like the carrier does.
@@ -123,6 +124,8 @@ export const renderConfig = {
       tier1: { model: 'vehicle.forklift', painted: true },
       disposal: { model: 'vehicle.wasteTanker', painted: true },
     } as Partial<Record<VehicleOwner, { model: string; painted: boolean }>>,
+    /** While a vehicle is selected the others are drawn see-through, at this opacity. */
+    othersOpacity: 0.3,
     /** Size of the crates on a carrier's bed, relative to a crate of a stock pile. */
     cargoCrateScale: 1.25,
   },
@@ -175,6 +178,12 @@ export const renderConfig = {
      */
     smoke: { everySec: 0.8, jitter: 0.35, size: 1.1, grow: 1.8, rise: 1.7, wind: { x: 0.55, z: -0.25 }, lifeSec: 2.6, share: 0.6 },
   },
+  /**
+   * The brackets round whatever is selected (`render/SelectionBox.ts`): arms a share of each edge long, at
+   * most `maxArm`, bars `thickness` thick, `margin` clear of the model, breathing by `pulse`. An empty plot
+   * gets a box `plotHeight` high.
+   */
+  selection: { arm: 0.22, maxArm: 2.2, thickness: 0.16, margin: 0.35, pulse: 0.025, pulseHz: 0.8, plotHeight: 1.2 },
   click: {
     /** Pixels the pointer may travel between press and release and still count as a click. */
     maxTravelPx: 5,
@@ -291,7 +300,6 @@ export const renderConfig = {
       rim: [2.4, 0.22],
       /** Radius of the board's corners, seen from above. */
       cornerRadius: 7,
-      selectionHeight: 0.16,
       /** Gap left around a plot pad so neighbouring plots read as separate. */
       plotInset: 0.7,
       facilityPad: [16, 14],

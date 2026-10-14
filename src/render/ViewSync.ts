@@ -1,4 +1,4 @@
-import { Box3, CircleGeometry, Color, Group, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
+import { Box3, Color, Group, Matrix4, Quaternion, Vector3, type Mesh, type Object3D } from 'three';
 import type {
   FacilityDef,
   GameSnapshot,
@@ -12,10 +12,11 @@ import type {
 import {
   buildingModel,
   facilityModel,
-  SELECTION_MODEL,
   SPECIAL_CARGO_MODEL,
 } from './boxModels';
 import { renderConfig } from './config';
+import { RouteLine } from './RouteLine';
+import { SelectionBox, type BoxFrame } from './SelectionBox';
 import { FadingModels } from './FadingModels';
 import { InstancedModel } from './InstancedModel';
 import { facilityPileLocal, pileLocal, siteToWorld, type GroundPoint, type PileGroup, type Site } from './layout';
@@ -147,7 +148,7 @@ export class ViewSync {
   private readonly instanced = new Map<string, InstancedModel>();
   private readonly itemColors = new Map<string, Color>();
   private readonly paints = new Map<number, Color>();
-  private routeMesh: InstancedMesh | null = null;
+  private readonly routeLine: RouteLine;
   private readonly tracks = new Map<string, VehicleTrack>();
   /** Ships and planes while they fade in or out. */
   private readonly fading: FadingModels;
@@ -160,7 +161,7 @@ export class ViewSync {
   private settled = false;
   private specialObject: Object3D | null = null;
   private special: { id: string; x: number; z: number } | null = null;
-  private marker: Object3D | null = null;
+  private readonly selectionBox: SelectionBox;
   private selection: Selection = { type: 'none' };
 
   private readonly matrix = new Matrix4();
@@ -175,6 +176,11 @@ export class ViewSync {
   ) {
     this.fading = new FadingModels(registry);
     this.group.add(this.fading.group);
+    const pick = theme.effects.selection;
+    this.selectionBox = new SelectionBox(pick, renderConfig.selection);
+    const route = renderConfig.vehicle.route;
+    this.routeLine = new RouteLine(pick, route.max, route.width, route.endRadius, route.height);
+    this.group.add(this.selectionBox.group, this.routeLine.group);
   }
 
   /** Switches to another island's layout (null shows nothing). Everything on screen is dropped. */
@@ -288,7 +294,7 @@ export class ViewSync {
     }
 
     for (const model of this.instanced.values()) model.end();
-    this.updateMarker();
+    this.updateMarker(dt);
     this.updateRoute();
   }
 
@@ -381,8 +387,8 @@ export class ViewSync {
     if (this.specialObject) this.group.remove(this.specialObject);
     this.specialObject = null;
     this.special = null;
-    if (this.marker) this.group.remove(this.marker);
-    this.marker = null;
+    this.selectionBox.hide();
+    this.routeLine.hide();
     for (const model of this.instanced.values()) {
       this.group.remove(model.group);
       model.dispose();
@@ -395,13 +401,8 @@ export class ViewSync {
 
   dispose(): void {
     this.clear();
-    if (this.routeMesh) {
-      this.group.remove(this.routeMesh);
-      this.routeMesh.geometry.dispose();
-      (this.routeMesh.material as MeshBasicMaterial).dispose();
-      this.routeMesh.dispose();
-      this.routeMesh = null;
-    }
+    this.selectionBox.dispose();
+    this.routeLine.dispose();
   }
 
   /** A model wrapped in a holder, so moving and scaling it never disturbs the model's own transform. */
@@ -428,16 +429,20 @@ export class ViewSync {
     return object;
   }
 
-  private model(name: string, capacity: number): InstancedModel {
-    let model = this.instanced.get(name);
+  /** The instanced copies of a model; `ghost` ones are drawn see-through. */
+  private model(name: string, capacity: number, ghost = false): InstancedModel {
+    const key = ghost ? `${name}|ghost` : name;
+    let model = this.instanced.get(key);
     if (!model) {
-      model = new InstancedModel(this.registry.create(name), capacity);
+      const options = ghost ? { opacity: renderConfig.vehicle.othersOpacity } : {};
+      model = new InstancedModel(this.registry.create(name), capacity, options);
       model.begin();
-      this.instanced.set(name, model);
+      this.instanced.set(key, model);
       this.group.add(model.group);
     }
     return model;
   }
+
 
   /**
    * Vehicles: interpolated between ticks. Road vehicles keep to the right,
@@ -512,6 +517,7 @@ export class ViewSync {
     }
     this.settled = true;
     this.fading.begin();
+    const focus = this.selection.type === 'vehicle' && this.tracks.get(this.selection.vehicleId)?.seen ? this.selection.vehicleId : null;
     for (const [id, track] of this.tracks) {
       const inTunnel = this.inTunnel(track);
       if (!track.seen) {
@@ -545,9 +551,11 @@ export class ViewSync {
         this.fading.show(id, track.model, this.matrix, fade);
         continue;
       }
-      const model = this.model(track.model, 64);
+      // While one vehicle is selected the others fade back.
+      const ghost = focus !== null && id !== focus;
+      const model = this.model(track.model, 64, ghost);
       model.add(this.matrix, track.paint ?? undefined);
-      if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? []);
+      if (track.cargo.length > 0) this.cargoCrates(track.cargo, model.anchors.cargo ?? [], ghost);
     }
     this.fading.end();
   }
@@ -764,8 +772,8 @@ export class ViewSync {
   }
 
   /** One crate per kind of goods on a carrier's bed; `this.matrix` holds the carrier's transform. */
-  private cargoCrates(items: ReadonlyArray<string>, places: ReadonlyArray<readonly [number, number, number]>): void {
-    const crates = this.model(CRATE_MODEL, 1024);
+  private cargoCrates(items: ReadonlyArray<string>, places: ReadonlyArray<readonly [number, number, number]>, ghost = false): void {
+    const crates = this.model(CRATE_MODEL, 1024, ghost);
     const size = renderConfig.vehicle.cargoCrateScale;
     for (let index = 0; index < items.length && index < places.length; index += 1) {
       const place = places[index]!;
@@ -853,86 +861,78 @@ export class ViewSync {
     return color;
   }
 
-  private selectedSite(): { site: Site; width: number; depth: number; y?: number } | null {
+  /** The box round whatever is selected: what its model fills, or a low box over an empty plot. */
+  private selectionFrame(): BoxFrame | null {
     const layout = this.layout;
     const selection = this.selection;
-    if (!layout || selection.type === 'none' || selection.type === 'vehicle') return null;
+    if (!layout) return null;
+    const around = (site: Site, model: string, shift: number): BoxFrame => {
+      const box = this.boundsOf(model);
+      const centre = siteToWorld(site, (box.min.x + box.max.x) / 2, (box.min.z + box.max.z) / 2 + shift);
+      return {
+        x: centre.x,
+        z: centre.z,
+        yaw: site.facing,
+        bottom: box.min.y,
+        hx: (box.max.x - box.min.x) / 2,
+        hy: (box.max.y - box.min.y) / 2,
+        hz: (box.max.z - box.min.z) / 2,
+      };
+    };
     if (selection.type === 'facility') {
       const site = this.facilityDefs.get(selection.facilityId);
-      const pad = renderConfig.boxes.ground.facilityPad;
-      return site ? { site, width: pad[0], depth: pad[1] } : null;
+      return site ? around(site, facilityModel(site.kind), 0) : null;
     }
-    let plotId: string | undefined;
-    if (selection.type === 'plot') plotId = selection.plotId;
-    else for (const building of this.buildings.values()) if (building.id === selection.buildingId) plotId = building.plotId;
-    const site = plotId === undefined ? undefined : this.plots.get(plotId);
-    return site ? { site, width: layout.plotSize.width, depth: layout.plotSize.depth } : null;
+    if (selection.type === 'building') {
+      for (const building of this.buildings.values()) {
+        const site = building.id === selection.buildingId ? this.plots.get(building.plotId) : undefined;
+        if (site) return around(site, buildingModel(building.typeId), renderConfig.boxes.buildingOffsetZ);
+      }
+      return null;
+    }
+    if (selection.type === 'plot') {
+      const site = this.plots.get(selection.plotId);
+      const height = renderConfig.selection.plotHeight;
+      return site ? { x: site.x, z: site.z, yaw: site.facing, bottom: 0, hx: layout.plotSize.width / 2, hy: height / 2, hz: layout.plotSize.depth / 2 } : null;
+    }
+    if (selection.type === 'vehicle') {
+      const track = this.tracks.get(selection.vehicleId);
+      if (!track || !track.seen || this.inTunnel(track)) return null;
+      const box = this.boundsOf(track.model);
+      const cx = (box.min.x + box.max.x) / 2;
+      const cz = (box.min.z + box.max.z) / 2;
+      const cos = Math.cos(track.heading);
+      const sin = Math.sin(track.heading);
+      return {
+        x: track.x + track.shiftX + cx * cos + cz * sin,
+        z: track.z + track.shiftZ - cx * sin + cz * cos,
+        yaw: track.heading,
+        bottom: track.y + track.lift + box.min.y,
+        hx: (box.max.x - box.min.x) / 2,
+        hy: (box.max.y - box.min.y) / 2,
+        hz: (box.max.z - box.min.z) / 2,
+      };
+    }
+    return null;
   }
 
-  /** The selected vehicle as a site of its own size that moves with it. */
-  private selectedVehicle(): { site: Site; width: number; depth: number; y: number } | null {
-    if (this.selection.type !== 'vehicle') return null;
-    const track = this.tracks.get(this.selection.vehicleId);
-    if (!track || !track.seen || this.inTunnel(track)) return null;
-    const size = vehicleBox(track.model);
-    const grow = renderConfig.vehicle.markerScale;
-    return {
-      site: { x: track.x + track.shiftX, z: track.z + track.shiftZ, facing: track.heading },
-      width: size[0] * grow,
-      depth: size[2] * grow,
-      // Over the road it stands on; in the air under a plane.
-      y: track.y + track.lift,
-    };
-  }
-
-  /** Dots on the road along the rest of the selected road vehicle's way, with a larger one where it ends. */
   private updateRoute(): void {
     const rule = renderConfig.vehicle.route;
     const track = this.selection.type === 'vehicle' ? this.tracks.get(this.selection.vehicleId) : undefined;
     const route = track && track.seen && track.road && !track.road.leaving ? track.route : null;
     if (!route) {
-      if (this.routeMesh) this.routeMesh.count = 0;
+      this.routeLine.hide();
       return;
     }
-    if (!this.routeMesh) {
-      const geometry = new CircleGeometry(1, 16).rotateX(-Math.PI / 2);
-      const material = new MeshBasicMaterial({ color: this.theme.effects.route, toneMapped: false, fog: false });
-      this.routeMesh = new InstancedMesh(geometry, material, rule.max);
-      this.routeMesh.frustumCulled = false;
-      this.group.add(this.routeMesh);
-    }
-    const dots = routeDots(route.points, route.travelled + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset);
-    const count = Math.min(dots.length, rule.max);
-    for (let index = 0; index < count; index += 1) {
-      // The end of the way is always drawn, even when the dots run out.
-      const end = index === count - 1;
-      const dot = end ? dots[dots.length - 1]! : dots[index]!;
-      const size = rule.radius * (end ? rule.endScale : 1);
-      this.routeMesh.setMatrixAt(index, this.local.makeScale(size, 1, size).setPosition(dot.x, rule.height, dot.z));
-    }
-    this.routeMesh.count = count;
-    this.routeMesh.instanceMatrix.needsUpdate = true;
+    this.routeLine.show(routeDots(route.points, route.travelled + rule.ahead, rule.spacing, renderConfig.vehicle.laneOffset));
   }
 
-  /** A flat coloured pad under whatever is selected. */
-  private updateMarker(): void {
-    const selected = this.selectedSite() ?? this.selectedVehicle();
-    if (!selected) {
-      if (this.marker) this.marker.visible = false;
-      return;
-    }
-    if (!this.marker) {
-      this.marker = this.instantiate(SELECTION_MODEL);
-      this.marker.traverse((child) => {
-        child.receiveShadow = true;
-      });
-      this.group.add(this.marker);
-    }
-    this.marker.visible = true;
-    this.marker.position.set(selected.site.x, selected.y ?? 0, selected.site.z);
-    this.marker.rotation.y = selected.site.facing;
-    this.marker.scale.set(selected.width, renderConfig.boxes.ground.selectionHeight, selected.depth);
+  private updateMarker(dt: number): void {
+    const frame = this.selectionFrame();
+    if (frame) this.selectionBox.show(frame, dt);
+    else this.selectionBox.hide();
   }
+
 }
 
 function withShadows(object: Object3D): Object3D {

@@ -15,6 +15,8 @@ import type { Anchors } from './models/kit';
 export interface InstancedModelOptions {
   castShadow?: boolean;
   receiveShadow?: boolean;
+  /** Draws every copy see-through at this opacity (0..1). */
+  opacity?: number;
 }
 
 export interface Part {
@@ -52,7 +54,9 @@ export class InstancedModel {
     private readonly options: InstancedModelOptions = {},
   ) {
     this.anchors = (prototype.userData.anchors as Anchors | undefined) ?? {};
-    this.parts = paintable(extractParts(prototype));
+    const parts = paintable(extractParts(prototype));
+    const opacity = options.opacity;
+    this.parts = opacity === undefined ? parts : parts.map((part) => ({ ...part, material: seeThrough(part.material, opacity) }));
     this.allocate(Math.max(1, capacity));
   }
 
@@ -125,6 +129,23 @@ export class InstancedModel {
 }
 
 const WHITE = new Color(1, 1, 1);
+
+const seeThroughCopies = new WeakMap<Material, Map<number, Material>>();
+
+/** A see-through copy of a material, made once per material and opacity and shared. */
+function seeThrough(material: Material, opacity: number): Material {
+  const copies = seeThroughCopies.get(material) ?? new Map<number, Material>();
+  seeThroughCopies.set(material, copies);
+  let copy = copies.get(opacity);
+  if (!copy) {
+    copy = material.clone();
+    copy.transparent = true;
+    copy.opacity = material.opacity * opacity;
+    copy.depthWrite = false;
+    copies.set(opacity, copy);
+  }
+  return copy;
+}
 
 /** Swaps paint materials for their white base and marks which parts a tint colours. */
 function paintable(parts: Part[]): Part[] {

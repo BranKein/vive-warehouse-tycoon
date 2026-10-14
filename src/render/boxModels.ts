@@ -25,7 +25,6 @@ const unitCube =
 
 export const BLOCK_MODEL = 'prop.block';
 export const SPECIAL_CARGO_MODEL = 'prop.specialCargo';
-export const SELECTION_MODEL = 'prop.selection';
 export const buildingModel = (typeId: string): string => `building.${typeId}`;
 export const facilityModel = (kind: string): string => `facility.${kind}`;
 
@@ -54,6 +53,5 @@ export function registerBoxModels(registry: ModelRegistry, buildingTypes: Iterab
   registry.register('vehicle.default', (kit) => box(kit, sizes.vehicles.fallback, kit.theme.vehicles.truckBody));
 
   registry.register(BLOCK_MODEL, unitCube((kit) => kit.materials.tintable));
-  registry.register(SELECTION_MODEL, unitCube((kit) => kit.theme.effects.selection));
   registry.register(SPECIAL_CARGO_MODEL, (kit) => box(kit, sizes.specialCargo, kit.theme.effects.special));
 }

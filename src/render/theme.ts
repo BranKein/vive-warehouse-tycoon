@@ -111,9 +111,8 @@ export interface Theme {
     headlightDay: number;
   };
   effects: {
+    /** The brackets round what is selected and the line of a selected vehicle's way. */
     selection: number;
-    /** The dots along a selected vehicle's way. */
-    route: number;
     hover: number;
     special: number;
     specialGlow: number;
@@ -294,8 +293,7 @@ export const defaultTheme: Theme = {
     headlightDay: 0xffdf7e,
   },
   effects: {
-    selection: 0xff8fb0,
-    route: 0xff4f86,
+    selection: 0xffd54a,
     hover: 0xffffff,
     special: 0xffd45e,
     specialGlow: 0xfff0a8,
