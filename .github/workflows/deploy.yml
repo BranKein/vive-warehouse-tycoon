@@ -98,3 +98,20 @@ jobs:
         run: |
           aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
             --paths "/" "/index.html" --query Invalidation.Id --output text
+
+      # Asks the museum (BranKein/vive-museum) to rebuild, so the new version and date show up there.
+      # The token needs Contents: Read and write on vive-museum. Without one, or if the call fails, the deploy
+      # still counts as done.
+      - name: Tell the museum
+        if: always() && job.status == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.MUSEUM_DISPATCH_TOKEN || secrets.INFRA_REPO_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::notice::No token for the museum; skipped"
+            exit 0
+          fi
+          gh api repos/BranKein/vive-museum/dispatches -f event_type=exhibit-updated \
+            -F "client_payload[repo]=${GITHUB_REPOSITORY}" -F "client_payload[tag]=${TAG}" \
+            || echo "::warning::Could not tell the museum to rebuild (token scope?)"

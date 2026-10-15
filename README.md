@@ -36,3 +36,7 @@ npm run dev
 `src/` 아래는 `contracts`(공용 타입) ← `core` ← `content`(품목·건물·밸런스 수치) ← `sim`(게임 로직) ← `app` 순서로 의존한다. `render`(three.js 화면)와 `ui`(패널)는 로직을 직접 부르지 않고 스냅샷만 읽는다. 설계와 밸런스 기록은 [PLAN.md](PLAN.md)와 [docs/balance-buildings.md](docs/balance-buildings.md)에 있다.
 
 개발 서버를 켠 채 `/src/render/models.html`을 열면 3D 모델을 하나씩 돌려 볼 수 있다.
+
+## 박물관 전시
+
+[Vive Museum](https://github.com/BranKein/vive-museum)이 `deploy/exhibit.json`(제목·설명 한영, 기술 스택, 썸네일 경로, PC 권장 여부)과 `deploy/site.json`의 `subdomain`을 읽어 이 게임을 전시한다. 썸네일은 `deploy/thumbnail.jpg`. 배포 워크플로가 끝나면 박물관에 다시 빌드하라는 신호(`repository_dispatch`)를 보낸다. 토큰(`MUSEUM_DISPATCH_TOKEN`, 없으면 `INFRA_REPO_TOKEN`)에 vive-museum의 Contents 쓰기 권한이 없으면 이 단계는 경고만 남기고 넘어간다.

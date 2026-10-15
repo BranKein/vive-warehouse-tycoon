@@ -1,0 +1,11 @@
+{
+  "title": { "ko": "창고 타이쿤", "en": "Warehouse Tycoon" },
+  "blurb": {
+    "ko": "창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다.",
+    "en": "A 3D idle tycoon about warehouses. Build factories, bring in raw materials, process them and ship the goods out by truck, boat and plane."
+  },
+  "stack": ["TypeScript", "Three.js", "Vite"],
+  "thumbnail": "deploy/thumbnail.jpg",
+  "aspect": "4:3",
+  "pcOnly": true
+}
