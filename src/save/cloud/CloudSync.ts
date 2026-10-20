@@ -34,7 +34,9 @@ export interface CloudSyncOptions {
  * On connecting (or opening the game while connected) the cloud save is read first. When another device wrote it,
  * the player is asked whether to load it or keep this device's game, and nothing is uploaded until they choose;
  * save times are not trusted to decide, since a game left open keeps its auto save fresh without being played.
- * When the cloud holds this device's own last save (or nothing), the current game is uploaded. After that, `backup` uploads at most every few minutes, or at once when forced.
+ * The same goes when this device's game is older than the cloud save or gone (site data cleared, say), even if the
+ * cloud save is this device's own: a fresh game must never replace it unasked. Otherwise the current game is uploaded.
+ * After that, `backup` uploads at most every few minutes, or at once when forced.
  * Every upload first checks that the cloud still holds this device's last save: a game left open on one device
  * must not overwrite what another device saved meanwhile, so that save is offered instead.
  */
@@ -51,6 +53,7 @@ export class CloudSync implements CloudController {
   private lastUploadAt = 0;
   private offer: CloudSave | null = null;
   private offerNewer = false;
+  private offerLocal: SaveData['summary'] | null = null;
   /** Uploads wait until the cloud save was compared with this device's game. */
   private checked = false;
   /** Cloud calls run one at a time. */
@@ -74,7 +77,13 @@ export class CloudSync implements CloudController {
       state: this.state,
       lastSyncedAt: this.lastSyncedAt,
       offer: offer
-        ? { savedAt: offer.data.savedAt, newer: this.offerNewer, device: offer.device, summary: { ...offer.data.summary } }
+        ? {
+            savedAt: offer.data.savedAt,
+            newer: this.offerNewer,
+            device: offer.device,
+            summary: { ...offer.data.summary },
+            local: { ...(this.offerLocal ?? this.options.current().summary) },
+          }
         : null,
     };
   }
@@ -153,15 +162,18 @@ export class CloudSync implements CloudController {
     this.forget();
   }
 
-  /** Uploads the current game; skipped while there is nothing to upload to or an offer is waiting. */
-  backup(options: { force?: boolean } = {}): Promise<void> {
+  /**
+   * Uploads the game; skipped while there is nothing to upload to or an offer is waiting. Pass the `data` just
+   * written as the auto save, so the two carry the same time and the next visit does not see the cloud as newer.
+   */
+  backup(options: { force?: boolean; data?: SaveData } = {}): Promise<void> {
     // A first read that failed (offline, say) is tried again on the same schedule as uploads.
     const retryCheck = this.provider !== null && !this.checked && this.state === 'error';
     if (!retryCheck && !this.canUpload()) return Promise.resolve();
     if (!options.force && this.now() - this.lastUploadAt < this.uploadIntervalMs) return Promise.resolve();
     // Counted from the start, so the timer does not queue a second upload behind a slow one.
     this.lastUploadAt = this.now();
-    return this.enqueue(() => (retryCheck ? this.check() : this.upload()));
+    return this.enqueue(() => (retryCheck ? this.check() : this.upload({ ...(options.data ? { data: options.data } : {}) })));
   }
 
   async syncNow(): Promise<void> {
@@ -213,7 +225,8 @@ export class CloudSync implements CloudController {
       return;
     }
     this.checked = true;
-    if (cloud && this.fromElsewhere(cloud)) {
+    const local = await this.options.localSavedAt().catch(() => null);
+    if (cloud && (this.fromElsewhere(cloud) || local === null || local < cloud.data.savedAt)) {
       await this.offerSave(cloud);
       return;
     }
@@ -223,9 +236,9 @@ export class CloudSync implements CloudController {
     await this.upload({ overwrite: true });
   }
 
-  private async upload(options: { rethrow?: boolean; overwrite?: boolean } = {}): Promise<void> {
+  private async upload(options: { rethrow?: boolean; overwrite?: boolean; data?: SaveData } = {}): Promise<void> {
     if (!this.provider) return;
-    const data = this.options.current();
+    const data = options.data ?? this.options.current();
     try {
       if (!options.overwrite) {
         const cloud = await this.call(() => this.provider!.read());
@@ -254,6 +267,7 @@ export class CloudSync implements CloudController {
     const local = await this.options.localSavedAt().catch(() => null);
     this.offer = cloud;
     this.offerNewer = local === null || cloud.data.savedAt > local;
+    this.offerLocal = this.options.current().summary;
     this.emit();
   }
 

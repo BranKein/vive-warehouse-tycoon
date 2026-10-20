@@ -29,7 +29,11 @@ function device(options: { name: string; cloudStorage: KeyValueStorage; local: n
   const provider = new MemoryCloudProvider({ storage: options.cloudStorage });
   const sync = new CloudSync({
     providers: [provider],
-    current: () => ({ ...game, savedAt: clock }),
+    // Like the app: the game handed to the cloud is also written as the auto save.
+    current: () => {
+      localSavedAt = clock;
+      return { ...game, savedAt: clock };
+    },
     localSavedAt: async () => localSavedAt,
     load: (data) => {
       loaded.push(data);
@@ -114,17 +118,6 @@ describe('CloudSync', () => {
     expect(cloudSavedAt(cloud)).toBe(100);
   });
 
-  it('never offers a device the save it uploaded itself', async () => {
-    const cloud = memoryStorage();
-    const prefs = memoryStorage();
-    const pc = device({ name: 'PC', cloudStorage: cloud, local: 500, prefs });
-    await pc.sync.connect('google');
-    // The next visit: the auto save is older than the last upload (a manual save uploaded on its own).
-    const again = device({ name: 'PC', cloudStorage: cloud, local: 900, prefs });
-    await again.sync.start();
-    expect(again.sync.status().offer).toBeNull();
-  });
-
   it('a game left open does not overwrite what another device saved meanwhile', async () => {
     const cloud = memoryStorage();
     const pc = device({ name: 'PC', cloudStorage: cloud, local: 500 });
@@ -139,6 +132,30 @@ describe('CloudSync', () => {
     await pc.sync.backup({ force: true });
     expect(cloudSavedAt(cloud)).toBe(3_000_000);
     expect(pc.sync.status().offer).toMatchObject({ device: 'Phone', savedAt: 3_000_000 });
+  });
+
+  it('a device that lost its own game is offered its last upload instead of overwriting it', async () => {
+    const cloud = memoryStorage();
+    const prefs = memoryStorage();
+    const pc = device({ name: 'PC', cloudStorage: cloud, local: 500, prefs });
+    await pc.sync.connect('google');
+    // Site data cleared: no auto save, a fresh game, but the cloud prefs survive.
+    const again = device({ name: 'PC', cloudStorage: cloud, local: null, prefs });
+    again.setClock(2_000_000);
+    await again.sync.start();
+    expect(again.sync.status().offer).toMatchObject({ device: 'PC', savedAt: 1_000_000, newer: true });
+    expect(cloudSavedAt(cloud)).toBe(1_000_000);
+  });
+
+  it('an auto save written with the upload is not taken for an older game', async () => {
+    const cloud = memoryStorage();
+    const prefs = memoryStorage();
+    const pc = device({ name: 'PC', cloudStorage: cloud, local: 500, prefs });
+    await pc.sync.connect('google');
+    // The next visit opens the auto save written together with that upload.
+    const again = device({ name: 'PC', cloudStorage: cloud, local: 1_000_000, prefs });
+    await again.sync.start();
+    expect(again.sync.status().offer).toBeNull();
   });
 
   it('regular uploads are spaced out; forced ones are not', async () => {

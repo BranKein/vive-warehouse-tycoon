@@ -96,21 +96,26 @@ async function start(): Promise<void> {
   const cloud = createCloud(() => engine.serialize(), store, (data) => {
     if (!load(data)) return false;
     // The loaded game becomes this device's auto save, so it is what the next visit opens.
-    void putAuto();
+    void putAuto(engine.serialize());
     return true;
   });
 
-  const putAuto = (): Promise<void> => store.putAuto(engine.serialize()).catch((error: unknown) => console.error(error));
+  const putAuto = (data: SaveData): Promise<void> => store.putAuto(data).catch((error: unknown) => console.error(error));
   /** `leaving`: the tab is being hidden or closed, when the cloud copy matters most. */
   const autoSave = (leaving = false): void => {
-    void putAuto();
-    void cloud?.backup({ force: leaving });
+    // One snapshot for both, so the auto save and the cloud copy carry the same time.
+    const data = engine.serialize();
+    void putAuto(data);
+    void cloud?.backup({ force: leaving, data });
   };
 
   const saves: SaveController = {
     saveManual: async () => {
-      const entry = await store.addManual(engine.serialize());
-      void cloud?.backup({ force: true });
+      const data = engine.serialize();
+      const entry = await store.addManual(data);
+      // Also the auto save, so the cloud copy uploaded now is not newer than this device's own game.
+      void putAuto(data);
+      void cloud?.backup({ force: true, data });
       return entry;
     },
     listManual: () => store.listManual(),

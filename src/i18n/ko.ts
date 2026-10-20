@@ -230,6 +230,7 @@ export const ko: Translations = {
   'cloud.privacy': '개인정보 처리방침',
   'cloud.offerTitle': '클라우드에 더 최신 기록이 있습니다',
   'cloud.offerTitleOther': '클라우드에 다른 기기의 기록이 있습니다',
+  'cloud.offerThisDevice': '이 기기의 지금 게임',
   'cloud.offerFrom': '{time} · {device}',
   'cloud.offerLoad': '불러오기',
   'cloud.offerKeep': '이 기기 기록 유지',

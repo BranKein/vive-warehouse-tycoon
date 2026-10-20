@@ -243,6 +243,7 @@ export const en = {
   'cloud.privacy': 'Privacy policy',
   'cloud.offerTitle': 'The cloud has a newer save',
   'cloud.offerTitleOther': 'The cloud has a save from another device',
+  'cloud.offerThisDevice': 'This device now',
   'cloud.offerFrom': '{time} · {device}',
   'cloud.offerLoad': 'Load it',
   'cloud.offerKeep': 'Keep this device',

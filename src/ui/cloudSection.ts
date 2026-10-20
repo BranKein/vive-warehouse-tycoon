@@ -33,6 +33,8 @@ export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoa
   const offerDate = h('div', 'wt-save-date');
   const offerSummary = h('div', 'wt-save-summary');
   const offerHint = h('div', 'wt-save-summary');
+  const localTitle = h('div', 'wt-save-date');
+  const localSummary = h('div', 'wt-save-summary');
   const offerLoad = button('wt-btn wt-btn-primary', () =>
     run(async () => {
       const ok = await cloud.acceptOffer();
@@ -47,6 +49,8 @@ export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoa
     offerTitle,
     offerDate,
     offerSummary,
+    localTitle,
+    localSummary,
     h('div', 'wt-menu-actions', offerLoad, offerKeep),
     offerHint,
   );
@@ -139,6 +143,8 @@ export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoa
       setText(offerTitle, tr.t(status.offer.newer ? 'cloud.offerTitle' : 'cloud.offerTitleOther'));
       setText(offerDate, tr.t('cloud.offerFrom', { time: formatSaveDate(status.offer.savedAt, getLanguage()), device: status.offer.device || '?' }));
       setText(offerSummary, formatSaveSummary(tr, status.offer.summary));
+      setText(localTitle, tr.t('cloud.offerThisDevice'));
+      setText(localSummary, formatSaveSummary(tr, status.offer.local));
       setText(offerHint, tr.t('cloud.offerKeepHint'));
       setText(offerLoad, tr.t('cloud.offerLoad'));
       setText(offerKeep, tr.t('cloud.offerKeep'));

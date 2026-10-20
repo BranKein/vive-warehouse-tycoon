@@ -43,6 +43,8 @@ export interface CloudOffer {
   newer: boolean;
   device: string;
   summary: SaveSummary;
+  /** This device's game as it is now, to compare with. */
+  local: SaveSummary;
 }
 
 export interface CloudStatus {
