@@ -92,8 +92,61 @@ export const siteVerification = (): Plugin => {
   };
 };
 
+/** "ca-pub-123…" or "pub-123…" -> "ca-pub-123…"; undefined when the value is missing or not a publisher id. */
+export const adSenseClient = (value: string | undefined): string | undefined => {
+  const id = value?.trim().replace(/^ca-/, '');
+  return id && /^pub-\d+$/.test(id) ? `ca-${id}` : undefined;
+};
+
+/**
+ * The AdSense script and the right-hand ad rail (a 160×600 unit with a label), only when both
+ * ADSENSE_CLIENT and ADSENSE_SLOT_SIDEBAR are set. src/app/adRail.ts shows the rail on wide screens
+ * with a mouse and asks AdSense to fill it; otherwise it stays hidden.
+ */
+export const adSenseTags = (env: Record<string, string | undefined>): HtmlTagDescriptor[] => {
+  const client = adSenseClient(env.ADSENSE_CLIENT);
+  const slot = env.ADSENSE_SLOT_SIDEBAR?.trim();
+  if (!client || !slot || !/^\d+$/.test(slot)) return [];
+  return [
+    {
+      tag: 'script',
+      attrs: { async: true, src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`, crossorigin: 'anonymous' },
+      injectTo: 'head',
+    },
+    {
+      tag: 'aside',
+      attrs: { id: 'ad-rail', 'aria-label': '광고 · Ad' },
+      children: [
+        { tag: 'span', attrs: { class: 'ad-rail-label' }, children: '광고 · Ad' },
+        {
+          tag: 'ins',
+          attrs: {
+            class: 'adsbygoogle',
+            style: 'display:inline-block;width:160px;height:600px',
+            'data-ad-client': client,
+            'data-ad-slot': slot,
+          },
+        },
+      ],
+      injectTo: 'body-prepend',
+    },
+  ];
+};
+
+/** Adds the AdSense script and ad rail to index.html when ADSENSE_CLIENT / ADSENSE_SLOT_SIDEBAR are set. */
+export const adSense = (): Plugin => {
+  let env: Record<string, string | undefined> = process.env;
+  return {
+    name: 'adsense',
+    configResolved(config) {
+      env = { ...loadEnv(config.mode, config.root, ''), ...process.env };
+    },
+    transformIndexHtml: () => adSenseTags(env),
+  };
+};
+
 export default defineConfig({
-  plugins: [modelReview(), shots(), siteVerification()],
+  plugins: [modelReview(), shots(), siteVerification(), adSense()],
   // Saving an approval must not reload the page that saved it.
   server: { watch: { ignored: ['**/src/render/models/review.json'] } },
   resolve: {

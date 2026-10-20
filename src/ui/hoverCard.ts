@@ -240,7 +240,7 @@ export function createHoverCard(ctx: UIContext) {
   function place(): void {
     const width = el.offsetWidth;
     const height = el.offsetHeight;
-    const maxLeft = window.innerWidth - width - MARGIN;
+    const maxLeft = (el.offsetParent?.clientWidth ?? window.innerWidth) - width - MARGIN;
     const maxTop = window.innerHeight - height - MARGIN;
     let left = pointerX + OFFSET;
     if (left > maxLeft) left = pointerX - OFFSET - width;

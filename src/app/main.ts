@@ -9,6 +9,7 @@ import { createSaveStore, migrate } from '@/save';
 import { createGame } from '@/sim';
 import { TICKS_PER_SECOND } from '@/core/time';
 import { createUI } from '@/ui';
+import { gameAreaWidth, setupAdRail } from './adRail';
 import { APP_CONFIG } from './config';
 import { GameLoop } from './GameLoop';
 import './app.css';
@@ -140,7 +141,9 @@ async function start(): Promise<void> {
     if (plotId) commands.moveBuilding(buildingId, plotId);
   });
 
-  const resize = (): void => renderer.resize(window.innerWidth, window.innerHeight);
+  // With an ad rail on screen the game gets only the width beside it (the CSS does the same).
+  const layoutAdRail = setupAdRail();
+  const resize = (): void => renderer.resize(gameAreaWidth(window.innerWidth, layoutAdRail()), window.innerHeight);
   window.addEventListener('resize', resize);
   resize();
 

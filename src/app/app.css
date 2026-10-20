@@ -5,10 +5,51 @@ body {
   overflow: hidden;
 }
 
+/* src/app/adRail.ts sets this to the ad rail's width while the rail is shown; the game area ends there. */
+:root {
+  --ad-rail-width: 0px;
+  background: #1b2430;
+}
+
 #scene {
   position: fixed;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  left: 0;
+  width: calc(100% - var(--ad-rail-width));
   height: 100%;
   display: block;
+}
+
+#ui.wt-ui {
+  right: var(--ad-rail-width);
+}
+
+/* Only in builds with AdSense settings (vite.config.ts), and only shown with the .ad-rail-on class. */
+#ad-rail {
+  display: none;
+}
+
+.ad-rail-on #ad-rail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: var(--ad-rail-width);
+  box-sizing: border-box;
+  /* The 24px on the game side keeps every game control well away from the ad. */
+  padding: 16px 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  background: #1b2430;
+}
+
+.ad-rail-label {
+  font: 11px system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color: #f2ead8;
+  opacity: 0.6;
 }

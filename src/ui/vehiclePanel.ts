@@ -103,7 +103,7 @@ export function createVehiclePanel(ctx: UIContext) {
   /** Beside the vehicle and inside the window; in the top right corner until the view says where the vehicle is. */
   function position(): void {
     if (el.hidden) return;
-    const maxLeft = window.innerWidth - el.offsetWidth - MARGIN;
+    const maxLeft = (el.offsetParent?.clientWidth ?? window.innerWidth) - el.offsetWidth - MARGIN;
     const maxTop = window.innerHeight - el.offsetHeight - MARGIN;
     const left = anchor ? anchor.clientX + OFFSET_X : maxLeft;
     const top = anchor ? anchor.clientY - OFFSET_Y - el.offsetHeight : TOP;
