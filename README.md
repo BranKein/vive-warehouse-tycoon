@@ -40,3 +40,7 @@ npm run dev
 ## 박물관 전시
 
 [Vive Museum](https://github.com/BranKein/vive-museum)이 `deploy/exhibit.json`(제목·설명 한영, 기술 스택, 썸네일 경로, PC 권장 여부)과 `deploy/site.json`의 `subdomain`을 읽어 이 게임을 전시한다. 썸네일은 `deploy/thumbnail.jpg`. 배포 워크플로가 끝나면 박물관에 다시 빌드하라는 신호(`repository_dispatch`)를 보낸다. 토큰(`MUSEUM_DISPATCH_TOKEN`, 없으면 `INFRA_REPO_TOKEN`)에 vive-museum의 Contents 쓰기 권한이 없으면 이 단계는 경고만 남기고 넘어간다.
+
+## 검색 노출
+
+`index.html`에 제목·설명(한국어와 영어를 함께), canonical, 공유 카드(`public/og.jpg`), VideoGame 구조화 데이터, 첫 화면이 그려지기 전까지 보이는 소개 블록이 있다. `public/robots.txt`와 `public/sitemap.xml`도 함께 배포된다. 빌드할 때 환경 변수 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`이 있으면 Google Search Console·네이버 서치어드바이저 소유 확인 메타 태그를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 없으면 태그를 넣지 않는다.
