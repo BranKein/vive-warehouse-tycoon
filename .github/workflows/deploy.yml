@@ -32,6 +32,9 @@ jobs:
       - run: npm ci
       - run: npx vitest run
       - run: npm run build
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          NAVER_SITE_VERIFICATION: ${{ vars.NAVER_SITE_VERIFICATION }}
 
       # deploy/site.json is what this project wants from its hosting. A change is committed to the
       # infra repository (its main push applies it); otherwise a tag there applies the site as it is.

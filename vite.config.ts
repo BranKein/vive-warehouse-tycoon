@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
-import type { Plugin } from 'vite';
+import { loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 const REVIEW_FILE = fileURLToPath(new URL('./src/render/models/review.json', import.meta.url));
@@ -63,8 +63,37 @@ const shots = (): Plugin => ({
   },
 });
 
+/** Search console ownership tags: environment variable -> meta name. */
+const VERIFICATION_TAGS = {
+  GOOGLE_SITE_VERIFICATION: 'google-site-verification',
+  NAVER_SITE_VERIFICATION: 'naver-site-verification',
+} as const;
+
+/** The verification meta tags for the variables that are set; none when nothing is set. */
+export const verificationTags = (env: Record<string, string | undefined>): HtmlTagDescriptor[] =>
+  Object.entries(VERIFICATION_TAGS).flatMap(([key, name]) => {
+    const content = env[key]?.trim();
+    return content ? [{ tag: 'meta', attrs: { name, content }, injectTo: 'head' as const }] : [];
+  });
+
+/**
+ * Adds the Google and Naver ownership meta tags to index.html when GOOGLE_SITE_VERIFICATION /
+ * NAVER_SITE_VERIFICATION are set (in the environment or a .env file). The deploy workflow passes them
+ * from the repository variables.
+ */
+export const siteVerification = (): Plugin => {
+  let env: Record<string, string | undefined> = process.env;
+  return {
+    name: 'site-verification',
+    configResolved(config) {
+      env = { ...loadEnv(config.mode, config.root, ''), ...process.env };
+    },
+    transformIndexHtml: () => verificationTags(env),
+  };
+};
+
 export default defineConfig({
-  plugins: [modelReview(), shots()],
+  plugins: [modelReview(), shots(), siteVerification()],
   // Saving an approval must not reload the page that saved it.
   server: { watch: { ignored: ['**/src/render/models/review.json'] } },
   resolve: {
