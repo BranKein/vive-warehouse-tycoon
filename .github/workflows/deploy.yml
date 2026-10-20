@@ -35,6 +35,8 @@ jobs:
         env:
           GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
           NAVER_SITE_VERIFICATION: ${{ vars.NAVER_SITE_VERIFICATION }}
+          ADSENSE_CLIENT: ${{ vars.ADSENSE_CLIENT }}
+          ADSENSE_SLOT_SIDEBAR: ${{ vars.ADSENSE_SLOT_SIDEBAR }}
 
       # deploy/site.json is what this project wants from its hosting. A change is committed to the
       # infra repository (its main push applies it); otherwise a tag there applies the site as it is.
