@@ -229,6 +229,7 @@ export const ko: Translations = {
   'cloud.disconnectConfirm': '연결을 해제할까요? 클라우드 기록은 그대로 남습니다.',
   'cloud.privacy': '개인정보 처리방침',
   'cloud.offerTitle': '클라우드에 더 최신 기록이 있습니다',
+  'cloud.offerTitleOther': '클라우드에 다른 기기의 기록이 있습니다',
   'cloud.offerFrom': '{time} · {device}',
   'cloud.offerLoad': '불러오기',
   'cloud.offerKeep': '이 기기 기록 유지',

@@ -18,7 +18,7 @@ const CONNECT_LABEL = {
 export const PRIVACY_URL = '/privacy.html';
 
 /**
- * The cloud part of the save menu: connect buttons, the connection state, and the offer of a newer cloud save.
+ * The cloud part of the save menu: connect buttons, the connection state, and the offer of another device's save.
  * It only talks to `CloudController`, so it does not change when another provider is added.
  */
 export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoaded: () => void) {
@@ -136,7 +136,7 @@ export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoa
 
     setHidden(offer, status.offer === null);
     if (status.offer) {
-      setText(offerTitle, tr.t('cloud.offerTitle'));
+      setText(offerTitle, tr.t(status.offer.newer ? 'cloud.offerTitle' : 'cloud.offerTitleOther'));
       setText(offerDate, tr.t('cloud.offerFrom', { time: formatSaveDate(status.offer.savedAt, getLanguage()), device: status.offer.device || '?' }));
       setText(offerSummary, formatSaveSummary(tr, status.offer.summary));
       setText(offerHint, tr.t('cloud.offerKeepHint'));

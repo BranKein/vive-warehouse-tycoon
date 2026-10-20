@@ -36,9 +36,11 @@ export interface CloudProvider {
 
 export type CloudState = 'off' | 'connecting' | 'connected' | 'syncing' | 'expired' | 'error';
 
-/** A cloud save newer than this device's game, waiting for the player to load or skip it. */
+/** A cloud save another device wrote, waiting for the player to load it or keep this device's game. */
 export interface CloudOffer {
   savedAt: number;
+  /** Saved later than this device's own game. */
+  newer: boolean;
   device: string;
   summary: SaveSummary;
 }

@@ -75,7 +75,7 @@ describe('CloudSync', () => {
     phone.setClock(100);
     await phone.sync.connect('google');
     const offer = phone.sync.status().offer;
-    expect(offer).toMatchObject({ device: 'PC', savedAt: 1_000_000 });
+    expect(offer).toMatchObject({ device: 'PC', savedAt: 1_000_000, newer: true });
 
     phone.tick(10_000);
     await phone.sync.backup({ force: true });
@@ -100,14 +100,18 @@ describe('CloudSync', () => {
     expect(cloudSavedAt(cloud)).toBe(2_000_000);
   });
 
-  it('a cloud save older than this device is not offered', async () => {
+  it('asks even when this device saved later, without uploading over the other device', async () => {
     const cloud = memoryStorage();
     const pc = device({ name: 'PC', cloudStorage: cloud, local: 500 });
     pc.setClock(100);
     await pc.sync.connect('google');
+    // A game left open keeps its auto save fresh, so its time says nothing about which game the player wants.
     const phone = device({ name: 'Phone', cloudStorage: cloud, local: 5_000 });
     await phone.sync.connect('google');
-    expect(phone.sync.status().offer).toBeNull();
+    expect(phone.sync.status().offer).toMatchObject({ device: 'PC', newer: false });
+    phone.tick(10_000);
+    await phone.sync.backup({ force: true });
+    expect(cloudSavedAt(cloud)).toBe(100);
   });
 
   it('never offers a device the save it uploaded itself', async () => {
@@ -128,6 +132,7 @@ describe('CloudSync', () => {
     const phone = device({ name: 'Phone', cloudStorage: cloud, local: 2_000_000 });
     phone.setClock(3_000_000);
     await phone.sync.connect('google');
+    await phone.sync.dismissOffer();
     expect(cloudSavedAt(cloud)).toBe(3_000_000);
 
     pc.tick(5000);

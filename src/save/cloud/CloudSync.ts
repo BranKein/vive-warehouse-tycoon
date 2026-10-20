@@ -31,9 +31,10 @@ export interface CloudSyncOptions {
 /**
  * Keeps the latest game in the player's cloud, whichever provider they chose.
  *
- * On connecting (or opening the game while connected) the cloud save is read first. When it is newer than this
- * device's game, the player is offered it and nothing is uploaded until they load or skip it; otherwise the
- * current game is uploaded. After that, `backup` uploads at most every few minutes, or at once when forced.
+ * On connecting (or opening the game while connected) the cloud save is read first. When another device wrote it,
+ * the player is asked whether to load it or keep this device's game, and nothing is uploaded until they choose;
+ * save times are not trusted to decide, since a game left open keeps its auto save fresh without being played.
+ * When the cloud holds this device's own last save (or nothing), the current game is uploaded. After that, `backup` uploads at most every few minutes, or at once when forced.
  * Every upload first checks that the cloud still holds this device's last save: a game left open on one device
  * must not overwrite what another device saved meanwhile, so that save is offered instead.
  */
@@ -49,6 +50,7 @@ export class CloudSync implements CloudController {
   private lastSavedAt: number | null = null;
   private lastUploadAt = 0;
   private offer: CloudSave | null = null;
+  private offerNewer = false;
   /** Uploads wait until the cloud save was compared with this device's game. */
   private checked = false;
   /** Cloud calls run one at a time. */
@@ -71,7 +73,9 @@ export class CloudSync implements CloudController {
       provider: this.provider?.id ?? null,
       state: this.state,
       lastSyncedAt: this.lastSyncedAt,
-      offer: offer ? { savedAt: offer.data.savedAt, device: offer.device, summary: { ...offer.data.summary } } : null,
+      offer: offer
+        ? { savedAt: offer.data.savedAt, newer: this.offerNewer, device: offer.device, summary: { ...offer.data.summary } }
+        : null,
     };
   }
 
@@ -209,11 +213,8 @@ export class CloudSync implements CloudController {
       return;
     }
     this.checked = true;
-    const local = await this.options.localSavedAt().catch(() => null);
-    const ours = cloud !== null && cloud.data.savedAt === this.lastSavedAt;
-    if (cloud && !ours && (local === null || cloud.data.savedAt > local)) {
-      this.offer = cloud;
-      this.emit();
+    if (cloud && this.fromElsewhere(cloud)) {
+      await this.offerSave(cloud);
       return;
     }
     this.offer = null;
@@ -229,8 +230,7 @@ export class CloudSync implements CloudController {
       if (!options.overwrite) {
         const cloud = await this.call(() => this.provider!.read());
         if (cloud && this.fromElsewhere(cloud)) {
-          this.offer = cloud;
-          this.emit();
+          await this.offerSave(cloud);
           return;
         }
       }
@@ -245,9 +245,16 @@ export class CloudSync implements CloudController {
     this.emit();
   }
 
-  /** A save another device wrote after this device's last upload or load. */
+  /** A save another device wrote after this device's last upload or load (or any save, before the first). */
   private fromElsewhere(cloud: CloudSave): boolean {
     return this.lastSavedAt === null || cloud.data.savedAt > this.lastSavedAt;
+  }
+
+  private async offerSave(cloud: CloudSave): Promise<void> {
+    const local = await this.options.localSavedAt().catch(() => null);
+    this.offer = cloud;
+    this.offerNewer = local === null || cloud.data.savedAt > local;
+    this.emit();
   }
 
   /** Loads a cloud save into the game; the next upload then carries on from it. */
