@@ -1,6 +1,7 @@
 import type { ManualSaveEntry } from '@/contracts';
 import { getLanguage } from '@/i18n';
 import type { UIContext } from './context';
+import { createCloudSection } from './cloudSection';
 import { button, createConfirm, h, KeyedList, setAttr, setDisabled, setHidden, setText, type Row } from './dom';
 import { formatSaveSummary } from './text';
 
@@ -86,11 +87,15 @@ export function createSaveMenu(ctx: UIContext, onToggle: () => void) {
     },
   );
 
+  // Loading from the cloud replaces the game, like loading a save here.
+  const cloud = ctx.cloud ? createCloudSection(ctx, ctx.cloud, () => setOpen(false)) : null;
+
   const el = h(
     'div',
     'wt-menu wt-card',
     h('div', 'wt-menu-head', title, close),
     h('div', 'wt-menu-actions', saveNow, loadAuto),
+    ...(cloud ? [cloud.el] : []),
     listTitle,
     empty,
     listBox,
@@ -112,6 +117,7 @@ export function createSaveMenu(ctx: UIContext, onToggle: () => void) {
     setText(empty, tr.t('save.empty'));
     setHidden(empty, entries.length > 0);
     list.sync(entries);
+    cloud?.render();
     reset.render({
       label: tr.t('save.reset'),
       question: tr.t('save.resetConfirm'),
@@ -153,9 +159,15 @@ export function createSaveMenu(ctx: UIContext, onToggle: () => void) {
   function setOpen(next: boolean): void {
     if (open === next) return;
     open = next;
-    if (!open) reset.disarm();
+    if (!open) {
+      reset.disarm();
+      cloud?.disarm();
+    }
     render();
-    if (open) void refresh();
+    if (open) {
+      cloud?.opened();
+      void refresh();
+    }
     onToggle();
   }
 
@@ -168,11 +180,13 @@ export function createSaveMenu(ctx: UIContext, onToggle: () => void) {
   return {
     el,
     isOpen: (): boolean => open,
+    open: (): void => setOpen(true),
     toggle: (): void => setOpen(!open),
     close: (): void => setOpen(false),
     rerender: render,
     dispose(): void {
       disposed = true;
+      cloud?.dispose();
       document.removeEventListener('keydown', onKeyDown);
       el.remove();
     },

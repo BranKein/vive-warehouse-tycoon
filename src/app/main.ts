@@ -3,9 +3,9 @@
  * save store, and connects them through the game loop.
  */
 import { catalog } from '@/content';
-import type { CommandResult, GameCommands, GameEngine, SaveController, SaveData, Selection } from '@/contracts';
+import type { CommandResult, GameCommands, GameEngine, SaveController, SaveData, SaveStore, Selection } from '@/contracts';
 import { createRenderer } from '@/render';
-import { createSaveStore, migrate } from '@/save';
+import { CloudSync, browserStorage, createCloudProviders, createSaveStore, currentDeviceName, migrate } from '@/save';
 import { createGame } from '@/sim';
 import { TICKS_PER_SECOND } from '@/core/time';
 import { createUI } from '@/ui';
@@ -86,10 +86,6 @@ async function start(): Promise<void> {
     ui.setSelection(selection);
   };
 
-  const autoSave = (): void => {
-    store.putAuto(engine.serialize()).catch((error: unknown) => console.error(error));
-  };
-
   const load = (data: SaveData | null): boolean => {
     const next = restore(data);
     if (!next) return false;
@@ -97,8 +93,26 @@ async function start(): Promise<void> {
     return true;
   };
 
+  const cloud = createCloud(() => engine.serialize(), store, (data) => {
+    if (!load(data)) return false;
+    // The loaded game becomes this device's auto save, so it is what the next visit opens.
+    void putAuto();
+    return true;
+  });
+
+  const putAuto = (): Promise<void> => store.putAuto(engine.serialize()).catch((error: unknown) => console.error(error));
+  /** `leaving`: the tab is being hidden or closed, when the cloud copy matters most. */
+  const autoSave = (leaving = false): void => {
+    void putAuto();
+    void cloud?.backup({ force: leaving });
+  };
+
   const saves: SaveController = {
-    saveManual: () => store.addManual(engine.serialize()),
+    saveManual: async () => {
+      const entry = await store.addManual(engine.serialize());
+      void cloud?.backup({ force: true });
+      return entry;
+    },
     listManual: () => store.listManual(),
     loadManual: async (id) => load(await store.getManual(id)),
     deleteManual: (id) => store.deleteManual(id),
@@ -114,6 +128,7 @@ async function start(): Promise<void> {
     catalog,
     commands,
     saves,
+    ...(cloud ? { cloud } : {}),
     looks: renderer.looks,
     dayTime: renderer.dayTime,
     onSelectionChange: setSelection,
@@ -156,7 +171,7 @@ async function start(): Promise<void> {
   };
   document.addEventListener('visibilitychange', () => {
     const visible = document.visibilityState === 'visible';
-    if (!visible) autoSave();
+    if (!visible) autoSave(true);
     loop.setVisible(visible, performance.now());
     if (visible && hiddenTimer !== null) {
       window.clearInterval(hiddenTimer);
@@ -165,8 +180,9 @@ async function start(): Promise<void> {
       hiddenTimer = window.setInterval(hiddenStep, APP_CONFIG.hiddenStepIntervalMs);
     }
   });
-  window.addEventListener('pagehide', autoSave);
-  window.setInterval(autoSave, APP_CONFIG.autoSaveIntervalSeconds * 1000);
+  window.addEventListener('pagehide', () => autoSave(true));
+  window.setInterval(() => autoSave(), APP_CONFIG.autoSaveIntervalSeconds * 1000);
+  void cloud?.start();
 
   // Dev server only: runs the game ahead with auto mode on, to reach a later stage quickly.
   // `?skip=90` in the address skips 90 minutes; `?skip=ship` or `?skip=plane` runs until one is on the board.
@@ -215,6 +231,24 @@ async function start(): Promise<void> {
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+}
+
+/**
+ * Cloud saves, when the build has a provider key. On the dev server `?cloud=fake` uses a pretend cloud in
+ * `localStorage` that every tab shares, and `?device=Phone` names the tab, to try two devices side by side.
+ */
+function createCloud(current: () => SaveData, store: SaveStore, load: (data: SaveData) => boolean): CloudSync | null {
+  const params = new URLSearchParams(window.location.search);
+  const fake = import.meta.env.DEV && params.get('cloud') === 'fake';
+  const providers = createCloudProviders({ googleClientId: __GOOGLE_OAUTH_CLIENT_ID__, fake }, fake ? browserStorage() : undefined);
+  if (providers.length === 0) return null;
+  return new CloudSync({
+    providers,
+    current,
+    localSavedAt: async () => (await store.getAuto())?.savedAt ?? null,
+    load,
+    device: (fake && params.get('device')) || currentDeviceName(),
+  });
 }
 
 void start();

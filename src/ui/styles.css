@@ -798,6 +798,45 @@
   gap: 4px;
 }
 
+.wt-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--wt-line);
+}
+
+.wt-cloud .wt-hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.wt-cloud-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--wt-radius-small);
+  background: var(--wt-sky);
+  border: 1px solid var(--wt-sky-deep);
+}
+
+.wt-cloud-offer-title {
+  font-weight: 800;
+}
+
+.wt-cloud-manage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wt-cloud-privacy {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--wt-ink-soft);
+}
+
 .wt-menu-foot {
   display: flex;
   justify-content: flex-end;

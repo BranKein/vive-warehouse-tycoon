@@ -145,8 +145,29 @@ export const adSense = (): Plugin => {
   };
 };
 
+/** Cloud save keys: environment variable -> constant the game reads. Missing keys leave that provider out. */
+const CLOUD_KEYS = {
+  GOOGLE_OAUTH_CLIENT_ID: '__GOOGLE_OAUTH_CLIENT_ID__',
+} as const;
+
+/** `define` entries for the cloud keys; an unset key becomes an empty string. */
+export const cloudKeyDefines = (env: Record<string, string | undefined>): Record<string, string> =>
+  Object.fromEntries(Object.entries(CLOUD_KEYS).map(([key, name]) => [name, JSON.stringify(env[key]?.trim() ?? '')]));
+
+/**
+ * Puts the cloud save keys (GOOGLE_OAUTH_CLIENT_ID, from the environment or a .env file) into the build. They are
+ * public by design: a browser-only OAuth client is locked to its allowed origins, not kept secret.
+ */
+export const cloudKeys = (): Plugin => ({
+  name: 'cloud-keys',
+  config(config, { mode }) {
+    const env = { ...loadEnv(mode, config.root ?? process.cwd(), ''), ...process.env };
+    return { define: cloudKeyDefines(env) };
+  },
+});
+
 export default defineConfig({
-  plugins: [modelReview(), shots(), siteVerification(), adSense()],
+  plugins: [modelReview(), shots(), siteVerification(), adSense(), cloudKeys()],
   // Saving an approval must not reload the page that saved it.
   server: { watch: { ignored: ['**/src/render/models/review.json'] } },
   resolve: {

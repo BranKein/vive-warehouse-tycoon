@@ -66,6 +66,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
     catalog: deps.catalog,
     commands: deps.commands,
     saves: deps.saves,
+    ...(deps.cloud ? { cloud: deps.cloud } : {}),
     ...(deps.looks ? { looks: deps.looks } : {}),
     ...(deps.dayTime ? { dayTime: deps.dayTime } : {}),
     tr,
@@ -84,6 +85,16 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
   };
 
   const menu = createSaveMenu(ctx, () => render());
+  // A newer save from another device opens the save menu, where the player loads or skips it.
+  let offered = false;
+  const stopCloud = deps.cloud?.onChange(() => {
+    const offer = deps.cloud!.status().offer !== null;
+    if (offer && !offered) {
+      settings.close();
+      menu.open();
+    }
+    offered = offer;
+  });
   const settings = createSettingsMenu(ctx, () => render());
   const achievements = createAchievementsModal(ctx, () => render());
   // Both popovers share one spot, so opening one closes the other.
@@ -233,6 +244,7 @@ export function createUI(root: HTMLElement, deps: UIDeps): GameUI {
       stopListening();
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      stopCloud?.();
       menu.dispose();
       settings.dispose();
       toasts.dispose();

@@ -1,4 +1,4 @@
-import type { CommandResult, DayTimeControl, ContentCatalog, GameCommands, GameSnapshot, LookControl, SaveController, Selection, UnlockView } from '@/contracts';
+import type { CloudController, CommandResult, DayTimeControl, ContentCatalog, GameCommands, GameSnapshot, LookControl, SaveController, Selection, UnlockView } from '@/contracts';
 import type { Translator } from './text';
 
 export type ToastKind = 'info' | 'good' | 'error';
@@ -9,6 +9,8 @@ export interface UIContext {
   readonly catalog: ContentCatalog;
   readonly commands: GameCommands;
   readonly saves: SaveController;
+  /** Cloud saves; missing when the build has no cloud provider keys. */
+  readonly cloud?: CloudController;
   readonly looks?: LookControl;
   readonly dayTime?: DayTimeControl;
   readonly tr: Translator;
