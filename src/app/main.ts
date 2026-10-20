@@ -199,8 +199,16 @@ async function start(): Promise<void> {
     }
   }
 
+  // The intro in index.html (title and blurb for search engines and slow loads) fades out after the first frame.
+  let intro = document.getElementById('loading');
   const frame = (now: number): void => {
     loop.frame(now);
+    if (intro) {
+      const shown = intro;
+      intro = null;
+      shown.style.opacity = '0';
+      window.setTimeout(() => shown.remove(), 400);
+    }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

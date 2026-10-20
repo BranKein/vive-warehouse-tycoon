@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://warehouse-tycoon.yeonhyuk.me/sitemap.xml
