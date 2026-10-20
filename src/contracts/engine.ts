@@ -1,6 +1,7 @@
 import type { BigNum } from '@/core/BigNum';
 import type { GameCommands, GameEvent } from './commands';
 import type { ContentCatalog, FacilityId, PlotId } from './defs';
+import type { CloudController } from './cloud';
 import type { SaveController, SaveData } from './save';
 import type { BuildingId, GameSnapshot, VehicleId } from './snapshot';
 
@@ -93,6 +94,8 @@ export interface UIDeps {
   catalog: ContentCatalog;
   commands: GameCommands;
   saves: SaveController;
+  /** Cloud saves; left out when the build has no cloud provider keys. */
+  cloud?: CloudController;
   /** Called when the player changes the selection from the UI side. */
   onSelectionChange(selection: Selection): void;
   /** Lets the settings offer the looks; left out where there is no 3D view. */

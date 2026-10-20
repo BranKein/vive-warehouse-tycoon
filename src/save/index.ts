@@ -19,3 +19,4 @@ export function createSaveStore(options: IndexedDbSaveStoreOptions = {}): SaveSt
   if (options.factory || typeof indexedDB !== 'undefined') return new IndexedDbSaveStore(options);
   return new MemorySaveStore();
 }
+export * from './cloud';
