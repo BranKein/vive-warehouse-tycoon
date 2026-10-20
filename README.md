@@ -48,3 +48,7 @@ npm run dev
 ## 광고 (AdSense)
 
 빌드할 때 환경 변수 `ADSENSE_CLIENT`(`ca-pub-…` 또는 `pub-…`)와 `ADSENSE_SLOT_SIDEBAR`(광고 단위 ID)가 둘 다 있으면 AdSense 스크립트와 오른쪽 세로 광고(160×600, "광고 · Ad" 표시)를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 광고는 창 너비 1200px 이상이고 마우스를 쓰는 화면에서만 보이며, 그때 3D 화면과 UI는 광고 옆의 남은 너비만 쓴다. 변수가 없으면 아무것도 넣지 않고 지금과 똑같다. 코드는 `vite.config.ts`의 `adSense` 플러그인과 `src/app/adRail.ts`.
+
+## 클라우드 저장
+
+빌드할 때 `GOOGLE_OAUTH_CLIENT_ID`가 있으면 저장 메뉴에 "Google로 연결"이 생긴다. 연결하면 최신 기록을 플레이어 본인의 Google Drive 숨김 앱 폴더(`drive.appdata`)에 올려 두고, 다른 기기에서 열 때 더 최신 기록을 불러올지 묻는다. 서버는 없고 브라우저가 Drive와 직접 통신한다. 배포 워크플로는 저장소 변수(`vars`)에서, 로컬 개발은 `.env.local`에서 읽는다. Google의 허용 출처가 `http://localhost:5173`이므로 실제 연결은 `npm run dev -- --port 5173`에서 확인한다. 개발 서버에서 `?cloud=fake`를 붙이면 Google 없이 localStorage의 가짜 클라우드로 흐름을 볼 수 있다. 자세한 내용은 `PLAN.md` 13절.

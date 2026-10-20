@@ -528,3 +528,23 @@ docs/agents/   # 서브에이전트 작업 지침
 - **보이는 조건**(에이전트 제안): 창 너비 1200px 이상이고 마우스(`hover: hover`, `pointer: fine`)일 때만. 그보다 좁거나 터치 기기면 막대를 숨기고 광고를 요청하지 않으며 게임은 전체 너비를 쓴다. 창 크기를 바꿔 경계를 넘으면 다시 맞추고, 처음 보일 때 한 번만 광고를 요청한다.
 - **광고 차단**: 막대는 "광고 · Ad" 표시만 남은 빈 칸이 된다. 폭을 미리 잡아 두었으므로 게임 화면이 움직이지 않는다.
 - **소개 블록**: `#loading`은 지금처럼 화면 전체를 덮었다가 첫 프레임 뒤 사라진다.
+
+## 13. 클라우드 저장 (2026-10-20 사용자 요청)
+
+우리 서버 없이 플레이어 본인의 클라우드에 최신 기록을 두고 폰과 컴퓨터에서 이어 한다. 이번에는 Google을 붙이고, Apple(iCloud)은 나중에 어댑터 하나만 더하면 되도록 구조를 잡았다.
+
+### 정한 것
+- IndexedDB가 계속 원본이다. 클라우드는 "최신 기록 한 칸"만 둔다. 수동 저장 목록은 기기마다 따로다.
+- Google: Google Identity Services 토큰 방식 + Drive `appDataFolder`(범위 `drive.appdata`만). 파일 하나 `warehouse-tycoon-save.json`. 토큰(약 1시간)은 localStorage에 두어 새로고침해도 이어지고, 만료되면 "다시 연결" 한 번(동의 화면은 다시 안 뜬다). 브라우저가 Drive와 직접 통신한다.
+- 올리는 때: 자동 저장 때 5분에 한 번, 탭을 가리거나 닫을 때, 수동 저장 때. 올리기 전에 클라우드가 아직 이 기기가 마지막으로 올린 기록인지 읽어 보고, 다른 기기가 그 뒤에 올렸으면 덮어쓰지 않고 그 기록을 제안한다(켜 둔 PC가 폰 기록을 덮어쓰지 않게).
+- 받는 때: 연결하거나 게임을 열 때 클라우드 기록이 이 기기 자동 저장보다 최신이고 이 기기가 올린 것이 아니면, 저장 메뉴를 열어 "불러오기 / 이 기기 기록 유지"를 묻는다. 유지하면 클라우드를 이 게임으로 덮어쓴다.
+- 기기 이름은 UA로 대략 만든다("iPhone · Safari").
+- 클라이언트 ID는 빌드 환경 변수 `GOOGLE_OAUTH_CLIENT_ID`(저장소 `vars`, 로컬은 `.env.local`). 없으면 클라우드 구역이 아예 안 보인다. 공개돼도 되는 값이다(허용 출처로 묶인다).
+- 개인정보 처리방침 `public/privacy.html`(한영, sitemap에도 넣음). Google 동의 화면에 이 주소를 쓴다.
+- 개발 서버 전용 `?cloud=fake`: localStorage에 가짜 클라우드를 두고 탭끼리 나눠 쓴다. `?device=Phone`으로 기기 이름을 바꾼다. Google 허용 출처가 `http://localhost:5173`이라 실제 Google 확인은 5173 포트에서 한다.
+
+### 구조
+- 계약 `src/contracts/cloud.ts`: `CloudProvider`(서비스 하나), `CloudController`(UI가 쓰는 것).
+- `src/save/cloud/CloudSync.ts`: 서비스와 무관한 동기화 로직. `src/save/cloud/google/`: Google 어댑터. `format.ts`: 모든 서비스가 같은 JSON을 저장.
+- UI `src/ui/cloudSection.ts`(저장 메뉴 안), 앱 연결은 `src/app/main.ts`의 `createCloud`.
+- **Apple을 붙일 때**: Apple Developer Program 가입(연 $99) → CloudKit 컨테이너, 레코드 타입(문자열 필드 하나에 `toCloudFile` JSON), 웹 API 토큰(허용 출처) → `src/save/cloud/apple/ICloudProvider.ts`(CloudKit JS, 개인 DB)를 `CloudProvider`로 구현 → `createCloudProviders`에 키와 함께 등록, `vite.config.ts`의 `CLOUD_KEYS`와 워크플로 env에 키 추가. 번역 `cloud.connect.apple`·`cloud.provider.apple`은 이미 있다.
