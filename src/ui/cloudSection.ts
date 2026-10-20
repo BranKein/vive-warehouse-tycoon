@@ -107,7 +107,8 @@ export function createCloudSection(ctx: UIContext, cloud: CloudController, onLoa
       await task;
     } catch (error) {
       console.error(error);
-      if (!disposed) ctx.notify('error', () => tr.t(failure));
+      // A sign-in that ran out is explained by the status line and its "connect again" button.
+      if (!disposed && cloud.status().state !== 'expired') ctx.notify('error', () => tr.t(failure));
     }
     busy = false;
     if (!disposed) render();
