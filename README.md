@@ -1,54 +1,62 @@
 # Warehouse Tycoon
 
-창고를 소재로 한 웹 기반 3D 방치형 타이쿤 게임이다. 섬의 빈 부지에 공장을 짓고, 트럭·화물선·화물기로 원자재를 들여와 가공하고, 같은 수단으로 내다 판다.
+**English** | [한국어](README.ko.md)
 
-- 원자재 7종에서 시작해 1차~4차 가공품과 수제품까지 만든다. 건물은 21종, 부지는 59칸이다.
-- 차량이 실제로 물품을 나른다. 건물 사이의 거리와 물품의 무게가 운송 시간에 영향을 준다.
-- 자동 모드를 켜면 가장 싼 것부터 알아서 사고 짓는다.
-- 한국어와 영어를 지원하고, 브라우저에 자동 저장된다.
+A web-based 3D idle tycoon game about warehouses. Build factories on the empty lots of an island, bring in raw materials by truck, cargo ship and cargo plane, process them, and ship the goods out the same way.
 
-## 실행
+**[Play now](https://warehouse-tycoon.yeonhyuk.me/en/)** (best on desktop)
+
+| A fresh island | An island full of factories |
+|---|---|
+| ![Starting screen](docs/screenshots/start-en.jpg) | ![An island full of factories](deploy/thumbnail.jpg) |
+
+- Start from 7 raw materials and work up through first- to fourth-tier goods and handmade products. There are 21 buildings and 59 lots.
+- Vehicles actually carry the goods. Distance between buildings and the weight of the goods affect delivery time.
+- Turn on auto mode and it buys and builds the cheapest things for you.
+- Available in Korean and English, with automatic saving in the browser.
+
+## Running
 
 ```bash
 npm install
 npm run dev
 ```
 
-| 명령 | 하는 일 |
+| Command | What it does |
 |---|---|
-| `npm run dev` | 개발 서버 |
-| `npm run build` | 타입 검사 후 `dist/`에 빌드 |
-| `npm test` | 테스트 |
-| `npm run typecheck` | 타입 검사 |
-| `npm run sim -- --hours 10 --auto --seed 1` | 화면 없이 돌려 밸런스 보고서 출력 (`--timeline`을 붙이면 새 건물·해금을 모두 나열) |
+| `npm run dev` | Development server |
+| `npm run build` | Type check, then build into `dist/` |
+| `npm test` | Tests |
+| `npm run typecheck` | Type check |
+| `npm run sim -- --hours 10 --auto --seed 1` | Run headless and print a balance report (add `--timeline` to list every new building and unlock) |
 
-## 조작
+## Controls
 
-- 오른쪽 버튼 드래그로 회전, 휠 버튼 드래그로 이동, 휠로 확대·축소.
-- 빈 부지를 누르면 건물을 고르는 창이 뜬다. 건물을 누르면 아래 패널에 업그레이드가 나온다.
-- 건물이나 출하장·부두·활주로에 마우스를 올리면 재고와 초당 처리량이 보인다.
-- 오른쪽 통계 카드에서 건물별 가동률을 보고, "상세 통계"에서 모자란 재료와 품목별 판매 수익을 본다.
-- 건물을 두 번 눌러 그대로 끌면 다른 부지로 옮긴다. 다른 건물 위에 놓으면 자리를 맞바꾼다.
-- 위쪽 막대에서 속도(정지, 1배, 2배, 4배), 자동 모드, 언어, 저장, 설정을 바꾼다.
+- Right-drag to rotate, middle-drag to pan, scroll to zoom.
+- Click an empty lot to open the building picker. Click a building to see its upgrades in the bottom panel.
+- Hover a building, the shipping yard, the dock or the runway to see its stock and throughput per second.
+- The statistics card on the right shows each building's uptime, and "More statistics" shows missing materials and sales revenue by item.
+- Double-click a building and drag to move it to another lot. Drop it on another building to swap places.
+- The top bar sets the speed (pause, 1x, 2x, 4x), auto mode, language, saves and settings.
 
-## 구조
+## Structure
 
-`src/` 아래는 `contracts`(공용 타입) ← `core` ← `content`(품목·건물·밸런스 수치) ← `sim`(게임 로직) ← `app` 순서로 의존한다. `render`(three.js 화면)와 `ui`(패널)는 로직을 직접 부르지 않고 스냅샷만 읽는다. 설계와 밸런스 기록은 [PLAN.md](PLAN.md)와 [docs/balance-buildings.md](docs/balance-buildings.md)에 있다.
+Under `src/`, the dependency order is `contracts` (shared types) ← `core` ← `content` (items, buildings, balance numbers) ← `sim` (game logic) ← `app`. `render` (the three.js scene) and `ui` (panels) never call the logic directly; they only read snapshots. Design and balance notes are in [PLAN.md](PLAN.md) and [docs/balance-buildings.md](docs/balance-buildings.md) (in Korean).
 
-개발 서버를 켠 채 `/src/render/models.html`을 열면 3D 모델을 하나씩 돌려 볼 수 있다.
+With the development server running, open `/src/render/models.html` to turn the 3D models around one at a time.
 
-## 박물관 전시
+## Museum exhibit
 
-[Vive Museum](https://github.com/BranKein/vive-museum)이 `deploy/exhibit.json`(제목·설명 한영, 기술 스택, 썸네일 경로, PC 권장 여부)과 `deploy/site.json`의 `subdomain`을 읽어 이 게임을 전시한다. 썸네일은 `deploy/thumbnail.jpg`. 배포 워크플로가 끝나면 박물관에 다시 빌드하라는 신호(`repository_dispatch`)를 보낸다. 토큰(`MUSEUM_DISPATCH_TOKEN`, 없으면 `INFRA_REPO_TOKEN`)에 vive-museum의 Contents 쓰기 권한이 없으면 이 단계는 경고만 남기고 넘어간다.
+[Vibe Museum](https://github.com/BranKein/vive-museum) exhibits this game by reading `deploy/exhibit.json` (title and description in Korean and English, tech stack, thumbnail path, whether desktop is recommended) and the `subdomain` in `deploy/site.json`. The thumbnail is `deploy/thumbnail.jpg`. When the deploy workflow finishes, it signals the museum to rebuild (`repository_dispatch`). If the token (`MUSEUM_DISPATCH_TOKEN`, or `INFRA_REPO_TOKEN` when absent) lacks Contents write access to vive-museum, this step only leaves a warning.
 
-## 검색 노출
+## Search (SEO)
 
-게임은 언어마다 주소가 따로 있다. `ko/index.html`(`/ko/`)과 `en/index.html`(`/en/`)이 같은 게임을 띄우고, 각자 한 언어로 된 제목·설명, 자기 주소의 canonical, 서로를 가리키는 hreflang(`x-default`는 `/en/`), 공유 카드(`public/og.jpg`), VideoGame 구조화 데이터, 첫 화면이 그려지기 전까지 보이는 소개 블록이 있다. 루트 `index.html`은 게임 없이 마지막으로 고른 언어(없으면 브라우저 언어)의 페이지로 보내기만 하고 `noindex`다. 게임 안 언어 버튼은 다른 언어 주소로 이동한다. 같은 출처라 세이브는 그대로다. 배포할 때 언어 페이지를 S3 키 `ko/`·`ko`에도 올린다(`.github/workflows/deploy.yml`). `public/robots.txt`와 `public/sitemap.xml`도 함께 배포된다. 빌드할 때 환경 변수 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`이 있으면 Google Search Console·네이버 서치어드바이저 소유 확인 메타 태그를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 없으면 태그를 넣지 않는다.
+Each language has its own address. `ko/index.html` (`/ko/`) and `en/index.html` (`/en/`) load the same game, and each has a title and description in one language, a canonical to its own address, hreflang pointing at each other (`x-default` is `/en/`), a share card (`public/og.jpg`), VideoGame structured data, and an intro block shown until the first frame is drawn. The root `index.html` has no game; it only sends visitors to the page of the last chosen language (or the browser language) and is `noindex`. The language button in the game moves to the other language's address. Saves carry over since the origin is the same. On deploy the language pages are also uploaded to the S3 keys `ko/` and `ko` (`.github/workflows/deploy.yml`). `public/robots.txt` and `public/sitemap.xml` are deployed too. When the environment variables `GOOGLE_SITE_VERIFICATION` and `NAVER_SITE_VERIFICATION` are present at build time, the Google Search Console and Naver Search Advisor verification meta tags are added. The deploy workflow reads them under the same names from the repository variables (`vars`). Without them no tags are added.
 
-## 광고 (AdSense)
+## Ads (AdSense)
 
-빌드할 때 환경 변수 `ADSENSE_CLIENT`(`ca-pub-…` 또는 `pub-…`)와 `ADSENSE_SLOT_SIDEBAR`(광고 단위 ID)가 둘 다 있으면 AdSense 스크립트와 오른쪽 세로 광고(160×600, "광고 · Ad" 표시)를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 광고는 창 너비 1200px 이상이고 마우스를 쓰는 화면에서만 보이며, 그때 3D 화면과 UI는 광고 옆의 남은 너비만 쓴다. 변수가 없으면 아무것도 넣지 않고 지금과 똑같다. 코드는 `vite.config.ts`의 `adSense` 플러그인과 `src/app/adRail.ts`.
+When both `ADSENSE_CLIENT` (`ca-pub-…` or `pub-…`) and `ADSENSE_SLOT_SIDEBAR` (ad unit ID) are present at build time, the AdSense script and a vertical ad on the right (160×600, labelled "광고 · Ad") are added. The deploy workflow reads them under the same names from the repository variables (`vars`). The ad only shows on screens at least 1200px wide that use a mouse, and then the 3D scene and UI use only the width left beside it. Without the variables nothing is added and the game is unchanged. The code is the `adSense` plugin in `vite.config.ts` and `src/app/adRail.ts`.
 
-## 클라우드 저장
+## Cloud save
 
-빌드할 때 `GOOGLE_OAUTH_CLIENT_ID`가 있으면 저장 메뉴에 "Google로 연결"이 생긴다. 연결하면 최신 기록을 플레이어 본인의 Google Drive 숨김 앱 폴더(`drive.appdata`)에 올려 두고, 다른 기기에서 열 때 더 최신 기록을 불러올지 묻는다. 서버는 없고 브라우저가 Drive와 직접 통신한다. 배포 워크플로는 저장소 변수(`vars`)에서, 로컬 개발은 `.env.local`에서 읽는다. Google의 허용 출처가 `http://localhost:5173`이므로 실제 연결은 `npm run dev -- --port 5173`에서 확인한다. 개발 서버에서 `?cloud=fake`를 붙이면 Google 없이 localStorage의 가짜 클라우드로 흐름을 볼 수 있다. 자세한 내용은 `PLAN.md` 13절.
+When `GOOGLE_OAUTH_CLIENT_ID` is present at build time, the save menu gets "Connect with Google". Once connected, the latest save is kept in the hidden app folder (`drive.appdata`) of the player's own Google Drive, and opening the game on another device asks whether to load the newer save. There is no server; the browser talks to Drive directly. The deploy workflow reads it from the repository variables (`vars`), and local development from `.env.local`. Google's allowed origin is `http://localhost:5173`, so test the real connection with `npm run dev -- --port 5173`. On the development server, add `?cloud=fake` to walk through the flow with a fake cloud in localStorage instead of Google. Details are in section 13 of `PLAN.md`.
