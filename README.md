@@ -47,7 +47,7 @@ With the development server running, open `/src/render/models.html` to turn the 
 
 ## Museum exhibit
 
-[Vibe Museum](https://github.com/BranKein/vive-museum) exhibits this game by reading `deploy/exhibit.json` (title and description in Korean and English, tech stack, thumbnail path, whether desktop is recommended) and the `subdomain` in `deploy/site.json`. The thumbnail is `deploy/thumbnail.jpg`. When the deploy workflow finishes, it signals the museum to rebuild (`repository_dispatch`). If the token (`MUSEUM_DISPATCH_TOKEN`, or `INFRA_REPO_TOKEN` when absent) lacks Contents write access to vive-museum, this step only leaves a warning.
+[Vibe Museum](https://github.com/BranKein/vibe-museum) exhibits this game by reading `deploy/exhibit.json` (title and description in Korean and English, tech stack, thumbnail path, whether desktop is recommended) and the `subdomain` in `deploy/site.json`. The thumbnail is `deploy/thumbnail.jpg`. When the deploy workflow finishes, it signals the museum to rebuild (`repository_dispatch`). If the token (`MUSEUM_DISPATCH_TOKEN`, or `INFRA_REPO_TOKEN` when absent) lacks Contents write access to vive-museum, this step only leaves a warning.
 
 ## Search (SEO)
 
