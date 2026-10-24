@@ -77,7 +77,7 @@ export const verificationTags = (env: Record<string, string | undefined>): HtmlT
   });
 
 /**
- * Adds the Google and Naver ownership meta tags to index.html when GOOGLE_SITE_VERIFICATION /
+ * Adds the Google and Naver ownership meta tags to every page when GOOGLE_SITE_VERIFICATION /
  * NAVER_SITE_VERIFICATION are set (in the environment or a .env file). The deploy workflow passes them
  * from the repository variables.
  */
@@ -133,7 +133,13 @@ export const adSenseTags = (env: Record<string, string | undefined>): HtmlTagDes
   ];
 };
 
-/** Adds the AdSense script and ad rail to index.html when ADSENSE_CLIENT / ADSENSE_SLOT_SIDEBAR are set. */
+/** The game pages, one per language. The root index.html only sends visitors to one of them. */
+export const GAME_PAGES = ['ko/index.html', 'en/index.html'] as const;
+
+/** True for the game pages (`/ko/index.html`, `/en/index.html`), the only pages that get ads. */
+export const isGamePage = (path: string): boolean => GAME_PAGES.some((page) => path.replace(/^\//, '') === page);
+
+/** Adds the AdSense script and ad rail to the game pages when ADSENSE_CLIENT / ADSENSE_SLOT_SIDEBAR are set. */
 export const adSense = (): Plugin => {
   let env: Record<string, string | undefined> = process.env;
   return {
@@ -141,7 +147,7 @@ export const adSense = (): Plugin => {
     configResolved(config) {
       env = { ...loadEnv(config.mode, config.root, ''), ...process.env };
     },
-    transformIndexHtml: () => adSenseTags(env),
+    transformIndexHtml: (_html, { path }) => (isGamePage(path) ? adSenseTags(env) : []),
   };
 };
 
@@ -177,7 +183,14 @@ export default defineConfig({
     target: 'es2022',
     // three.js alone is about 500 kB; it gets its own chunk so the game code can change without re-downloading it.
     chunkSizeWarningLimit: 600,
-    rollupOptions: { output: { manualChunks: (id: string) => (id.includes('node_modules/three') ? 'three' : undefined) } },
+    rollupOptions: {
+      input: {
+        root: fileURLToPath(new URL('./index.html', import.meta.url)),
+        ko: fileURLToPath(new URL('./ko/index.html', import.meta.url)),
+        en: fileURLToPath(new URL('./en/index.html', import.meta.url)),
+      },
+      output: { manualChunks: (id: string) => (id.includes('node_modules/three') ? 'three' : undefined) },
+    },
   },
   test: {
     environment: 'node',

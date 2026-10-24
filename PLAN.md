@@ -548,3 +548,16 @@ docs/agents/   # 서브에이전트 작업 지침
 - `src/save/cloud/CloudSync.ts`: 서비스와 무관한 동기화 로직. `src/save/cloud/google/`: Google 어댑터. `format.ts`: 모든 서비스가 같은 JSON을 저장.
 - UI `src/ui/cloudSection.ts`(저장 메뉴 안), 앱 연결은 `src/app/main.ts`의 `createCloud`.
 - **Apple을 붙일 때**: Apple Developer Program 가입(연 $99) → CloudKit 컨테이너, 레코드 타입(문자열 필드 하나에 `toCloudFile` JSON), 웹 API 토큰(허용 출처) → `src/save/cloud/apple/ICloudProvider.ts`(CloudKit JS, 개인 DB)를 `CloudProvider`로 구현 → `createCloudProviders`에 키와 함께 등록, `vite.config.ts`의 `CLOUD_KEYS`와 워크플로 env에 키 추가. 번역 `cloud.connect.apple`·`cloud.provider.apple`은 이미 있다.
+
+## 14. 언어별 주소 (2026-10-24 사용자 요청)
+
+검색 결과에 제목·설명이 한영으로 붙어 나오던 것을, 한국어 사용자에게는 한국어로만, 영어 사용자에게는 영어로만 보이게 한다. 11절의 "주소 하나에 두 언어"를 바꾼다.
+
+### 정한 것
+
+- **하위 도메인이 아니라 경로**(`/ko/`, `/en/`): 하위 도메인으로 나누면 출처가 달라져 로컬 저장이 따로 놀고(언어를 바꾸면 다른 게임이 열린다), 인증서·DNS·OAuth 허용 출처·서치 콘솔 등록이 늘어난다. 경로면 출처가 하나라 세이브가 그대로이고 SEO 효과는 같다. 사용자가 경로로 정했다.
+- **페이지**: `ko/index.html`, `en/index.html`이 같은 게임을 띄우고, 제목·설명·OG·구조화 데이터·소개 블록을 각자 한 언어로만 쓴다. canonical은 자기 주소, hreflang으로 서로를 가리키고 `x-default`는 `/en/`.
+- **루트 `/`**: 게임 없이 언어 페이지로 보내기만 한다. 마지막으로 고른 언어(`warehouse-tycoon.language`), 없으면 브라우저 언어(`ko…`면 한국어, 아니면 영어). 쿼리와 해시는 그대로 넘긴다. `noindex`, 광고 없음, 사이트맵에서 뺐다. 예전 주소로 들어와도 세이브는 같은 출처라 그대로다.
+- **언어 전환**: 언어 페이지에서는 `<html data-language>`가 언어를 정하고(`src/i18n`의 `page` 옵션), 전환 버튼은 다른 언어 페이지로 이동한다. 떠날 때 `pagehide`에서 자동 저장한다. 개발용 페이지(`src/ui/dev.html` 등)는 예전처럼 그 자리에서 바뀐다.
+- **호스팅**: 인프라를 바꾸지 않았다. CloudFront는 루트에서만 `index.html`을 채우므로, `/ko/`를 열면 S3에서 키 `ko/`를 찾는다. 배포 워크플로가 각 언어 페이지를 `ko/index.html`, `ko/`, `ko` 세 키에 올리고, 마지막 `sync --delete`가 앞의 두 키를 지우지 않게 뺀다.
+- **개인정보 처리방침**(`privacy.html`)은 한 페이지에 두 언어 그대로 둔다.

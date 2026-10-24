@@ -3,59 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>창고 타이쿤 · Warehouse Tycoon — 3D 방치형 타이쿤 게임</title>
-    <meta
-      name="description"
-      content="창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다. A 3D idle tycoon about warehouses. Build factories, bring in raw materials, process them and ship the goods out by truck, boat and plane."
-    />
-    <link rel="canonical" href="https://warehouse-tycoon.yeonhyuk.me/" />
+    <title>창고 타이쿤 · Warehouse Tycoon</title>
+    <!-- Only sends visitors to /ko/ or /en/; those pages are the ones in search results. -->
+    <meta name="robots" content="noindex" />
+    <link rel="alternate" hreflang="ko" href="https://warehouse-tycoon.yeonhyuk.me/ko/" />
+    <link rel="alternate" hreflang="en" href="https://warehouse-tycoon.yeonhyuk.me/en/" />
     <meta name="theme-color" content="#1b2430" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="창고 타이쿤 · Warehouse Tycoon" />
-    <meta property="og:title" content="창고 타이쿤 · Warehouse Tycoon — 3D 방치형 타이쿤 게임" />
-    <meta
-      property="og:description"
-      content="창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다. A 3D idle tycoon about warehouses."
-    />
-    <meta property="og:url" content="https://warehouse-tycoon.yeonhyuk.me/" />
-    <meta property="og:image" content="https://warehouse-tycoon.yeonhyuk.me/og.jpg" />
-    <meta property="og:locale" content="ko_KR" />
-    <meta property="og:locale:alternate" content="en_US" />
-    <meta name="twitter:card" content="summary_large_image" />
-
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "VideoGame",
-        "name": "창고 타이쿤 · Warehouse Tycoon",
-        "alternateName": ["창고 타이쿤", "Warehouse Tycoon"],
-        "description": "창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다. A 3D idle tycoon about warehouses. Build factories, bring in raw materials, process them and ship the goods out by truck, boat and plane.",
-        "url": "https://warehouse-tycoon.yeonhyuk.me/",
-        "image": "https://warehouse-tycoon.yeonhyuk.me/og.jpg",
-        "genre": ["Idle", "Tycoon", "Simulation"],
-        "gamePlatform": "Web browser",
-        "applicationCategory": "Game",
-        "operatingSystem": "Any",
-        "inLanguage": ["ko", "en"],
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-      }
+    <script>
+      // The language picked last (the game remembers it), else the browser's. Query and hash go along (?device=).
+      (function () {
+        var language = null;
+        try {
+          language = localStorage.getItem('warehouse-tycoon.language');
+        } catch (error) {
+          // Blocked storage: fall back to the browser language.
+        }
+        if (language !== 'ko' && language !== 'en') {
+          var preferred = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+          language = /^ko\b/i.test(preferred[0] || '') ? 'ko' : 'en';
+        }
+        location.replace('/' + language + '/' + location.search + location.hash);
+      })();
     </script>
   </head>
-  <body>
-    <canvas id="scene"></canvas>
-    <div id="ui"></div>
-    <!-- Shown until the first frame is drawn; src/app/main.ts removes it. It never takes input. -->
-    <div
-      id="loading"
-      style="position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; box-sizing: border-box; background: #1b2430; color: #f2ead8; font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; text-align: center; pointer-events: none; transition: opacity 0.4s"
-    >
-      <h1 style="margin: 0; font-size: 2rem; font-weight: 700">창고 타이쿤 <span style="opacity: 0.7; font-weight: 500">Warehouse Tycoon</span></h1>
-      <p lang="ko" style="margin: 0; max-width: 36em; line-height: 1.5">창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다.</p>
-      <p lang="en" style="margin: 0; max-width: 36em; line-height: 1.5; opacity: 0.8">A 3D idle tycoon about warehouses. Build factories, bring in raw materials, process them and ship the goods out by truck, boat and plane.</p>
-      <p style="margin: 8px 0 0; font-size: 0.9rem; opacity: 0.6">PC 권장 · Best on a PC</p>
-      <p style="margin: 0; font-size: 0.9rem; opacity: 0.6">불러오는 중… · Loading…</p>
-    </div>
-    <script type="module" src="/src/app/main.ts"></script>
+  <body style="margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 24px; background: #1b2430; color: #f2ead8; font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+    <a href="/ko/" hreflang="ko" lang="ko" style="color: inherit">창고 타이쿤 (한국어)</a>
+    <a href="/en/" hreflang="en" lang="en" style="color: inherit">Warehouse Tycoon (English)</a>
   </body>
 </html>

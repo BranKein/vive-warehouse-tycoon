@@ -90,20 +90,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # Hashed files first, index.html last, so no page ever points at a file that is not there yet.
+      # Hashed files first, the pages last, so no page ever points at a file that is not there yet.
+      # CloudFront asks S3 for the key "ko/" when someone opens /ko/ (it only fills in index.html at the root),
+      # so each game page is also stored under "<lang>/" and "<lang>". The final sync leaves those keys alone.
       - name: Upload
         env:
           BUCKET: ${{ vars.S3_BUCKET }}
         run: |
+          pages=(ko en)
           aws s3 sync dist/assets "s3://$BUCKET/assets" --cache-control "public, max-age=31536000, immutable"
-          aws s3 sync dist "s3://$BUCKET" --exclude "assets/*" --exclude index.html --cache-control no-cache
+          aws s3 sync dist "s3://$BUCKET" --exclude "assets/*" --exclude "*index.html" --cache-control no-cache
+          for lang in "${pages[@]}"; do
+            for key in "$lang/index.html" "$lang/" "$lang"; do
+              aws s3api put-object --bucket "$BUCKET" --key "$key" --body "dist/$lang/index.html" \
+                --content-type "text/html" --cache-control no-cache > /dev/null
+            done
+          done
           aws s3 cp dist/index.html "s3://$BUCKET/index.html" --cache-control no-cache
-          aws s3 sync dist "s3://$BUCKET" --delete
+          keep=()
+          for lang in "${pages[@]}"; do keep+=(--exclude "$lang/" --exclude "$lang"); done
+          aws s3 sync dist "s3://$BUCKET" --delete "${keep[@]}"
 
       - name: Refresh CloudFront
         run: |
           aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/" "/index.html" --query Invalidation.Id --output text
+            --paths "/" "/index.html" "/ko" "/ko/*" "/en" "/en/*" "/sitemap.xml" --query Invalidation.Id --output text
 
       # Asks the museum (BranKein/vive-museum) to rebuild, so the new version and date show up there.
       # The token needs Contents: Read and write on vive-museum. Without one, or if the call fails, the deploy

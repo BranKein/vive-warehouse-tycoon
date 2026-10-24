@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko" data-language="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>창고 타이쿤 — 3D 방치형 타이쿤 게임</title>
+    <meta
+      name="description"
+      content="창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다."
+    />
+    <link rel="canonical" href="https://warehouse-tycoon.yeonhyuk.me/ko/" />
+    <link rel="alternate" hreflang="ko" href="https://warehouse-tycoon.yeonhyuk.me/ko/" />
+    <link rel="alternate" hreflang="en" href="https://warehouse-tycoon.yeonhyuk.me/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://warehouse-tycoon.yeonhyuk.me/en/" />
+    <meta name="theme-color" content="#1b2430" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="창고 타이쿤" />
+    <meta property="og:title" content="창고 타이쿤 — 3D 방치형 타이쿤 게임" />
+    <meta
+      property="og:description"
+      content="창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다."
+    />
+    <meta property="og:url" content="https://warehouse-tycoon.yeonhyuk.me/ko/" />
+    <meta property="og:image" content="https://warehouse-tycoon.yeonhyuk.me/og.jpg" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "창고 타이쿤",
+        "alternateName": "Warehouse Tycoon",
+        "description": "창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다.",
+        "url": "https://warehouse-tycoon.yeonhyuk.me/ko/",
+        "image": "https://warehouse-tycoon.yeonhyuk.me/og.jpg",
+        "genre": ["Idle", "Tycoon", "Simulation"],
+        "gamePlatform": "Web browser",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "inLanguage": "ko",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="ui"></div>
+    <!-- Shown until the first frame is drawn; src/app/main.ts removes it. It never takes input. -->
+    <div
+      id="loading"
+      style="position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; box-sizing: border-box; background: #1b2430; color: #f2ead8; font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; text-align: center; pointer-events: none; transition: opacity 0.4s"
+    >
+      <h1 style="margin: 0; font-size: 2rem; font-weight: 700">창고 타이쿤</h1>
+      <p style="margin: 0; max-width: 36em; line-height: 1.5">창고를 소재로 한 3D 방치형 타이쿤. 공장을 짓고, 원자재를 들여와 가공하고, 트럭·배·비행기로 내다 판다.</p>
+      <p style="margin: 8px 0 0; font-size: 0.9rem; opacity: 0.6">PC 권장</p>
+      <p style="margin: 0; font-size: 0.9rem; opacity: 0.6">불러오는 중…</p>
+    </div>
+    <script type="module" src="/src/app/main.ts"></script>
+  </body>
+</html>

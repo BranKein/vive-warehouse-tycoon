@@ -43,7 +43,7 @@ npm run dev
 
 ## 검색 노출
 
-`index.html`에 제목·설명(한국어와 영어를 함께), canonical, 공유 카드(`public/og.jpg`), VideoGame 구조화 데이터, 첫 화면이 그려지기 전까지 보이는 소개 블록이 있다. `public/robots.txt`와 `public/sitemap.xml`도 함께 배포된다. 빌드할 때 환경 변수 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`이 있으면 Google Search Console·네이버 서치어드바이저 소유 확인 메타 태그를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 없으면 태그를 넣지 않는다.
+게임은 언어마다 주소가 따로 있다. `ko/index.html`(`/ko/`)과 `en/index.html`(`/en/`)이 같은 게임을 띄우고, 각자 한 언어로 된 제목·설명, 자기 주소의 canonical, 서로를 가리키는 hreflang(`x-default`는 `/en/`), 공유 카드(`public/og.jpg`), VideoGame 구조화 데이터, 첫 화면이 그려지기 전까지 보이는 소개 블록이 있다. 루트 `index.html`은 게임 없이 마지막으로 고른 언어(없으면 브라우저 언어)의 페이지로 보내기만 하고 `noindex`다. 게임 안 언어 버튼은 다른 언어 주소로 이동한다. 같은 출처라 세이브는 그대로다. 배포할 때 언어 페이지를 S3 키 `ko/`·`ko`에도 올린다(`.github/workflows/deploy.yml`). `public/robots.txt`와 `public/sitemap.xml`도 함께 배포된다. 빌드할 때 환경 변수 `GOOGLE_SITE_VERIFICATION`, `NAVER_SITE_VERIFICATION`이 있으면 Google Search Console·네이버 서치어드바이저 소유 확인 메타 태그를 넣는다. 배포 워크플로는 저장소 변수(`vars`)에서 같은 이름으로 읽는다. 없으면 태그를 넣지 않는다.
 
 ## 광고 (AdSense)
 

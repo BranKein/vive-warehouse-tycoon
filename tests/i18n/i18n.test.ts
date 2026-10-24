@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '@/content';
-import { DEFAULT_LANGUAGE, I18n, interpolate, keys, LANGUAGE_STORAGE_KEY, type LanguageStorage } from '@/i18n';
+import { DEFAULT_LANGUAGE, I18n, interpolate, keys, LANGUAGE_STORAGE_KEY, languagePath, type LanguageStorage } from '@/i18n';
 import { en } from '@/i18n/en';
 import { ko } from '@/i18n/ko';
 
@@ -122,6 +122,27 @@ describe('I18n', () => {
     const i18n = new I18n({ storage: broken });
     i18n.setLanguage('ko');
     expect(i18n.language).toBe('ko');
+  });
+
+  it('on a language page, shows that page\'s language and goes to the other page to switch', () => {
+    const storage = memoryStorage({ [LANGUAGE_STORAGE_KEY]: 'en' });
+    const visited: string[] = [];
+    const seen: string[] = [];
+    const i18n = new I18n({ storage, page: { language: 'ko', navigate: (language) => visited.push(language) } });
+    i18n.onChange((language) => seen.push(language));
+    expect(i18n.language).toBe('ko');
+    expect(storage.data[LANGUAGE_STORAGE_KEY]).toBe('ko');
+    i18n.setLanguage('ko');
+    i18n.setLanguage('en');
+    expect(visited).toEqual(['en']);
+    expect(seen).toEqual([]);
+    expect(i18n.language).toBe('ko');
+    expect(storage.data[LANGUAGE_STORAGE_KEY]).toBe('en');
+  });
+
+  it('builds language page addresses that keep the query and hash', () => {
+    expect(languagePath('ko')).toBe('/ko/');
+    expect(languagePath('en', '?device=Phone', '#x')).toBe('/en/?device=Phone#x');
   });
 
   it('translates run-time keys and falls back for unknown ones', () => {

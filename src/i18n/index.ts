@@ -34,18 +34,37 @@ export function interpolate(template: string, params?: TranslateParams): string 
   );
 }
 
+/** A page that serves one language (/ko/, /en/): its language, and how to go to the page of another. */
+export interface LanguagePage {
+  language: Language;
+  navigate: (language: Language) => void;
+}
+
 export interface I18nOptions {
   /** Where the chosen language is remembered. Omit for no persistence. */
   storage?: LanguageStorage | null;
+  /**
+   * Set on the per-language pages. Their language wins over the remembered one, and switching goes to the
+   * other page instead of changing in place, so each address always shows one language.
+   */
+  page?: LanguagePage | null;
 }
 
 export class I18n {
   private current: Language = DEFAULT_LANGUAGE;
   private readonly listeners = new Set<(language: Language) => void>();
   private readonly storage: LanguageStorage | null;
+  private readonly page: LanguagePage | null;
 
   constructor(options: I18nOptions = {}) {
     this.storage = options.storage ?? null;
+    this.page = options.page ?? null;
+    if (this.page) {
+      this.current = this.page.language;
+      // The root page sends the next visit to this language.
+      this.remember(this.current);
+      return;
+    }
     try {
       const remembered = this.storage?.getItem(LANGUAGE_STORAGE_KEY);
       if (isLanguage(remembered)) this.current = remembered;
@@ -60,13 +79,21 @@ export class I18n {
 
   setLanguage(language: Language): void {
     if (language === this.current) return;
+    this.remember(language);
+    if (this.page) {
+      this.page.navigate(language);
+      return;
+    }
     this.current = language;
+    for (const listener of [...this.listeners]) listener(language);
+  }
+
+  private remember(language: Language): void {
     try {
       this.storage?.setItem(LANGUAGE_STORAGE_KEY, language);
     } catch {
       // Not being able to remember the choice must not break switching.
     }
-    for (const listener of [...this.listeners]) listener(language);
   }
 
   /** Registers a listener called after every language change. Returns the function that removes it. */
@@ -103,8 +130,22 @@ function browserStorage(): LanguageStorage | null {
   }
 }
 
+/** The address of a language's page, keeping the query and hash (`?device=`, dev flags). */
+export const languagePath = (language: Language, search = '', hash = ''): string => `/${language}/${search}${hash}`;
+
+/** The game pages /ko/ and /en/ say their language in `<html data-language>`; other pages (dev tools) do not. */
+function browserPage(): LanguagePage | null {
+  if (typeof document === 'undefined') return null;
+  const language = document.documentElement.dataset.language;
+  if (!isLanguage(language)) return null;
+  return {
+    language,
+    navigate: (next) => window.location.assign(languagePath(next, window.location.search, window.location.hash)),
+  };
+}
+
 /** The instance shared by the whole app. */
-export const i18n = new I18n({ storage: browserStorage() });
+export const i18n = new I18n({ storage: browserStorage(), page: browserPage() });
 
 export const t = i18n.t;
 export const tx = i18n.tx;

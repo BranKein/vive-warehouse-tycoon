@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { adSenseClient, adSenseTags } from '../../vite.config';
+import { adSenseClient, adSenseTags, isGamePage } from '../../vite.config';
 import { AD_RAIL_MIN_VIEWPORT, AD_RAIL_WIDTH, gameAreaWidth, showAdRail } from '../../src/app/adRail';
 
 const FULL = { ADSENSE_CLIENT: 'ca-pub-0000000000000000', ADSENSE_SLOT_SIDEBAR: '1234567890' };
 
 describe('AdSense build tags', () => {
+  it('goes on the game pages only, not the root page that sends visitors on', () => {
+    expect(isGamePage('/ko/index.html')).toBe(true);
+    expect(isGamePage('/en/index.html')).toBe(true);
+    expect(isGamePage('/index.html')).toBe(false);
+    expect(isGamePage('/src/ui/dev.html')).toBe(false);
+  });
+
   it('normalises the publisher id', () => {
     expect(adSenseClient('ca-pub-0000000000000000')).toBe('ca-pub-0000000000000000');
     expect(adSenseClient(' pub-0000000000000000 ')).toBe('ca-pub-0000000000000000');
